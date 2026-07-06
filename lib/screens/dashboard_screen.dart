@@ -119,6 +119,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Dismiss a subscription with undo action
+  void _deleteSubscription(int index) {
+    final deletedSub = _subscriptions[index];
+    final originalIndex = index;
+
+    setState(() {
+      _subscriptions.removeAt(index);
+    });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF131C2E),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFF243049)),
+        ),
+        content: Row(
+          children: [
+            Icon(deletedSub.iconData, color: deletedSub.iconColor, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'ยกเลิกรายการ ${deletedSub.name} แล้ว',
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'เลิกทำ',
+          textColor: const Color(0xFF3B82F6),
+          onPressed: () {
+            setState(() {
+              _subscriptions.insert(originalIndex, deletedSub);
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   // Dialog to edit the income dynamically
   void _showEditIncomeDialog() {
     final controller = TextEditingController(text: _income.toStringAsFixed(0));
@@ -483,10 +528,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: _subscriptions.length,
                                 itemBuilder: (context, index) {
+                                  final sub = _subscriptions[index];
                                   return SubscriptionTile(
-                                    subscription: _subscriptions[index],
+                                    key: ValueKey(sub.id),
+                                    subscription: sub,
                                     onChecked: (checked) {
                                       _toggleSubscriptionSelection(index, checked ?? false);
+                                    },
+                                    onDismissed: () {
+                                      _deleteSubscription(index);
                                     },
                                   );
                                 },
@@ -538,10 +588,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _subscriptions.length,
                           itemBuilder: (context, index) {
+                            final sub = _subscriptions[index];
                             return SubscriptionTile(
-                              subscription: _subscriptions[index],
+                              key: ValueKey(sub.id),
+                              subscription: sub,
                               onChecked: (checked) {
                                 _toggleSubscriptionSelection(index, checked ?? false);
+                              },
+                              onDismissed: () {
+                                _deleteSubscription(index);
                               },
                             );
                           },
