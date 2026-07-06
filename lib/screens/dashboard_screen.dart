@@ -6,6 +6,7 @@ import '../widgets/kpi_card.dart';
 import '../widgets/subscription_tile.dart';
 import '../widgets/saving_simulation_card.dart';
 import '../widgets/pin_verification_dialog.dart';
+import '../widgets/subscription_filter_bar.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,6 +18,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   // User's monthly income, editable to simulate dynamic Subscription Creep Score
   double _income = 35000.0;
+
+  String _selectedFilter = 'ทั้งหมด';
 
   // Mock subscriptions representing the five recurring subscriptions matching the mockup
   late List<SubscriptionModel> _subscriptions;
@@ -101,6 +104,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   double get _simulatedYearlySavings => _simulatedMonthlySavings * 12;
+
+  List<SubscriptionModel> get _filteredSubscriptions {
+    if (_selectedFilter == 'ทั้งหมด') {
+      return _subscriptions;
+    }
+
+    return _subscriptions.where((sub) {
+      final category = sub.name.toLowerCase();
+      if (_selectedFilter == 'สตรีมมิ่ง') {
+        return category.contains('netflix') || category.contains('spotify');
+      }
+      if (_selectedFilter == 'AI') {
+        return category.contains('chatgpt');
+      }
+      if (_selectedFilter == 'คลาวด์') {
+        return category.contains('google') || category.contains('cloud');
+      }
+      if (_selectedFilter == 'สร้างสรรค์') {
+        return category.contains('adobe');
+      }
+      return true;
+    }).toList();
+  }
 
   // Toggle selected for cancellation simulation
   void _toggleSubscriptionSelection(int index, bool selected) {
@@ -480,6 +506,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 24),
 
+              SubscriptionFilterBar(
+                selectedFilter: _selectedFilter,
+                onFilterChanged: (filter) {
+                  setState(() {
+                    _selectedFilter = filter;
+                  });
+                },
+              ),
+              const SizedBox(height: 24),
+
               // --- KPI Cards Grid ---
               isWideScreen
                   ? Row(
@@ -579,17 +615,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _subscriptions.length,
+                                itemCount: _filteredSubscriptions.length,
                                 itemBuilder: (context, index) {
-                                  final sub = _subscriptions[index];
+                                  final subscription = _filteredSubscriptions[index];
+                                  final originalIndex = _subscriptions.indexOf(subscription);
                                   return SubscriptionTile(
-                                    key: ValueKey(sub.id),
-                                    subscription: sub,
+                                    key: ValueKey(subscription.id),
+                                    subscription: subscription,
                                     onChecked: (checked) {
-                                      _toggleSubscriptionSelection(index, checked ?? false);
+                                      _toggleSubscriptionSelection(originalIndex, checked ?? false);
                                     },
                                     onDismissed: () {
-                                      _deleteSubscription(index);
+                                      _deleteSubscription(originalIndex);
                                     },
                                   );
                                 },
@@ -639,17 +676,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _subscriptions.length,
+                          itemCount: _filteredSubscriptions.length,
                           itemBuilder: (context, index) {
-                            final sub = _subscriptions[index];
+                            final subscription = _filteredSubscriptions[index];
+                            final originalIndex = _subscriptions.indexOf(subscription);
                             return SubscriptionTile(
-                              key: ValueKey(sub.id),
-                              subscription: sub,
+                              key: ValueKey(subscription.id),
+                              subscription: subscription,
                               onChecked: (checked) {
-                                _toggleSubscriptionSelection(index, checked ?? false);
+                                _toggleSubscriptionSelection(originalIndex, checked ?? false);
                               },
                               onDismissed: () {
-                                _deleteSubscription(index);
+                                _deleteSubscription(originalIndex);
                               },
                             );
                           },
