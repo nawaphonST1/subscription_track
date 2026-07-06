@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/subscription.dart';
+import 'pin_verification_dialog.dart';
 
 class SubscriptionTile extends StatefulWidget {
   final SubscriptionModel subscription;
@@ -27,6 +28,14 @@ class _SubscriptionTileState extends State<SubscriptionTile> {
     return Dismissible(
       key: ValueKey(widget.subscription.id),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        final bool? confirmed = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const PinVerificationDialog(),
+        );
+        return confirmed ?? false;
+      },
       onDismissed: (direction) => widget.onDismissed(),
       background: Container(
         margin: const EdgeInsets.only(bottom: 12),

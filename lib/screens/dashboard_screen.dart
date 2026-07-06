@@ -5,6 +5,7 @@ import '../models/subscription.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/subscription_tile.dart';
 import '../widgets/saving_simulation_card.dart';
+import '../widgets/pin_verification_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -109,14 +110,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Automatically check all alerted items for cancellation (e.g. Adobe Creative Cloud)
-  void _cancelAllAlertedItems() {
-    setState(() {
-      for (var sub in _subscriptions) {
-        if (sub.usageStatus == UsageStatus.unused) {
-          sub.isSelected = true;
+  void _cancelAllAlertedItems() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const PinVerificationDialog(),
+    );
+
+    if (confirmed == true) {
+      final List<SubscriptionModel> removedSubs = [];
+      final List<int> originalIndices = [];
+
+      setState(() {
+        for (int i = _subscriptions.length - 1; i >= 0; i--) {
+          if (_subscriptions[i].isSelected) {
+            removedSubs.add(_subscriptions[i]);
+            originalIndices.add(i);
+            _subscriptions.removeAt(i);
+          }
         }
+      });
+
+      if (removedSubs.isNotEmpty) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF131C2E),
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFF243049)),
+            ),
+            content: Row(
+              children: [
+                const Icon(Icons.delete_sweep_rounded, color: Color(0xFFEF4444), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'ยกเลิกรายการแจ้งเตือน ${removedSubs.length} รายการแล้ว',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            action: SnackBarAction(
+              label: 'เลิกทำ',
+              textColor: const Color(0xFF3B82F6),
+              onPressed: () {
+                setState(() {
+                  for (int i = removedSubs.length - 1; i >= 0; i--) {
+                    _subscriptions.insert(originalIndices[i], removedSubs[i]);
+                  }
+                });
+              },
+            ),
+          ),
+        );
       }
-    });
+    }
   }
 
   // Dismiss a subscription with undo action
