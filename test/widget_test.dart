@@ -8,7 +8,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify that the dashboard titles and logo headers are found on the screen.
-    expect(find.text('Subscription Creep'), findsOneWidget);
+    expect(find.text('Subscription Track'), findsOneWidget);
     expect(find.text('Spark Cluster: IDLE'), findsOneWidget);
     expect(find.text('ภาพรวมระบบป้องกันค่าบริการซ้ำซ้อน'), findsOneWidget);
   });
