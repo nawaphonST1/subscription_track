@@ -1,12 +1,12 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import '../models/subscription.dart';
-import '../widgets/kpi_card.dart';
-import '../widgets/subscription_tile.dart';
-import '../widgets/saving_simulation_card.dart';
-import '../widgets/pin_verification_dialog.dart';
-import '../widgets/subscription_filter_bar.dart';
+import 'package:subscription_track/models/subscription.dart';
+import 'package:subscription_track/widgets/kpi_card.dart';
+import 'package:subscription_track/widgets/pin_verification_dialog.dart';
+import 'package:subscription_track/widgets/saving_simulation_card.dart';
+import 'package:subscription_track/widgets/subscription_filter_bar.dart';
+import 'package:subscription_track/widgets/subscription_tile.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,55 +28,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _subscriptions = [
-      SubscriptionModel(
+      const SubscriptionModel(
         id: '1',
         name: 'NETFLIX.COM BANGKOK',
         price: 419,
         confidence: 88,
-        usageStatus: UsageStatus.moderate,
+        usageStatus: 'moderate',
+        category: 'entertainment',
         billingPeriod: 'Monthly',
-        iconData: Icons.play_circle_fill,
-        iconColor: const Color(0xFF3B82F6),
       ),
-      SubscriptionModel(
+      const SubscriptionModel(
         id: '2',
         name: 'Spotify Premium Tokyo',
         price: 139,
         confidence: 100,
-        usageStatus: UsageStatus.frequent,
+        usageStatus: 'frequent',
+        category: 'music',
         billingPeriod: 'Monthly',
-        iconData: Icons.music_note,
-        iconColor: const Color(0xFF10B981),
       ),
-      SubscriptionModel(
+      const SubscriptionModel(
         id: '3',
         name: 'ChatGPT Plus OpenAI',
         price: 750,
         confidence: 100,
-        usageStatus: UsageStatus.frequent,
+        usageStatus: 'frequent',
+        category: 'ai',
         billingPeriod: 'Monthly',
-        iconData: Icons.chat_bubble,
-        iconColor: const Color(0xFF8B5CF6),
       ),
-      SubscriptionModel(
+      const SubscriptionModel(
         id: '4',
         name: 'Google One Cloud',
         price: 99,
         confidence: 100,
-        usageStatus: UsageStatus.frequent,
+        usageStatus: 'frequent',
+        category: 'cloud',
         billingPeriod: 'Monthly',
-        iconData: Icons.cloud,
-        iconColor: const Color(0xFFF59E0B),
       ),
-      SubscriptionModel(
+      const SubscriptionModel(
         id: '5',
         name: 'Adobe Creative Cloud',
         price: 1200,
         confidence: 95,
-        usageStatus: UsageStatus.unused,
+        usageStatus: 'unused',
+        category: 'design',
         billingPeriod: 'Monthly',
-        iconData: Icons.palette,
-        iconColor: const Color(0xFFEF4444),
       ),
     ];
   }
@@ -94,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   int get _unusedAlertCount {
-    return _subscriptions.where((sub) => sub.usageStatus == UsageStatus.unused).length;
+    return _subscriptions.where((sub) => sub.usageStatus == 'unused').length;
   }
 
   double get _simulatedMonthlySavings {
@@ -131,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Toggle selected for cancellation simulation
   void _toggleSubscriptionSelection(int index, bool selected) {
     setState(() {
-      _subscriptions[index].isSelected = selected;
+      _subscriptions[index] = _subscriptions[index].copyWith(isSelected: selected);
     });
   }
 
@@ -142,6 +137,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       barrierDismissible: false,
       builder: (context) => const PinVerificationDialog(),
     );
+
+    if (!mounted) return;
 
     if (confirmed == true) {
       final List<SubscriptionModel> removedSubs = [];

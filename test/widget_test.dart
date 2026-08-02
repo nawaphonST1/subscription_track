@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:subscription_track/main.dart';
+import 'package:subscription_track/app.dart';
 
 void main() {
   testWidgets('Dashboard smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const App());
     await tester.pumpAndSettle();
 
     // Verify that the dashboard titles and logo headers are found on the screen.
@@ -14,7 +14,7 @@ void main() {
   });
 
   testWidgets('Filter chips update the visible subscription list', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const App());
     await tester.pumpAndSettle();
 
     expect(find.text('NETFLIX.COM BANGKOK'), findsOneWidget);

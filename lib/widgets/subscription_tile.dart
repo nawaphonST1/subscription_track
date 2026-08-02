@@ -1,8 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import '../models/subscription.dart';
-import 'pin_verification_dialog.dart';
+import 'package:subscription_track/models/subscription.dart';
+import 'package:subscription_track/widgets/pin_verification_dialog.dart';
 
 class SubscriptionTile extends StatefulWidget {
   final SubscriptionModel subscription;
