@@ -71,8 +71,8 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
                 height: 60,
                 decoration: BoxDecoration(
                   color: _hasError 
-                      ? const Color(0xFFEF4444).withOpacity(0.1) 
-                      : const Color(0xFFF59E0B).withOpacity(0.1),
+                      ? const Color(0xFFEF4444).withValues(alpha: 0.1) 
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _hasError ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
@@ -205,7 +205,7 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF1E2B47).withOpacity(0.2),
+              color: const Color(0xFF1E2B47).withValues(alpha: 0.2),
               border: Border.all(
                 color: const Color(0xFF243049),
                 width: 1,
