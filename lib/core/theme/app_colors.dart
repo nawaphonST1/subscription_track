@@ -4,8 +4,8 @@ class AppColors {
   AppColors._();
 
   // Backgrounds
-  static const Color bgPrimary = Color(0xFF0A0F1D);
-  static const Color bgSecondary = Color(0xFF131C2E);
+  static const Color bgPrimary = Color(0xFF0B0F19);
+  static const Color bgSecondary = Color(0xFF151D31);
   static const Color bgTertiary = Color(0xFF1E2A47);
   static const Color bgOverlay = Color(0xFF0D1321);
 
@@ -16,7 +16,7 @@ class AppColors {
 
   // Semantic
   static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFFCD34D);
+  static const Color warning = Color(0xFFF59E0B);
   static const Color danger = Color(0xFFEF4444);
   static const Color info = Color(0xFF3B82F6);
 
