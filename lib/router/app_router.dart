@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:subscription_track/router/route_constants.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_screen.dart';
 import 'package:subscription_track/screens/splash_screen.dart';
+import 'package:subscription_track/screens/login/login_screen.dart';
+import 'package:subscription_track/screens/dashboard_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: RouteConstants.splash,
@@ -15,6 +17,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteConstants.onboarding,
       builder: (context, state) => const OnboardingScreen(),
+    ),
+    GoRoute(
+      path: RouteConstants.login,
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: RouteConstants.dashboard,
+      builder: (context, state) => const DashboardScreen(),
     ),
   ],
   
