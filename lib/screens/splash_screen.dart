@@ -37,7 +37,8 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             SizedBox(height: 24),
             Text(
-              'Subscription Track',
+              'ระบบติดตามการสมัครสมาชิก',
+              textAlign: TextAlign.center,
               style: AppTypography.displayMedium,
             ),
             SizedBox(height: 32),

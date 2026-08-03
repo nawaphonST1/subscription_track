@@ -16,17 +16,17 @@ class OnboardingPageData {
 final List<OnboardingPageData> onboardingPages = [
   const OnboardingPageData(
     visual: SubscriptionStackVisual(),
-    title: 'All Subscriptions\nIn One Smart Hub',
-    subtitle: 'Track your active recurring payments effortlessly and take control of your cash flow.',
+    title: 'รวมทุกการสมัครสมาชิก\nไว้ในที่เดียว',
+    subtitle: 'ติดตามรายการชำระเงินประจำทั้งหมดได้อย่างง่ายดาย และบริหารค่าใช้จ่ายของคุณได้อย่างมีประสิทธิภาพ',
   ),
   const OnboardingPageData(
     visual: UnusedAlertVisual(),
-    title: 'Spot Wasteful Services\n& Save Hundreds',
-    subtitle: 'Our smart engine detects subscriptions you no longer watch or use so you stop paying for ghost apps.',
+    title: 'ค้นหาบริการที่ไม่ได้ใช้\nและลดค่าใช้จ่าย',
+    subtitle: 'ระบบอัจฉริยะจะตรวจหาบริการที่คุณไม่ได้รับชมหรือใช้งาน เพื่อช่วยหยุดค่าใช้จ่ายที่ไม่จำเป็น',
   ),
   const OnboardingPageData(
     visual: RenewalAlertVisual(),
-    title: 'Timely Renewal Alerts\nZero Surprise Charges',
-    subtitle: 'Receive automated notifications before every billing date, giving you full control over your money.',
+    title: 'แจ้งเตือนก่อนต่ออายุ\nหมดปัญหาค่าใช้จ่ายไม่คาดคิด',
+    subtitle: 'รับการแจ้งเตือนอัตโนมัติก่อนถึงวันเรียกเก็บเงิน เพื่อให้คุณควบคุมค่าใช้จ่ายได้อย่างมั่นใจ',
   ),
 ];
