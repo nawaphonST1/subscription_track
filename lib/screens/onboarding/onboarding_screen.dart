@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
-import 'package:subscription_track/router/route_constants.dart';
+import 'package:subscription_track/providers/app_flow_provider.dart';
+import 'package:subscription_track/screens/onboarding/onboarding_controls.dart';
+import 'package:subscription_track/screens/onboarding/onboarding_data.dart';
+import 'package:subscription_track/screens/onboarding/onboarding_page.dart';
 
-import 'onboarding_controls.dart';
-import 'onboarding_data.dart';
-import 'onboarding_page.dart';
-
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late final PageController _pageController;
   int _currentPage = 0;
 
@@ -55,9 +54,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _finishOnboarding() {
-    if (mounted) {
-      context.go(RouteConstants.login);
-    }
+    // เปลี่ยน state แล้วให้ Router เลือก Login/Dashboard แทนการสั่ง context.go
+    ref.read(onboardingProvider.notifier).setCompleted(true);
   }
 
   @override
@@ -73,10 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               currentPage: _currentPage,
               totalPages: onboardingPages.length,
             ),
-            OnboardingHeader(
-              showSkip: !isLastPage,
-              onSkip: _finishOnboarding,
-            ),
+            OnboardingHeader(showSkip: !isLastPage, onSkip: _finishOnboarding),
             Expanded(
               child: PageView(
                 controller: _pageController,
