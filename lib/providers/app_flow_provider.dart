@@ -27,7 +27,7 @@ class AppFlowState {
 /// เมื่อต้องการทดสอบ Login จริง ให้เรียก setEnabled(false)
 class MockAuthBypassController extends Notifier<bool> {
   @override
-  bool build() => true;
+  bool build() => false;
 
   void setEnabled(bool value) => state = value;
 }
@@ -39,7 +39,7 @@ final mockAuthBypassProvider = NotifierProvider<MockAuthBypassController, bool>(
 /// Mock onboarding persistence สำหรับช่วงที่ local storage ยังไม่เชื่อมต่อ
 class OnboardingController extends Notifier<bool> {
   @override
-  bool build() => true;
+  bool build() => false;
 
   void setCompleted(bool value) => state = value;
 }
