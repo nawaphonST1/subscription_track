@@ -59,7 +59,7 @@ class OnboardingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -79,7 +79,7 @@ class OnboardingHeader extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'SubTrack',
+                'ติดตามสมาชิก',
                 style: AppTypography.labelLarge.copyWith(
                   color: AppColors.textPrimary,
                 ),
@@ -90,7 +90,7 @@ class OnboardingHeader extends StatelessWidget {
             TextButton(
               onPressed: onSkip,
               child: Text(
-                'Skip',
+                'ข้าม',
                 style: AppTypography.labelMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -121,7 +121,7 @@ class OnboardingBottomNav extends StatelessWidget {
     final isLastPage = currentPage == totalPages - 1;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
       child: Row(
         children: [
           if (currentPage > 0)
@@ -131,15 +131,16 @@ class OnboardingBottomNav extends StatelessWidget {
                 onPressed: onBack,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.border, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: Text(
-                  'Back',
+                  'ย้อนกลับ',
                   style: AppTypography.labelLarge.copyWith(
                     color: AppColors.textSecondary,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -148,19 +149,19 @@ class OnboardingBottomNav extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Container(
-              height: 56,
+              height: 48,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [AppColors.primary, AppColors.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -170,25 +171,26 @@ class OnboardingBottomNav extends StatelessWidget {
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      isLastPage ? 'Get Started' : 'Next',
+                      isLastPage ? 'เริ่มต้นใช้งาน' : 'ถัดไป',
                       style: AppTypography.labelLarge.copyWith(
                         color: AppColors.textPrimary,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Icon(
                       isLastPage
                           ? Icons.rocket_launch_rounded
                           : Icons.arrow_forward_rounded,
                       color: AppColors.textPrimary,
-                      size: 18,
+                      size: 16,
                     ),
                   ],
                 ),

@@ -10,23 +10,44 @@ class OnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(child: Center(child: data.visual)),
-          Text(
-            data.title,
-            textAlign: TextAlign.center,
-            style: AppTypography.headingLarge,
+          const SizedBox(height: 10),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    data.visual,
+                    const SizedBox(height: 24),
+                    Text(
+                      data.title,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.headingLarge.copyWith(
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        data.subtitle,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodyMedium.copyWith(
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            data.subtitle,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium,
-          ),
-          const SizedBox(height: 16),
         ],
       ),
     );
