@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/app.dart';
@@ -46,7 +47,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('ระบบติดตามการสมัครสมาชิก'), findsOneWidget);
-    expect(find.text('Subscription Creep'), findsNothing);
+    expect(find.byKey(const Key('hero-payout-card')), findsNothing);
   });
 
   testWidgets('authenticated mock state redirects to Dashboard', (
@@ -55,9 +56,9 @@ void main() {
     await tester.pumpWidget(_buildTestApp(AppFlowState.mockDashboard));
     await tester.pumpAndSettle();
 
-    expect(find.text('Subscription Creep'), findsOneWidget);
-    expect(find.text('Spark Cluster: IDLE'), findsOneWidget);
-    expect(find.text('ภาพรวมระบบป้องกันค่าบริการซ้ำซ้อน'), findsOneWidget);
+    expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
+    expect(find.text('รายจ่ายค่าสมาชิกรวม'), findsOneWidget);
+    expect(find.byKey(const Key('main-bottom-navigation')), findsOneWidget);
   });
 
   testWidgets('Filter chips update the visible subscription list', (
@@ -66,14 +67,17 @@ void main() {
     await tester.pumpWidget(_buildTestApp(AppFlowState.mockDashboard));
     await tester.pumpAndSettle();
 
-    expect(find.text('NETFLIX.COM BANGKOK'), findsOneWidget);
+    await tester.tap(find.text('รายการ'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Netflix Premium'), findsOneWidget);
     expect(find.text('Google One Cloud'), findsOneWidget);
 
     await tester.tap(find.text('คลาวด์'));
     await tester.pumpAndSettle();
 
     expect(find.text('Google One Cloud'), findsOneWidget);
-    expect(find.text('NETFLIX.COM BANGKOK'), findsNothing);
+    expect(find.text('Netflix Premium'), findsNothing);
   });
 
   testWidgets('unauthenticated state redirects to Login', (
@@ -91,7 +95,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in to continue'), findsOneWidget);
-    expect(find.text('Subscription Creep'), findsNothing);
+    expect(find.byKey(const Key('hero-payout-card')), findsNothing);
   });
 
   testWidgets('first-time flow goes Onboarding to Login to Dashboard', (
@@ -118,7 +122,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    expect(find.text('Subscription Creep'), findsOneWidget);
+    expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
     expect(find.text('Sign in to continue'), findsNothing);
   });
 }
