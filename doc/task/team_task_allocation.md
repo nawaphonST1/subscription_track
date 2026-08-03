@@ -6,6 +6,8 @@
 **Duration:** 8 weeks  
 **Date:** 28 July 2026
 
+**Implementation status updated:** 3 August 2026 (Person 1 commits through `f81d3f5`)
+
 ---
 
 ## 📊 Task Difficulty Analysis
@@ -59,10 +61,10 @@ Each person gets:
 
 | # | Task | Difficulty | Est. Hours | Status |
 |---|------|-----------|-----------|--------|
-| 1 | **Dashboard** | ⭐⭐⭐ Hard | 24 | 🔴 Highest Priority |
+| 1 | **Dashboard** | ⭐⭐⭐ Hard | 24 | ✅ Mobile 4-tab shell implemented |
 | 2 | **Dialogs** (PIN, Bio, Confirm) | ⭐⭐ Medium | 12 | 🟡 After Dashboard |
-| 3 | **Onboarding** | ⭐⭐ Medium | 12 | 🟠 Parallel Week 1-2 |
-| 4 | **Splash** | ⭐ Easy | 4 | 🟢 Week 1 (first task) |
+| 3 | **Onboarding** | ⭐⭐ Medium | 12 | ✅ Completed |
+| 4 | **Splash** | ⭐ Easy | 4 | ✅ Completed |
 
 ### 📝 Responsibilities
 
@@ -93,8 +95,8 @@ Dialogs (Week 4) [Used by Person 2 & 3 for Add/Edit]
 ```
 [ Day 1-2 ] Splash Screen
   - Static logo + app name
-  - Simple auto-navigation after 500ms
-  - Provider to check onboarding status
+  - แสดง loading ระหว่าง app flow initialization
+  - GoRouter state-driven redirect (ไม่มี hardcoded delayed navigation)
 
 [ Day 3-5 ] Setup & Foundation
   - Install Riverpod + GoRouter
@@ -124,25 +126,25 @@ Dialogs (Week 4) [Used by Person 2 & 3 for Add/Edit]
 #### Week 3-4: Dashboard Refactor (MAIN TASK)
 ```
 [ Week 3 ]
-  Day 1-2: Setup providers
-    - subscriptionListProvider (FutureProvider)
-    - selectedSubscriptionsProvider (StateProvider)
-    - filteredSubscriptionsProvider (Provider)
-    - simulationProvider (computed from selected)
+  Day 1-2: Setup providers and data boundary ✅
+    - SubscriptionRepository + InMemorySubscriptionRepository
+    - subscriptionListProvider (AsyncNotifierProvider)
+    - currentTab/search/category/income/reminder NotifierProviders
+    - visibleSubscriptionsProvider (derived AsyncValue)
   
-  Day 3-5: Refactor Dashboard Widget
-    - Convert from setState to ConsumerWidget
-    - Replace hardcoded data with providers
-    - Extract responsive layout logic
-    - Test mobile vs desktop breakpoints
+  Day 3-5: Refactor Dashboard Widget ✅ (mobile)
+    - MainNavigationShell + IndexedStack 4 tabs
+    - Dashboard / Subscriptions / Savings / Profile tab views
+    - Replace hardcoded data with repository-backed providers
+    - Widget tests for tab, search/category and income/Creep binding
 
 [ Week 4 ]
   Day 1-3: Integrate components
-    - Connect KPI Cards to providers
-    - Connect SubscriptionTile list
-    - Connect filter bar
-    - Connect saving simulation card
-    - Add loading/error states
+    - Connect KPI/Creep/renewal/unused alert to providers ✅
+    - Connect subscription search/category/list ✅
+    - Connect saving simulation checklist and totals ✅
+    - Add loading/error/refresh states ✅
+    - Tablet/desktop optimization ⏳
   
   Day 4-5: Polish & test
     - Responsive design verification
@@ -476,10 +478,10 @@ Week 8:
 ## 🎯 Success Criteria per Person
 
 ### Person 1 (เน) ✅
-- [ ] All 4 screens built with zero UI bugs
+- [x] Startup screens + focused 4-tab mobile shell pass widget tests
 - [ ] Responsive design verified (mobile 375px + desktop 1200px)
-- [ ] All providers working correctly
-- [ ] Code documented with comments
+- [x] Repository/navigation providers working correctly
+- [x] Architecture and current integration points documented
 - [ ] 90%+ test coverage for providers
 - [ ] Onboarding smooth with 60 FPS animations
 
@@ -585,23 +587,24 @@ develop ← merge all features here
 ### Person 1 (เน) — Weekly Checklist
 
 **Week 1:**
-- [ ] Riverpod installed & configured
-- [ ] GoRouter set up
-- [ ] Color/Typography system defined
-- [ ] Splash screen completed
-- [ ] CustomAppBar created
-- [ ] Mock data services ready
+- [x] Riverpod installed & configured
+- [x] GoRouter set up with state-driven redirect
+- [x] Color/Typography system defined
+- [x] Splash screen completed
+- [x] Shared app header/navigation shell created
+- [x] In-memory repository and mock data ready
 
 **Week 2:**
-- [ ] Onboarding 3 pages completed
-- [ ] Dots indicator working
-- [ ] Navigation flow tested
+- [x] Onboarding 3 pages completed
+- [x] Progress indicator working
+- [x] Splash → Onboarding → Login → Dashboard flow tested
 
 **Week 3-4:**
-- [ ] Dashboard refactored to use providers
-- [ ] Responsive layout verified
-- [ ] All widgets integrated
-- [ ] Loading/error states working
+- [x] Dashboard refactored to repository-backed providers
+- [x] Focused mobile layout verified by widget tests
+- [x] Four main tabs integrated
+- [x] Loading/error/refresh states working
+- [ ] Tablet/desktop layout verified
 
 **Week 4:**
 - [ ] PIN dialog refactored
@@ -612,7 +615,7 @@ develop ← merge all features here
 **Week 5+:**
 - [ ] Code review for P2 & P3
 - [ ] Bug fixes & polish
-- [ ] Documentation
+- [x] Repository/navigation implementation documentation
 
 ---
 

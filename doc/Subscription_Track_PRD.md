@@ -87,6 +87,27 @@
 | **Notification Service** | จัดการ cron job ส่ง Push Notification ก่อนวันต่ออายุ | แยกออกจาก Main API เพราะมี cron job หนัก, ทำงาน background |
 | **Analytics Service** | คำนวณ Creep Score, Confidence Score, Usage Pattern | ประมวลผลหนัก, ไม่กระทบ Main API |
 
+### MVP Frontend Data Architecture (Implementation Baseline — 3 August 2026)
+
+Flutter client ใช้ Repository Pattern เป็นขอบเขตระหว่าง UI state กับ data source:
+
+```text
+Tab Views / Widgets
+        ↓ watch / command
+Riverpod AsyncNotifier (SubscriptionListController)
+        ↓ depends on interface
+SubscriptionRepository
+        ↓ current implementation
+InMemorySubscriptionRepository (mock I/O delay 300 ms)
+```
+
+- `SubscriptionRepository` กำหนด CRUD, lookup และ `toggleSelection`
+- `InMemorySubscriptionRepository` เป็น mock data source ระหว่างรอ Hive/REST API
+- `subscriptionRepositoryProvider` สามารถ override ใน test หรือสลับ implementation ภายหลังได้
+- `subscriptionListProvider` เก็บ `AsyncValue<List<Subscription>>` และรองรับ loading/error
+- delete และ toggle ใช้ optimistic UI พร้อม rollback/reload เมื่อ data source ล้มเหลว
+- Hive/REST API ยังเป็นงานถัดไป ไม่ถือว่าเสร็จจาก baseline นี้
+
 ---
 
 ## 4. Feature Scope & Priority
@@ -96,7 +117,7 @@
 |---------|------------|
 | **Authentication** | OAuth Google/Apple Sign-In, JWT Token |
 | **Onboarding** | หน้าแนะนำแอปครั้งแรก, กรอกรายได้ |
-| **Dashboard** | KPI Cards, Subscription List, Filter, Simulation (มีอยู่แล้ว) |
+| **Dashboard** | 4-tab mobile shell: KPI/Creep, รายการ, Saving Simulation และ Profile/Settings |
 | **Add Subscription** | เลือกจาก Preset Packages หรือกรอกเอง |
 | **Edit/Delete Subscription** | แก้ไขรายละเอียด, ลบพร้อม PIN/Biometric |
 | **Category Filter** | ทั้งหมด, สตรีมมิ่ง, AI, คลาวด์, สร้างสรรค์ (มีอยู่แล้ว) |
@@ -262,30 +283,30 @@ POST   /notifications/test → ทดสอบส่ง Push (dev only)
 
 ## 7. Screen List & Navigation Flow
 
+```text
+[Splash] → [Onboarding] → [Login (OAuth)] → [/dashboard: MainNavigationShell]
+                                               │
+                  ┌────────────────────────────┼────────────────────────────┐
+                  ▼                            ▼                            ▼
+          [0 Dashboard]                [1 Subscriptions]           [2 Savings]
+          Hero KPI / Creep             Search / Category           Checklist
+          Renewal Timeline             Subscription List           Saving Goal
+          Unused Alert                 + Add FAB                    Cancel Selected
+                                               │
+                                               ▼
+                                      [3 Profile & Settings]
+                                      Income / PIN / Reminder
 ```
-[Splash] → [Onboarding] → [Login (OAuth)]
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │   [Dashboard]   │ ← หน้าหลัก
-                    │   (มีอยู่แล้ว)  │
-                    └────────┬────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        ▼                    ▼                    ▼
- [Add Subscription]    [Edit Subscription]   [Profile/Settings]
-        │                    │                    │
-        ▼                    ▼                    ▼
- [Select Package]      [PIN/Biometric]      [Income Setting]
- (Preset List)         (Verify before       [Noti Settings]
- [Custom Form]          delete/edit)        [Language]
-                                                  [Logout]
-        │
-        ▼
- [Subscription Detail]
- [Usage Stats]
- [Comparison]
-```
+
+#### Startup redirect rules
+
+1. ระหว่างตรวจ session ให้อยู่ที่ `/splash`
+2. ผู้ใช้ใหม่ที่ onboarding ยังไม่เสร็จไป `/onboarding`
+3. onboarding เสร็จแต่ยังไม่ authenticated ไป `/login`
+4. authenticated แล้วไป `/dashboard`
+5. Router ตรวจ `matchedLocation` ก่อน redirect เพื่อป้องกัน redirect loop
+
+`MainNavigationShell` ใช้ `IndexedStack` เพื่อรักษา state/scroll ของทั้ง 4 tabs โดย `currentTabProvider` เป็นเจ้าของ active index ส่วน route ย่อยสำหรับ Add, Detail และ Edit จะเพิ่มเมื่อหน้าของ Person 2/3 พร้อม
 
 ### หน้าจอที่ต้องออกแบบเพิ่มจากที่มี:
 

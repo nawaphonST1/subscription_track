@@ -1,9 +1,12 @@
 # 📱 Subscription Track — Frontend Screens & Architecture Spec
 
-**Project:** Subscription Track  
-**Phase:** MVP (Full Frontend Design)  
-**Status:** Specification Document  
-**Date:** 28 July 2026  
+**Project:** Subscription Track
+
+**Phase:** MVP (Full Frontend Design)
+
+**Status:** Living Specification (aligned with commits through `f81d3f5`)
+
+**Last Updated:** 3 August 2026
 
 ---
 
@@ -20,6 +23,21 @@
 ---
 
 ## Architecture Overview
+
+### Current Implementation Baseline
+
+รายละเอียดส่วนนี้เป็น source of truth สำหรับ Dashboard MVP และใช้แทนตัวอย่าง proposal เดิมที่อาจยังปรากฏในหัวข้อถัดไป:
+
+- Startup flow เป็น state-driven redirect: Splash → Onboarding → Login → Dashboard โดยไม่มี `Future.delayed` navigation ใน Splash
+- `/dashboard` render `MainNavigationShell` และใช้ `IndexedStack` เก็บ state ของ 4 tabs
+- tabs แยกเป็น `dashboard_tab.dart`, `subscriptions_tab.dart`, `savings_tab.dart` และ `profile_tab.dart`
+- state ของ navigation/search/category/income/reminder อยู่ใน `main_navigation_provider.dart`
+- subscription data ใช้ `SubscriptionRepository` → `InMemorySubscriptionRepository` ผ่าน `subscriptionRepositoryProvider`
+- `subscriptionListProvider` เป็น `AsyncNotifierProvider<SubscriptionListController, List<Subscription>>` ไม่ใช่ `FutureProvider` หรือ legacy `StateNotifierProvider`
+- CRUD/toggle เรียกผ่าน controller; delete/toggle อัปเดต UI แบบ optimistic และจัดการ rollback/error
+- tests override repository ด้วย `subscriptionRepositoryProvider.overrideWithValue(...)`
+
+> หมายเหตุ: Hive/REST, Add Subscription form, PIN persistence, biometric และ notification backend ยังไม่เสร็จ UI ที่แสดงใน shell เป็น integration point สำหรับงานถัดไป
 
 ### Recommended State Management: **Riverpod**
 
@@ -102,55 +120,30 @@ lib/
 
 ### Navigation Hierarchy Tree
 
-```
+```text
 [App Root]
-├── 🟢 Splash (500ms logo + loading)
-│   └── → Onboarding (if first time)
-│       └── → Login
-│           └── → Dashboard (home route)
-│
-├── 📊 Dashboard (home)
-│   ├── → Add Subscription
-│   │   ├── → Select Package (Preset list)
-│   │   │   └── → Add Custom Form (manual entry)
-│   │   └── → Cancel
-│   │
-│   ├── → Tap Subscription Tile
-│   │   ├── → Subscription Detail
-│   │   │   ├── → Edit (แก้ไข)
-│   │   │   │   ├── [PIN/Biometric] → Save
-│   │   │   │   └── Cancel
-│   │   │   ├── → Delete (ลบ)
-│   │   │   │   ├── [PIN/Biometric Dialog]
-│   │   │   │   └── [Confirm] → Back to Dashboard
-│   │   │   └── Back
-│   │   │
-│   │   └── Swipe to Delete (Dismissible)
-│   │       ├── [PIN/Biometric Dialog]
-│   │       └── Undo on SnackBar
-│   │
-│   ├── → Filter Tap
-│   │   └── Real-time filter
-│   │
-│   └── → Tap Profile Icon (top-right)
-│       ├── → Profile Screen
-│       │   ├── [Edit Name/Avatar] → Save
-│       │   └── View Income
-│       │
-│       ├── → Settings Screen
-│       │   ├── Income Setup
-│       │   ├── Notification Days
-│       │   ├── Biometric On/Off
-│       │   ├── Change PIN
-│       │   ├── Language (Thai/Eng)
-│       │   └── Logout
-│       │
-│       └── → Notification Bell
-│           └── → Notification Center
-│               └── List of past notifications
-
-📝 Notification Center (also accessible from Dashboard)
-└── List all notifications with timestamp
+└── Splash (อยู่จน app flow initialization เสร็จ)
+    ├── Onboarding (first time)
+    │   └── Login
+    ├── Login (returning unauthenticated user)
+    └── /dashboard (authenticated user)
+        └── MainNavigationShell / IndexedStack
+            ├── Tab 0: Dashboard
+            │   ├── Hero payout + Creep Risk
+            │   ├── Upcoming renewals
+            │   └── Unused service alert
+            ├── Tab 1: Subscriptions
+            │   ├── Search + category filter
+            │   ├── Subscription list / selection / delete
+            │   └── Add FAB → Add route/form (pending)
+            ├── Tab 2: Savings
+            │   ├── Saving goal banner
+            │   ├── Selection checklist
+            │   └── Cancel selected
+            └── Tab 3: Profile & Settings
+                ├── Monthly income bottom sheet
+                ├── PIN settings entry point (backend pending)
+                └── Notification reminder toggle
 ```
 
 ---
@@ -162,11 +155,11 @@ lib/
 | Property | Value |
 |----------|-------|
 | **Purpose** | Initial loading screen with logo & app name |
-| **Duration** | 500ms - 2s (show mock loading indicator) |
-| **State Management** | Simple `FutureProvider` to check if onboarding seen |
+| **Duration** | เท่ากับเวลาตรวจ app flow/session; ไม่มี fixed delay |
+| **State Management** | `appFlowProvider` + GoRouter `refreshListenable`/`redirect` |
 | **Widgets Used** | `Scaffold`, `Center`, `Column`, `CircularProgressIndicator` |
 | **Mock Data** | None (static UI) |
-| **Navigation** | Auto-navigate to Onboarding OR Dashboard |
+| **Navigation** | Router redirect ไป Onboarding, Login หรือ Dashboard ตาม state |
 
 **UI Layout:**
 ```
@@ -319,9 +312,20 @@ class MockUser {
 | Property | Value |
 |----------|-------|
 | **Purpose** | Main hub - view KPIs, subscriptions, simulate savings |
-| **Current State** | 70% done (need architecture refactor) |
-| **State Management** | `Riverpod` with `subscriptionProvider`, `filterProvider` |
-| **Responsive** | Desktop (900px+) = 60:40 split; Mobile = full column |
+| **Current State** | ✅ Option 5 focused 4-tab mobile layout implemented |
+| **State Management** | Riverpod `AsyncNotifier` + Repository Pattern + derived providers |
+| **Responsive** | Mobile layout implemented; tablet/desktop optimization remains |
+
+**Implemented 4-tab structure:**
+
+| Tab | Content | State binding |
+|-----|---------|---------------|
+| 0 — Dashboard | Hero payout KPI, Creep Risk, renewal timeline, unused alert | `subscriptionListProvider`, `userIncomeProvider` |
+| 1 — Subscriptions | Search, category chips, list tiles, Add FAB | `visibleSubscriptionsProvider` |
+| 2 — Savings | yearly saving goal, checklist, cancel selected | `subscriptionListProvider.notifier` |
+| 3 — Profile | avatar, income sheet, PIN entry point, reminder toggle | `userIncomeProvider`, `notificationReminderProvider` |
+
+**Historical proposal below (superseded):** ตัวอย่าง `FutureProvider` และ layout หน้าเดียวด้านล่างเก็บไว้เป็น design history เท่านั้น ไม่ใช่ API ปัจจุบัน
 
 **New Architecture Approach:**
 
@@ -423,12 +427,12 @@ Desktop Layout (900px+):
 └────────────────────────────────────────────────────┘
 ```
 
-**Key Changes:**
-1. Refactor `setState` → Riverpod providers
-2. Extract computation logic to providers
-3. Keep UI widgets mostly the same
-4. Add error/loading states
-5. Use `ConsumerWidget` instead of `StatefulWidget`
+**Implemented changes:**
+1. ย้าย hardcoded subscription list ออกจาก `DashboardScreen` ไปไว้หลัง repository interface
+2. ใช้ `AsyncNotifier` เป็น single source of truth สำหรับ CRUD/selection
+3. แยก search/category เป็น derived provider และใช้ typed `SubscriptionCategoryFilter`
+4. แยก 4 tab views ออกจาก navigation shell
+5. รองรับ loading/error/refresh และทดสอบ state binding ด้วย Provider override
 
 ---
 
@@ -925,6 +929,21 @@ final settingsProvider = StateNotifierProvider((ref) {
 
 ### Riverpod Usage Patterns
 
+**Project convention (current):** ใช้ `NotifierProvider` สำหรับ synchronous UI state และ `AsyncNotifierProvider` สำหรับ mutable async data หลีกเลี่ยงการเพิ่ม `StateProvider`/`StateNotifierProvider` ใหม่ เพราะเป็น legacy API ใน Riverpod 3 สำหรับโปรเจกต์นี้
+
+```dart
+final subscriptionRepositoryProvider = Provider<SubscriptionRepository>(
+  (ref) => InMemorySubscriptionRepository(),
+);
+
+final subscriptionListProvider =
+    AsyncNotifierProvider<SubscriptionListController, List<Subscription>>(
+  SubscriptionListController.new,
+);
+```
+
+ตัวอย่าง Pattern 1-3 ด้านล่างเป็นแนวคิดจาก proposal เดิม ให้ยึด provider API ปัจจุบันข้างต้นเมื่อนำไป implement
+
 #### Pattern 1: Simple State (Toggles, Counters)
 ```dart
 // providers/filter_provider.dart
@@ -1041,6 +1060,10 @@ final filteredSubscriptionsProvider = Provider<List<Subscription>>((ref) {
 ---
 
 ## Mock Data Structure
+
+### Current mock source
+
+Mock subscription ที่ใช้งานจริงอยู่ใน `InMemorySubscriptionRepository` ซึ่ง seed Netflix Premium, Spotify Premium, Google One Cloud, ChatGPT Plus และ Adobe Creative Cloud พร้อม delay เริ่มต้น 300 ms เพื่อทดสอบ loading state ข้อมูลที่แสดงในตัวอย่างด้านล่างเป็น sample จาก proposal เดิมและราคา/ID อาจไม่ตรง runtime data
 
 ### 1. Mock Users
 
@@ -1229,7 +1252,33 @@ class StorageService {
 
 ## Navigation Flow
 
-### Navigation Structure (Using GoRouter)
+### Current Navigation Structure (Using GoRouter + Riverpod Redirect)
+
+```dart
+GoRouter(
+  initialLocation: '/splash',
+  refreshListenable: routerRefreshNotifier,
+  redirect: (context, state) {
+    // ตรวจ initializing → onboarding → authentication ตามลำดับ
+    // และเช็ค state.matchedLocation ก่อนคืน route เพื่อกัน redirect loop
+  },
+  routes: [
+    GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+    GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+    GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+    GoRoute(
+      path: '/dashboard',
+      builder: (_, _) => const MainNavigationShell(),
+    ),
+  ],
+);
+```
+
+Bottom navigation เป็น in-page state ผ่าน `currentTabProvider`; การเปลี่ยน tab ไม่สร้าง route ใหม่และ `IndexedStack` รักษา state ของแต่ละ tab
+
+### Planned Nested Routes (Not Implemented Yet)
+
+โครงสร้างด้านล่างเป็นแผนสำหรับ Add/Detail/Edit/Notification หลังหน้าจอของผู้รับผิดชอบพร้อม ห้ามเรียก route เหล่านี้จนกว่าจะ register ใน `app_router.dart`
 
 ```dart
 // router/app_router.dart
@@ -1323,15 +1372,15 @@ context.go('/login');
 // utils/app_colors.dart
 class AppColors {
   // Base
-  static const Color bgPrimary = Color(0xFF0A0F1D);      // Darkest
-  static const Color bgSecondary = Color(0xFF131C2E);    // Dark
+  static const Color bgPrimary = Color(0xFF0B0F19);      // Darkest
+  static const Color bgSecondary = Color(0xFF151D31);    // Cards
   static const Color bgTertiary = Color(0xFF1E2A47);     // Lighter dark
   
   // Accents
   static const Color primaryBlue = Color(0xFF3B82F6);    // Primary action
   static const Color emeraldGreen = Color(0xFF10B981);   // Success
   static const Color alertRed = Color(0xFFEF4444);       // Danger
-  static const Color warningAmber = Color(0xFFFCD34D);   // Warning
+  static const Color warningAmber = Color(0xFFF59E0B);   // Warning
   
   // Text
   static const Color textPrimary = Color(0xFFFFFFFF);    // White
@@ -1412,16 +1461,16 @@ ThemeData darkTheme = ThemeData(
 
 | # | Screen Name | Type | Status | Priority |
 |---|-------------|------|--------|----------|
-| 1 | Splash | Setup | 🔴 NEW | High |
-| 2 | Onboarding | Setup | 🔴 NEW | High |
-| 3 | Login | Auth | 🔴 NEW | High |
-| 4 | Dashboard | Core | 🟡 REFACTOR | High |
+| 1 | Splash | Setup | ✅ IMPLEMENTED | High |
+| 2 | Onboarding | Setup | ✅ IMPLEMENTED | High |
+| 3 | Login | Auth | ✅ MOCK IMPLEMENTED | High |
+| 4 | Dashboard / 4-tab Shell | Core | ✅ MOBILE IMPLEMENTED | High |
 | 5 | Add Subscription | Core | 🔴 NEW | High |
 | 6 | Select Package | Core | 🔴 NEW | High |
 | 7 | Subscription Detail | Core | 🔴 NEW | High |
 | 8 | Edit Subscription | Core | 🔴 NEW | High |
-| 9 | Profile | User | 🔴 NEW | Medium |
-| 10 | Settings | User | 🔴 NEW | Medium |
+| 9 | Profile | User | 🟡 TAB SCAFFOLD | Medium |
+| 10 | Settings | User | 🟡 INCOME/PIN/REMINDER SCAFFOLD | Medium |
 | 11 | Notification Center | Notifications | 🔴 NEW | Medium |
 | 12 | Dialogs (PIN, Bio, Confirm) | Modals | 🟡 REFACTOR | High |
 
@@ -1436,24 +1485,26 @@ ThemeData darkTheme = ThemeData(
 ## Development Roadmap (2 Months)
 
 ### Week 1: Setup & Foundation
-- [ ] Setup Riverpod package + go_router
-- [ ] Create models (User, Notification, Package, UsageLog)
-- [ ] Create mock data services
-- [ ] Setup theme & color system
-- [ ] Create reusable widgets (AppBar, Loading, Error, Empty states)
+- [x] Setup Riverpod package + go_router
+- [x] Create models (User, Notification, Package)
+- [x] Create in-memory repository and mock data source
+- [x] Setup theme & color system
+- [x] Create reusable Loading/Error/Empty widgets
 
 ### Week 2: Auth & Onboarding
-- [ ] Splash screen
-- [ ] Onboarding flow (3 pages)
-- [ ] Login screen (OAuth mock)
-- [ ] Auth provider (Riverpod)
-- [ ] Setup local storage (mock)
+- [x] Splash screen
+- [x] Onboarding flow (3 pages)
+- [x] Login screen (OAuth mock)
+- [x] Auth/app-flow providers (Riverpod)
+- [ ] Persist onboarding/auth state to local storage
 
 ### Week 3: Dashboard Refactor
-- [ ] Dashboard screen (Riverpod refactor)
-- [ ] Subscription list provider
-- [ ] Filter provider
-- [ ] Category filter functionality
+- [x] Dashboard 4-tab mobile shell (Riverpod refactor)
+- [x] Repository-backed subscription list provider
+- [x] Search and typed category derived provider
+- [x] Category filter functionality
+- [x] Savings selection and dynamic Creep Score
+- [ ] Tablet/desktop layout optimization
 
 ### Week 4: Add/Edit Subscriptions
 - [ ] Add Subscription screen
