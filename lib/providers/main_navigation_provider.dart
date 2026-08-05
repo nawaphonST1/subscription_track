@@ -72,7 +72,7 @@ final class CurrentTabController extends Notifier<int> {
   int build() => 0;
 
   void select(int index) {
-    if (index >= 0 && index < 4) state = index;
+    if (index >= 0 && index < 5) state = index;
   }
 }
 
