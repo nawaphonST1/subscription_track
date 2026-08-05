@@ -7,6 +7,7 @@ import 'package:subscription_track/screens/tabs/dashboard_tab.dart';
 import 'package:subscription_track/screens/tabs/profile_tab.dart';
 import 'package:subscription_track/screens/tabs/savings_tab.dart';
 import 'package:subscription_track/screens/tabs/subscriptions_tab.dart';
+import 'package:subscription_track/screens/tabs/setting_tab.dart';
 
 class MainNavigationShell extends ConsumerWidget {
   const MainNavigationShell({super.key});
@@ -27,6 +28,7 @@ class MainNavigationShell extends ConsumerWidget {
           const DashboardTab(),
           const SubscriptionsTab(),
           const SavingsTab(),
+          const SettingTab(),
           ProfileTab(onEditIncome: editIncome),
         ],
       ),
@@ -59,6 +61,11 @@ class MainNavigationShell extends ConsumerWidget {
             icon: Icon(Icons.savings_outlined),
             selectedIcon: Icon(Icons.savings_rounded),
             label: 'ประหยัด',
+          ),
+          NavigationDestination(
+            icon:Icon(Icons.settings_outlined),
+            selectedIcon:Icon(Icons.settings_rounded),
+            label: 'ตั้งค่า',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
