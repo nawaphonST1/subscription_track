@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
-import 'package:subscription_track/providers/main_navigation_provider.dart';
 
 final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
   final income = ref.watch(userIncomeProvider);
