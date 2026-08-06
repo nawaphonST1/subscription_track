@@ -7,6 +7,8 @@ import 'package:subscription_track/widgets/pin_verification_dialog.dart';
 import 'package:subscription_track/widgets/saving_simulation_card.dart';
 import 'package:subscription_track/widgets/subscription_filter_bar.dart';
 import 'package:subscription_track/widgets/subscription_tile.dart';
+import 'package:subscription_track/screens/subscription/add_subscription_screen.dart';
+import 'package:subscription_track/screens/notifications/notification_center_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -121,6 +123,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       return true;
     }).toList();
+  }
+
+  void _navigateToAddSubscription() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddSubscriptionScreen(),
+      ),
+    );
+
+    if (result != null && result is SubscriptionModel) {
+      setState(() {
+        _subscriptions.add(result);
+      });
+    }
+  }
+
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NotificationCenterScreen(),
+      ),
+    );
   }
 
   // Toggle selected for cancellation simulation
@@ -542,14 +568,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: KpiCard(
-                            title: 'แจ้งเตือนบริการที่ไม่ได้ใช้งาน',
-                            value: '$_unusedAlertCount รายการ',
-                            subtitle: 'แนะนำยกเลิกเพื่อประหยัดเงิน',
-                            subtitleColor: const Color(0xFFEF4444),
-                            icon: Icons.notifications_active,
-                            iconColor: const Color(0xFFEF4444),
-                            iconBackgroundColor: const Color(0xFF991B1B).withOpacity(0.3),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _navigateToNotifications,
+                            child: KpiCard(
+                              title: 'แจ้งเตือนบริการที่ไม่ได้ใช้งาน',
+                              value: '$_unusedAlertCount รายการ',
+                              subtitle: 'แนะนำยกเลิกเพื่อประหยัดเงิน',
+                              subtitleColor: const Color(0xFFEF4444),
+                              icon: Icons.notifications_active,
+                              iconColor: const Color(0xFFEF4444),
+                              iconBackgroundColor: const Color(0xFF991B1B).withOpacity(0.3),
+                            ),
                           ),
                         ),
                       ],
@@ -576,14 +606,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           iconBackgroundColor: const Color(0xFFD97706).withOpacity(0.2),
                         ),
                         const SizedBox(height: 12),
-                        KpiCard(
-                          title: 'แจ้งเตือนบริการที่ไม่ได้ใช้งาน',
-                          value: '$_unusedAlertCount รายการ',
-                          subtitle: 'แนะนำยกเลิกเพื่อประหยัดเงิน',
-                          subtitleColor: const Color(0xFFEF4444),
-                          icon: Icons.notifications_active,
-                          iconColor: const Color(0xFFEF4444),
-                          iconBackgroundColor: const Color(0xFF991B1B).withOpacity(0.3),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: _navigateToNotifications,
+                          child: KpiCard(
+                            title: 'แจ้งเตือนบริการที่ไม่ได้ใช้งาน',
+                            value: '$_unusedAlertCount รายการ',
+                            subtitle: 'แนะนำยกเลิกเพื่อประหยัดเงิน',
+                            subtitleColor: const Color(0xFFEF4444),
+                            icon: Icons.notifications_active,
+                            iconColor: const Color(0xFFEF4444),
+                            iconBackgroundColor: const Color(0xFF991B1B).withOpacity(0.3),
+                          ),
                         ),
                       ],
                     ),
@@ -710,6 +744,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF3B82F6),
+        onPressed: _navigateToAddSubscription,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
