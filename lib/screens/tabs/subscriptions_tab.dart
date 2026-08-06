@@ -14,6 +14,7 @@ class SubscriptionsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final subscriptions = ref.watch(visibleSubscriptionsProvider);
+    final theme = Theme.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -57,12 +58,12 @@ class SubscriptionsTab extends ConsumerWidget {
                                   onSelected: (_) => ref
                                       .read(selectedCategoryProvider.notifier)
                                       .select(category),
-                                  selectedColor: AppColors.primary,
-                                  backgroundColor: AppColors.bgSecondary,
+                                  selectedColor: theme.colorScheme.primary,
+                                  backgroundColor: theme.cardColor,
                                   side: BorderSide(
                                     color: selectedCategory == category
-                                        ? AppColors.primary
-                                        : AppColors.border,
+                                        ? theme.colorScheme.primary
+                                        : theme.dividerColor,
                                   ),
                                 ),
                               ),
@@ -116,11 +117,11 @@ class SubscriptionsTab extends ConsumerWidget {
                               itemCount: items.length,
                               gridDelegate:
                                   const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 560,
-                                    mainAxisExtent: 76,
-                                    crossAxisSpacing: 10,
-                                    mainAxisSpacing: 10,
-                                  ),
+                                maxCrossAxisExtent: 560,
+                                mainAxisExtent: 76,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                              ),
                               itemBuilder: buildTile,
                             )
                           : ListView.separated(
@@ -153,7 +154,7 @@ class SubscriptionsTab extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: Theme.of(context).cardColor, // ใช้สี Card จาก Theme
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -214,15 +215,17 @@ class _SubscriptionListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Material(
-      color: AppColors.bgSecondary,
+      color: theme.cardColor, // ใช้สี Card
       borderRadius: BorderRadius.circular(14),
       child: ListTile(
         key: Key('subscription-${subscription.id}'),
         onTap: onShowDetails,
         contentPadding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
         leading: CircleAvatar(
-          backgroundColor: AppColors.bgPrimary,
+          backgroundColor: theme.scaffoldBackgroundColor, // ใช้สีพื้นหลัง
           child: Icon(subscription.iconData, color: subscription.iconColor),
         ),
         title: Text(
@@ -259,7 +262,7 @@ class _SubscriptionListTile extends StatelessWidget {
                     : Icons.add_circle_outline_rounded,
                 color: subscription.isSelected
                     ? AppColors.success
-                    : AppColors.textTertiary,
+                    : theme.textTheme.bodySmall?.color, // ใช้สีเทาตาม Theme
               ),
             ),
             PopupMenuButton<String>(
@@ -300,6 +303,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final nextBillingDate =
         widget.subscription.nextBillingDate?.toLocal().toString().split(
           ' ',
@@ -317,7 +321,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.bgPrimary,
+                  backgroundColor: theme.scaffoldBackgroundColor,
                   child: Icon(
                     widget.subscription.iconData,
                     color: widget.subscription.iconColor,
@@ -331,8 +335,8 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                     children: [
                       Text(
                         widget.subscription.name,
+                        // ลบ color: Colors.white ออก เพื่อให้ดึงสีจาก Theme อัตโนมัติ
                         style: const TextStyle(
-                          color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                         ),
@@ -340,8 +344,8 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                       const SizedBox(height: 4),
                       Text(
                         widget.subscription.billingPeriod,
-                        style: const TextStyle(
-                          color: AppColors.textTertiary,
+                        style: TextStyle(
+                          color: theme.textTheme.bodySmall?.color,
                           fontSize: 13,
                         ),
                       ),
@@ -357,7 +361,6 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                   child: Text(
                     'รายละเอียดบริการ',
                     style: TextStyle(
-                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -401,7 +404,6 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             const Text(
               'การแจ้งเตือน',
               style: TextStyle(
-                color: Colors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
@@ -409,10 +411,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             const SizedBox(height: 8),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'เปิดการแจ้งเตือน',
-                style: TextStyle(color: Colors.white),
-              ),
+              title: const Text('เปิดการแจ้งเตือน'),
               value: reminderEnabled,
               onChanged: (value) {
                 setState(() {
@@ -451,10 +450,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             CheckboxListTile.adaptive(
               key: const Key('mark-subscription-cancelled'),
               contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'ยกเลิกแล้ว',
-                style: TextStyle(color: Colors.white),
-              ),
+              title: const Text('ยกเลิกแล้ว'),
               value: markCancelled,
               onChanged: (value) {
                 setState(() => markCancelled = value ?? false);
@@ -464,8 +460,8 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             if (reminderEnabled)
               Text(
                 'เตือนล่วงหน้า $reminderDays วัน',
-                style: const TextStyle(
-                  color: AppColors.textTertiary,
+                style: TextStyle(
+                  color: theme.textTheme.bodySmall?.color,
                   fontSize: 12,
                 ),
               ),
@@ -498,9 +494,9 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                         usageStatus: markCancelled
                             ? 'cancelled'
                             : (widget.subscription.usageStatus.toLowerCase() ==
-                                      'cancelled'
-                                  ? 'moderate'
-                                  : widget.subscription.usageStatus),
+                                    'cancelled'
+                                ? 'moderate'
+                                : widget.subscription.usageStatus),
                         customFields: reminderEnabled
                             ? [
                                 ...reminderFields,
@@ -516,7 +512,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                       Navigator.of(context).pop();
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: theme.colorScheme.primary,
                     ),
                     child: const Text('บันทึก'),
                   ),
@@ -556,22 +552,24 @@ class _ReminderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.bgPrimary,
+          color: selected ? theme.colorScheme.primary : theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
+            color: selected ? theme.colorScheme.primary : theme.dividerColor,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textTertiary,
+            color: selected ? theme.colorScheme.onPrimary : theme.textTheme.bodySmall?.color,
           ),
         ),
       ),
@@ -587,6 +585,8 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -596,8 +596,8 @@ class _DetailRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textTertiary,
+              style: TextStyle(
+                color: theme.textTheme.bodySmall?.color,
                 fontSize: 13,
               ),
             ),
@@ -605,7 +605,8 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              // ลบ color: Colors.white ออก
+              style: const TextStyle(fontSize: 13), 
             ),
           ),
         ],
@@ -619,17 +620,19 @@ class _EmptySubscriptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final theme = Theme.of(context);
+    
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.search_off_rounded,
             size: 44,
-            color: AppColors.textTertiary,
+            color: theme.textTheme.bodySmall?.color, // ใช้สีเทาอ่อนตาม Theme
           ),
-          SizedBox(height: 10),
-          Text('ไม่พบบริการที่ตรงกับการค้นหา'),
+          const SizedBox(height: 10),
+          const Text('ไม่พบบริการที่ตรงกับการค้นหา'),
         ],
       ),
     );

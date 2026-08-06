@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
+import 'package:subscription_track/providers/theme_provider.dart';
 
 class SettingTab extends ConsumerWidget {
   const SettingTab({super.key});
@@ -10,6 +11,8 @@ class SettingTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reminderEnabled = ref.watch(notificationReminderProvider);
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
 
     return Align(
       alignment: Alignment.topCenter,
@@ -21,29 +24,34 @@ class SettingTab extends ConsumerWidget {
           key: const PageStorageKey<String>('settings-tab'),
           padding: const EdgeInsets.all(16),
           children: [
-            // --- หมวดหมู่: การแจ้งเตือน ---
+            // ==========================
+            // การแจ้งเตือน
+            // ==========================
             Card(
               clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    value: reminderEnabled,
-                    onChanged: (value) => ref
-                        .read(notificationReminderProvider.notifier)
-                        .update(enabled: value),
-                    secondary: const Icon(
-                      Icons.notifications_active_rounded,
-                      color: Color(0xFFA855F7),
-                    ),
-                    title: const Text('แจ้งเตือนก่อนตัดเงิน'),
-                    subtitle: Text(reminderEnabled ? 'เปิดใช้งาน' : 'ปิดอยู่'),
-                  ),
-                ],
+              child: SwitchListTile(
+                secondary: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: Color(0xFFA855F7),
+                ),
+                title: const Text('แจ้งเตือนก่อนตัดเงิน'),
+                subtitle: Text(
+                  reminderEnabled ? 'เปิดใช้งาน' : 'ปิดอยู่',
+                ),
+                value: reminderEnabled,
+                onChanged: (value) {
+                  ref
+                      .read(notificationReminderProvider.notifier)
+                      .update(enabled: value);
+                },
               ),
             ),
 
-            const SizedBox(height: 16), // เว้นระยะห่างระหว่าง Card
-            // --- หมวดหมู่: การตั้งค่าทั่วไป ---
+            const SizedBox(height: 16),
+
+            // ==========================
+            // การตั้งค่าทั่วไป
+            // ==========================
             Card(
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -56,12 +64,12 @@ class SettingTab extends ConsumerWidget {
                       style: TextStyle(color: Colors.grey),
                     ),
                     onTap: () {
-                      // TODO: เปิดหน้าต่าง/Dialog เปลี่ยนภาษา
+                      // TODO: เปลี่ยนภาษา
                     },
                   ),
-                  const Divider(
-                    height: 1,
-                  ), // เส้นคั่นระหว่างรายการใน Card เดียวกัน
+
+                  const Divider(height: 1),
+
                   ListTile(
                     leading: const Icon(Icons.currency_exchange_rounded),
                     title: const Text('สกุลเงินเริ่มต้น'),
@@ -70,31 +78,49 @@ class SettingTab extends ConsumerWidget {
                       style: TextStyle(color: Colors.grey),
                     ),
                     onTap: () {
-                      // TODO: เปิดหน้าต่าง/Dialog เปลี่ยนสกุลเงิน
+                      // TODO: เปลี่ยนสกุลเงิน
+                    },
+                  ),
+
+                  const Divider(height: 1),
+
+                  SwitchListTile(
+                    secondary: Icon(
+                      isDarkMode
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                    ),
+                    title: const Text('โหมดกลางคืน'),
+                    subtitle: Text(
+                      isDarkMode ? 'เปิดใช้งาน' : 'ปิดอยู่',
+                    ),
+                    value: isDarkMode,
+                    onChanged: (value) {
+                      ref.read(themeProvider.notifier).setTheme(value);
                     },
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16), // เว้นระยะห่างระหว่าง Card
-            // --- หมวดหมู่: อื่นๆ ---
+            const SizedBox(height: 16),
+
+            // ==========================
+            // เกี่ยวกับแอป
+            // ==========================
             Card(
               clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(
-                      Icons.info_outline_rounded,
-                      color: AppColors.primaryLight,
-                    ),
-                    title: const Text('เกี่ยวกับแอป'),
-                    subtitle: const Text('Subscription Track v1.0.0'),
-                    onTap: () {
-                      // TODO: อาจจะเปิดหน้า About หรือแสดง Dialog
-                    },
-                  ),
-                ],
+              child: ListTile(
+                leading: const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.primaryLight,
+                ),
+                title: const Text('เกี่ยวกับแอป'),
+                subtitle: const Text('Subscription Track v1.0.0'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  // TODO: เปิดหน้า About
+                },
               ),
             ),
           ],
