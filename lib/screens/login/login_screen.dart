@@ -16,9 +16,13 @@ class LoginScreen extends ConsumerWidget {
       if (next is AsyncData<User?> && next.value != null) {
         context.go(RouteConstants.dashboard);
       } else if (next is AsyncError) {
-        final errorText = next.error?.toString() ?? 'Login failed';
+        final errorText = next.error?.toString() ?? 'การเข้าสู่ระบบล้มเหลว';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorText)),
+          SnackBar(
+            content: Text(errorText),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     });
@@ -26,50 +30,141 @@ class LoginScreen extends ConsumerWidget {
     final isLoading = authState.isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.track_changes_rounded,
-                size: 96,
-                color: Colors.blue,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Sign in to continue',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 28),
-              ElevatedButton.icon(
-                onPressed: isLoading ? null : () => ref.read(authProvider.notifier).loginWithGoogle(),
-                icon: const Icon(Icons.login),
-                label: const Text('Sign in with Google'),
-                style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: isLoading ? null : () => ref.read(authProvider.notifier).loginWithApple(),
-                icon: const Icon(Icons.login),
-                label: const Text('Sign in with Apple'),
-                style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              ),
-              if (authState.hasError) ...[
-                const SizedBox(height: 20),
-                Text(
-                  authState.error.toString(),
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+      backgroundColor: const Color(0xFF0A0F1D), // โทนสีเดียวกับ Dashboard
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // --- Logo Section ---
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131C2E),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF3B82F6).withOpacity(0.3),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF3B82F6).withOpacity(0.15),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.track_changes_rounded,
+                    size: 64,
+                    color: Color(0xFF3B82F6),
+                  ),
                 ),
+                const SizedBox(height: 32),
+                
+                // --- Title & Subtitle ---
+                const Text(
+                  'ยินดีต้อนรับกลับมา',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'เข้าสู่ระบบเพื่อจัดการ Subscription ของคุณ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(height: 48),
+
+                // --- Loading State หรือปุ่ม Login ---
+                if (isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF3B82F6),
+                    ),
+                  )
+                else ...[
+                  // --- Google Login Button ---
+                  ElevatedButton(
+                    onPressed: () => ref.read(authProvider.notifier).loginWithGoogle(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      minimumSize: const Size.fromHeight(54),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // ใช้ Icon ชั่วคราว (ถ้ามีไฟล์รูปโลโก้ Google ค่อยเปลี่ยนเป็น Image.asset)
+                        Icon(Icons.g_mobiledata_rounded, size: 32, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'ดำเนินการต่อด้วย Google',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // --- Apple Login Button ---
+                  ElevatedButton(
+                    onPressed: () => ref.read(authProvider.notifier).loginWithApple(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF131C2E), // สีเข้ม
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(54),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Color(0xFF243049)),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.apple_rounded, size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          'ดำเนินการต่อด้วย Apple',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // --- Error Message ---
+                if (authState.hasError && !isLoading) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.5)),
+                    ),
+                    child: Text(
+                      authState.error.toString(),
+                      style: const TextStyle(color: Color(0xFFEF4444)),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ],
-              if (isLoading) ...[
-                const SizedBox(height: 20),
-                const CircularProgressIndicator(),
-              ],
-            ],
+            ),
           ),
         ),
       ),
