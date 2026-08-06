@@ -13,49 +13,45 @@ import 'package:subscription_track/screens/subscription/select_package_screen.da
 import 'package:subscription_track/screens/notifications/notification_center_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // ===========================================================================
-  // [COMMENTED OUT] State-driven redirection logic
-  // ปิดการ redirect ตาม state ชั่วคราวเพื่อให้สามารถเข้าถึงทุกหน้าผ่าน URL direct link ได้โดยตรง
-  // ===========================================================================
-  // final refreshNotifier = _RouterRefreshNotifier();
-  // ref.listen<AppFlowState>(appFlowProvider, (_, __) {
-  //   refreshNotifier.refresh();
-  // });
-  // ref.onDispose(refreshNotifier.dispose);
+  final refreshNotifier = _RouterRefreshNotifier();
+
+  // GoRouter ไม่รู้จัก Riverpod โดยตรง จึงแปลงการเปลี่ยน app flow
+  // เป็น Listenable เพื่อประเมิน redirect ใหม่โดยไม่สร้าง Router ซ้ำ
+  ref.listen<AppFlowState>(appFlowProvider, (_, __) {
+    refreshNotifier.refresh();
+  });
+  ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
     initialLocation: RouteConstants.splash,
     debugLogDiagnostics: kDebugMode,
 
-    // ===========================================================================
-    // [COMMENTED OUT] Automatic AppFlow Redirection Guard
-    // ===========================================================================
-    // refreshListenable: refreshNotifier,
-    // redirect: (context, state) {
-    //   final location = state.matchedLocation;
-    //   final isOnSplash = location == RouteConstants.splash;
-    //   final isOnOnboarding = location == RouteConstants.onboarding;
-    //   final isOnLogin = location == RouteConstants.login;
-    //   final appFlow = ref.read(appFlowProvider);
-    //
-    //   if (appFlow.isInitializing) {
-    //     return isOnSplash ? null : RouteConstants.splash;
-    //   }
-    //
-    //   if (!appFlow.isOnboardingCompleted) {
-    //     return isOnOnboarding ? null : RouteConstants.onboarding;
-    //   }
-    //
-    //   if (!appFlow.isAuthenticated) {
-    //     return isOnLogin ? null : RouteConstants.login;
-    //   }
-    //
-    //   if (isOnSplash || isOnOnboarding || isOnLogin) {
-    //     return RouteConstants.dashboard;
-    //   }
-    //
-    //   return null;
-    // },
+    refreshListenable: refreshNotifier,
+    redirect: (context, state) {
+      final location = state.matchedLocation;
+      final isOnSplash = location == RouteConstants.splash;
+      final isOnOnboarding = location == RouteConstants.onboarding;
+      final isOnLogin = location == RouteConstants.login;
+      final appFlow = ref.read(appFlowProvider);
+
+      if (appFlow.isInitializing) {
+        return isOnSplash ? null : RouteConstants.splash;
+      }
+
+      if (!appFlow.isOnboardingCompleted) {
+        return isOnOnboarding ? null : RouteConstants.onboarding;
+      }
+
+      if (!appFlow.isAuthenticated) {
+        return isOnLogin ? null : RouteConstants.login;
+      }
+
+      if (isOnSplash || isOnOnboarding || isOnLogin) {
+        return RouteConstants.dashboard;
+      }
+
+      return null;
+    },
 
     routes: [
       GoRoute(
