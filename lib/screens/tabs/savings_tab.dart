@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
+import 'package:subscription_track/core/widgets/service_icon.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
@@ -228,7 +229,10 @@ class _SavingsChecklistTile extends StatelessWidget {
         value: subscription.isSelected,
         onChanged: (_) => onChanged(),
         activeColor: AppColors.success,
-        secondary: Icon(subscription.iconData, color: subscription.iconColor),
+        secondary: ServiceIcon(
+          serviceName: subscription.name,
+          category: subscription.category,
+        ),
         title: Text(
           subscription.name,
           maxLines: 1,

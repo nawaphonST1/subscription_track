@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
+import 'package:subscription_track/core/widgets/service_icon.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
@@ -272,7 +273,10 @@ class _RenewalChip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(subscription.iconData, color: subscription.iconColor),
+          ServiceIcon(
+            serviceName: subscription.name,
+            category: subscription.category,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
