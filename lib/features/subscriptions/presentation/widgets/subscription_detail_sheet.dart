@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_detail_header.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_detail_overview.dart';
@@ -35,56 +34,70 @@ class _SubscriptionDetailSheetState extends State<SubscriptionDetailSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SubscriptionDetailHeader(
-              subscription: widget.subscription,
-              onReset: () => setState(_reset),
-            ),
-            const SizedBox(height: 12),
-            SubscriptionDetailOverview(subscription: widget.subscription),
-            const SizedBox(height: 16),
-            SubscriptionReminderEditor(
-              enabled: reminderEnabled,
-              days: reminderDays,
-              onEnabledChanged: _setReminderEnabled,
-              onDaysChanged: (days) => setState(() => reminderDays = days),
-            ),
-            const SizedBox(height: 12),
-            CheckboxListTile.adaptive(
-              key: const Key('mark-subscription-cancelled'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('ยกเลิกแล้ว'),
-              value: markCancelled,
-              onChanged: (value) {
-                setState(() => markCancelled = value ?? false);
-              },
-            ),
-            const SizedBox(height: 16),
-            if (reminderEnabled)
-              Text(
-                'เตือนล่วงหน้า $reminderDays วัน',
-                style: TextStyle(
-                  color: theme.textTheme.bodySmall?.color?.withValues(
-                    alpha: 0.6,
-                  ),
-                  fontSize: 12,
+    // หุ้มด้วย Container และกำหนดสีตาม theme.cardColor เพื่อให้เข้ากับระบบ Theme อัตโนมัติ
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SubscriptionDetailHeader(
+                  subscription: widget.subscription,
+                  onReset: () => setState(_reset),
                 ),
-              ),
-            if (markCancelled)
-              const Text(
-                'ยกเลิกแล้ว',
-                key: Key('cancelled-status-label'),
-                style: TextStyle(color: AppColors.success, fontSize: 12),
-              ),
-            const SizedBox(height: 16),
-            _DetailActions(onSave: _save),
-          ],
+                const SizedBox(height: 12),
+                SubscriptionDetailOverview(subscription: widget.subscription),
+                const SizedBox(height: 16),
+                SubscriptionReminderEditor(
+                  enabled: reminderEnabled,
+                  days: reminderDays,
+                  onEnabledChanged: _setReminderEnabled,
+                  onDaysChanged: (days) => setState(() => reminderDays = days),
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile.adaptive(
+                  key: const Key('mark-subscription-cancelled'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('ยกเลิกแล้ว'),
+                  value: markCancelled,
+                  onChanged: (value) {
+                    setState(() => markCancelled = value ?? false);
+                  },
+                ),
+                const SizedBox(height: 16),
+                if (reminderEnabled)
+                  Text(
+                    'เตือนล่วงหน้า $reminderDays วัน',
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color?.withValues(
+                        alpha: 0.6,
+                      ),
+                      fontSize: 12,
+                    ),
+                  ),
+                if (markCancelled)
+                  Text(
+                    'ยกเลิกแล้ว',
+                    key: const Key('cancelled-status-label'),
+                    style: TextStyle(
+                      // ใช้สีตาม colorScheme.primary หรือ error เพื่อให้รองรับ Dark/Light Theme ได้ถูกต้อง
+                      color: theme.colorScheme.primary, 
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                _DetailActions(onSave: _save),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -116,8 +129,8 @@ class _SubscriptionDetailSheetState extends State<SubscriptionDetailSheet> {
         usageStatus: markCancelled
             ? 'cancelled'
             : (currentStatus.toLowerCase() == 'cancelled'
-                  ? 'moderate'
-                  : currentStatus),
+                ? 'moderate'
+                : currentStatus),
         customFields: reminderEnabled
             ? [
                 ...fields,
@@ -148,6 +161,8 @@ class _DetailActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
       children: [
         Expanded(
@@ -161,7 +176,10 @@ class _DetailActions extends StatelessWidget {
           child: FilledButton(
             key: const Key('save-subscription-details'),
             onPressed: onSave,
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+            ),
             child: const Text('บันทึก'),
           ),
         ),
