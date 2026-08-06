@@ -94,20 +94,26 @@ void main() {
     await tester.tap(find.text('แก้ไข'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('7 วัน'));
-    await tester.pumpAndSettle();
+    final sevenDays = find.byKey(const Key('reminder-7-days'));
+    await tester.ensureVisible(sevenDays);
+    await tester.tap(sevenDays);
+    await tester.pump();
 
-    await tester.tap(find.text('ยกเลิกแล้ว'));
-    await tester.pumpAndSettle();
+    final markCancelled = find.byKey(const Key('mark-subscription-cancelled'));
+    await tester.ensureVisible(markCancelled);
+    await tester.tap(markCancelled);
+    await tester.pump();
 
-    await tester.tap(find.text('บันทึก'));
+    final saveButton = find.byKey(const Key('save-subscription-details'));
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('subscription-netflix-premium')));
     await tester.pumpAndSettle();
 
     expect(find.text('เตือนล่วงหน้า 7 วัน'), findsOneWidget);
-    expect(find.text('ยกเลิกแล้ว'), findsOneWidget);
+    expect(find.byKey(const Key('cancelled-status-label')), findsOneWidget);
   });
 
   testWidgets('updates income and recalculates the creep score', (

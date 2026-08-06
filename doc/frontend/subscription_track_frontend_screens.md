@@ -887,6 +887,7 @@ final settingsProvider = StateNotifierProvider((ref) {
 | `SavingSimulationCard` | `saving_simulation_card.dart` | ✅ Keep | Connect to provider, remove hardcoded logic |
 | `SubscriptionFilterBar` | `subscription_filter_bar.dart` | ✅ Keep | Connect to filterProvider for state |
 | `PINVerificationDialog` | `pin_verification_dialog.dart` | ✅ Keep | 🔄 Mock PIN verification |
+| `ConfirmationDialog` | `common/confirmation_dialog.dart` | ✅ Implemented | Dynamic copy/icon, danger style, `Future<bool>` result; used by Subscriptions/Savings |
 
 ### New Widgets to Create
 
@@ -908,7 +909,7 @@ final settingsProvider = StateNotifierProvider((ref) {
 ```dart
 // widgets/common/
 ├── bottom_sheet_header.dart    // Reusable bottom sheet top
-├── confirmation_dialog.dart    // Generic confirm dialog
+├── confirmation_dialog.dart    // ✅ Generic primary/danger confirmation
 ├── snack_bar_helper.dart       // Custom snack bars
 ├── divider_section.dart        // Section divider with label
 └── gradient_button.dart        // Gradient button (CTA)

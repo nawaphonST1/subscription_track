@@ -3,48 +3,61 @@ import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
 
 class ConfirmationDialog extends StatelessWidget {
+  const ConfirmationDialog({
+    super.key,
+    required this.title,
+    required this.message,
+    this.confirmText = 'ยืนยัน',
+    this.cancelText = 'ยกเลิก',
+    this.isDanger = false,
+    this.icon,
+  });
+
   final String title;
   final String message;
   final String confirmText;
   final String cancelText;
   final bool isDanger;
-  final VoidCallback? onConfirm;
-  final VoidCallback? onCancel;
-
-  const ConfirmationDialog({
-    super.key,
-    required this.title,
-    required this.message,
-    this.confirmText = 'Confirm',
-    this.cancelText = 'Cancel',
-    this.isDanger = false,
-    this.onConfirm,
-    this.onCancel,
-  });
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      key: const Key('confirmation-dialog'),
       backgroundColor: AppColors.bgOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      icon: Icon(
+        icon ??
+            (isDanger
+                ? Icons.warning_amber_rounded
+                : Icons.help_outline_rounded),
+        color: isDanger ? AppColors.danger : AppColors.primary,
+        size: 34,
       ),
-      title: Text(title, style: AppTypography.headingSmall),
+      title: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: AppTypography.headingSmall,
+      ),
       content: Text(
         message,
+        textAlign: TextAlign.center,
         style: AppTypography.bodyMedium.copyWith(
           color: AppColors.textSecondary,
         ),
       ),
       actions: [
         TextButton(
-          onPressed: onCancel ?? () => Navigator.pop(context, false),
+          key: const Key('confirmation-cancel-button'),
+          onPressed: () => Navigator.of(context).pop(false),
           child: Text(cancelText),
         ),
-        ElevatedButton(
-          onPressed: onConfirm ?? () => Navigator.pop(context, true),
-          style: ElevatedButton.styleFrom(
+        FilledButton(
+          key: const Key('confirmation-confirm-button'),
+          onPressed: () => Navigator.of(context).pop(true),
+          style: FilledButton.styleFrom(
             backgroundColor: isDanger ? AppColors.danger : AppColors.primary,
+            foregroundColor: AppColors.textPrimary,
           ),
           child: Text(confirmText),
         ),
@@ -56,20 +69,24 @@ class ConfirmationDialog extends StatelessWidget {
     required BuildContext context,
     required String title,
     required String message,
-    String confirmText = 'Confirm',
-    String cancelText = 'Cancel',
+    String confirmText = 'ยืนยัน',
+    String cancelText = 'ยกเลิก',
     bool isDanger = false,
+    IconData? icon,
+    bool barrierDismissible = true,
   }) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (_) => ConfirmationDialog(
-            title: title,
-            message: message,
-            confirmText: confirmText,
-            cancelText: cancelText,
-            isDanger: isDanger,
-          ),
-        ) ??
-        false;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (_) => ConfirmationDialog(
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        cancelText: cancelText,
+        isDanger: isDanger,
+        icon: icon,
+      ),
+    );
+    return result ?? false;
   }
 }

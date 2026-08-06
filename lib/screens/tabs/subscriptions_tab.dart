@@ -4,6 +4,7 @@ import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/models/subscription.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
 import 'package:subscription_track/providers/subscription_provider.dart';
+import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
 
 class SubscriptionsTab extends ConsumerWidget {
   const SubscriptionsTab({super.key});
@@ -112,7 +113,9 @@ class SubscriptionsTab extends ConsumerWidget {
         return _SubscriptionDetailSheet(
           subscription: subscription,
           onSaved: (updatedSubscription) {
-            ref.read(subscriptionListProvider.notifier).updateSubscription(updatedSubscription);
+            ref
+                .read(subscriptionListProvider.notifier)
+                .updateSubscription(updatedSubscription);
           },
         );
       },
@@ -124,24 +127,16 @@ class SubscriptionsTab extends ConsumerWidget {
     WidgetRef ref,
     Subscription subscription,
   ) async {
-    final shouldDelete = await showDialog<bool>(
+    final shouldDelete = await ConfirmationDialog.show(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('ลบบริการนี้หรือไม่?'),
-        content: Text(subscription.name),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('ไม่ลบ'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('ลบ'),
-          ),
-        ],
-      ),
+      title: 'ลบบริการนี้หรือไม่?',
+      message: subscription.name,
+      confirmText: 'ลบบริการ',
+      cancelText: 'ไม่ลบ',
+      isDanger: true,
+      icon: Icons.delete_outline_rounded,
     );
-    if (shouldDelete != true || !context.mounted) return;
+    if (!shouldDelete || !context.mounted) return;
 
     try {
       await ref
@@ -245,17 +240,23 @@ class _SubscriptionDetailSheet extends StatefulWidget {
   final ValueChanged<Subscription> onSaved;
 
   @override
-  State<_SubscriptionDetailSheet> createState() => _SubscriptionDetailSheetState();
+  State<_SubscriptionDetailSheet> createState() =>
+      _SubscriptionDetailSheetState();
 }
 
 class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
   late bool reminderEnabled = widget.subscription.reminderEnabled;
-  late int reminderDays = widget.subscription.reminderEnabled ? 3 : 0;
-  late bool markCancelled = widget.subscription.usageStatus.toLowerCase() == 'cancelled';
+  late int reminderDays = _readReminderDays(widget.subscription);
+  late bool markCancelled =
+      widget.subscription.usageStatus.toLowerCase() == 'cancelled';
 
   @override
   Widget build(BuildContext context) {
-    final nextBillingDate = widget.subscription.nextBillingDate?.toLocal().toString().split(' ')[0] ?? 'ยังไม่กำหนด';
+    final nextBillingDate =
+        widget.subscription.nextBillingDate?.toLocal().toString().split(
+          ' ',
+        )[0] ??
+        'ยังไม่กำหนด';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -291,7 +292,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                       const SizedBox(height: 4),
                       Text(
                         widget.subscription.billingPeriod,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 13,
                         ),
@@ -318,8 +319,10 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                   onPressed: () {
                     setState(() {
                       reminderEnabled = widget.subscription.reminderEnabled;
-                      reminderDays = widget.subscription.reminderEnabled ? 3 : 0;
-                      markCancelled = widget.subscription.usageStatus.toLowerCase() == 'cancelled';
+                      reminderDays = _readReminderDays(widget.subscription);
+                      markCancelled =
+                          widget.subscription.usageStatus.toLowerCase() ==
+                          'cancelled';
                     });
                   },
                   icon: const Icon(Icons.edit_rounded, size: 18),
@@ -329,14 +332,23 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             ),
             const SizedBox(height: 12),
             _DetailRow(label: 'หมวดหมู่', value: widget.subscription.category),
-            _DetailRow(label: 'งวดชำระ', value: widget.subscription.billingPeriod),
+            _DetailRow(
+              label: 'งวดชำระ',
+              value: widget.subscription.billingPeriod,
+            ),
             _DetailRow(label: 'วันชำระครั้งถัดไป', value: nextBillingDate),
             _DetailRow(
               label: 'ค่าใช้จ่ายต่อเดือน',
               value: '฿${widget.subscription.monthlyPrice.toStringAsFixed(0)}',
             ),
-            _DetailRow(label: 'สถานะการใช้งาน', value: widget.subscription.usageStatusText),
-            _DetailRow(label: 'ความเชื่อมั่น', value: '${widget.subscription.confidence}%'),
+            _DetailRow(
+              label: 'สถานะการใช้งาน',
+              value: widget.subscription.usageStatusText,
+            ),
+            _DetailRow(
+              label: 'ความเชื่อมั่น',
+              value: '${widget.subscription.confidence}%',
+            ),
             const SizedBox(height: 16),
             const Text(
               'การแจ้งเตือน',
@@ -349,7 +361,10 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             const SizedBox(height: 8),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
-              title: const Text('เปิดการแจ้งเตือน', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'เปิดการแจ้งเตือน',
+                style: TextStyle(color: Colors.white),
+              ),
               value: reminderEnabled,
               onChanged: (value) {
                 setState(() {
@@ -366,18 +381,32 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
               Wrap(
                 spacing: 8,
                 children: [
-                  _ReminderChip(label: '3 วัน', selected: reminderDays == 3, onTap: () {
-                    setState(() => reminderDays = 3);
-                  }),
-                  _ReminderChip(label: '7 วัน', selected: reminderDays == 7, onTap: () {
-                    setState(() => reminderDays = 7);
-                  }),
+                  _ReminderChip(
+                    key: const Key('reminder-3-days'),
+                    label: '3 วัน',
+                    selected: reminderDays == 3,
+                    onTap: () {
+                      setState(() => reminderDays = 3);
+                    },
+                  ),
+                  _ReminderChip(
+                    key: const Key('reminder-7-days'),
+                    label: '7 วัน',
+                    selected: reminderDays == 7,
+                    onTap: () {
+                      setState(() => reminderDays = 7);
+                    },
+                  ),
                 ],
               ),
             const SizedBox(height: 12),
             CheckboxListTile.adaptive(
+              key: const Key('mark-subscription-cancelled'),
               contentPadding: EdgeInsets.zero,
-              title: const Text('ยกเลิกแล้ว', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'ยกเลิกแล้ว',
+                style: TextStyle(color: Colors.white),
+              ),
               value: markCancelled,
               onChanged: (value) {
                 setState(() => markCancelled = value ?? false);
@@ -387,12 +416,16 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
             if (reminderEnabled)
               Text(
                 'เตือนล่วงหน้า $reminderDays วัน',
-                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                ),
               ),
             if (markCancelled)
-              Text(
+              const Text(
                 'ยกเลิกแล้ว',
-                style: const TextStyle(color: AppColors.success, fontSize: 12),
+                key: Key('cancelled-status-label'),
+                style: TextStyle(color: AppColors.success, fontSize: 12),
               ),
             const SizedBox(height: 16),
             Row(
@@ -406,6 +439,7 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
+                    key: const Key('save-subscription-details'),
                     onPressed: () {
                       final reminderFields = widget.subscription.customFields
                           .where((entry) => entry['key'] != 'reminderDays')
@@ -415,13 +449,17 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                         reminderEnabled: reminderEnabled,
                         usageStatus: markCancelled
                             ? 'cancelled'
-                            : (widget.subscription.usageStatus.toLowerCase() == 'cancelled'
+                            : (widget.subscription.usageStatus.toLowerCase() ==
+                                      'cancelled'
                                   ? 'moderate'
                                   : widget.subscription.usageStatus),
                         customFields: reminderEnabled
                             ? [
                                 ...reminderFields,
-                                {'key': 'reminderDays', 'value': reminderDays.toString()},
+                                {
+                                  'key': 'reminderDays',
+                                  'value': reminderDays.toString(),
+                                },
                               ]
                             : reminderFields,
                       );
@@ -429,7 +467,9 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
                       widget.onSaved(updatedSubscription);
                       Navigator.of(context).pop();
                     },
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
                     child: const Text('บันทึก'),
                   ),
                 ),
@@ -440,10 +480,27 @@ class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
       ),
     );
   }
+
+  static int _readReminderDays(Subscription subscription) {
+    if (!subscription.reminderEnabled) return 0;
+
+    for (final field in subscription.customFields) {
+      if (field['key'] == 'reminderDays') {
+        final days = int.tryParse(field['value'] ?? '');
+        if (days == 3 || days == 7) return days!;
+      }
+    }
+    return 3;
+  }
 }
 
 class _ReminderChip extends StatelessWidget {
-  const _ReminderChip({required this.label, required this.selected, required this.onTap});
+  const _ReminderChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -459,11 +516,15 @@ class _ReminderChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : AppColors.bgPrimary,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(color: selected ? Colors.white : AppColors.textTertiary),
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.textTertiary,
+          ),
         ),
       ),
     );
@@ -487,7 +548,10 @@ class _DetailRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 13,
+              ),
             ),
           ),
           Expanded(

@@ -165,8 +165,10 @@ Dialogs (Week 4) [Used by Person 2 & 3 for Add/Edit]
   - Success/failure states
 
 [ Day 4 ] Confirm Dialog (Generic)
-  - Reusable for delete confirmation
-  - Title, message, action buttons
+  - Reusable for delete confirmation ✅
+  - Dynamic title, message, icon and action buttons ✅
+  - Primary/danger style + Future<bool> result ✅
+  - Integrated with Subscriptions and Savings flows ✅
 ```
 
 ---

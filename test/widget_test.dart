@@ -94,7 +94,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in to continue'), findsOneWidget);
+    expect(find.text('ยินดีต้อนรับกลับมา'), findsOneWidget);
     expect(find.byKey(const Key('hero-payout-card')), findsNothing);
   });
 
@@ -115,14 +115,14 @@ void main() {
     await tester.tap(find.text('ข้าม'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in to continue'), findsOneWidget);
+    expect(find.text('ยินดีต้อนรับกลับมา'), findsOneWidget);
 
-    await tester.tap(find.text('Sign in with Google'));
+    await tester.tap(find.text('ดำเนินการต่อด้วย Google'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
-    expect(find.text('Sign in to continue'), findsNothing);
+    expect(find.text('ยินดีต้อนรับกลับมา'), findsNothing);
   });
 }

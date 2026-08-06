@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/models/subscription.dart';
 import 'package:subscription_track/providers/subscription_provider.dart';
+import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
 
 class SavingsTab extends ConsumerWidget {
   const SavingsTab({super.key});
@@ -103,24 +104,16 @@ class _SavingsContent extends ConsumerWidget {
     WidgetRef ref,
     int count,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await ConfirmationDialog.show(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('ยืนยันการยกเลิก'),
-        content: Text('นำ $count รายการออกจากรายการติดตามหรือไม่?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('ย้อนกลับ'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('ยืนยัน'),
-          ),
-        ],
-      ),
+      title: 'ยืนยันการยกเลิก',
+      message: 'นำ $count รายการออกจากรายการติดตามหรือไม่?',
+      confirmText: 'ยกเลิกรายการ',
+      cancelText: 'ย้อนกลับ',
+      isDanger: true,
+      icon: Icons.delete_sweep_rounded,
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
 
     try {
       await ref.read(subscriptionListProvider.notifier).deleteSelected();
