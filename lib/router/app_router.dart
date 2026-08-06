@@ -10,7 +10,7 @@ import 'package:subscription_track/screens/login/login_screen.dart';
 import 'package:subscription_track/screens/main_navigation_shell.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_screen.dart';
 import 'package:subscription_track/screens/splash_screen.dart';
-import 'package:subscription_track/screens/notifications/notification_center_screen.dart';
+import 'package:subscription_track/features/notifications/presentation/notification_center_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
