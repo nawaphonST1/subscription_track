@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/screens/onboarding/onboarding_visuals.dart';
+import 'package:subscription_track/features/onboarding/presentation/onboarding_visuals.dart';
 
 class OnboardingPageData {
   final Widget visual;

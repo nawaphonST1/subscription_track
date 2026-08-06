@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
-import 'package:subscription_track/screens/onboarding/onboarding_data.dart';
+import 'package:subscription_track/features/onboarding/presentation/onboarding_data.dart';
 
 class OnboardingPage extends StatelessWidget {
   final OnboardingPageData data;
