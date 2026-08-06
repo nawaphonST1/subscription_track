@@ -9,6 +9,8 @@ import 'package:subscription_track/features/onboarding/application/onboarding_co
 import 'package:subscription_track/features/profile/presentation/widgets/linked_accounts_card.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/profile_identity_card.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/profile_settings_card.dart';
+import 'package:subscription_track/core/widgets/change_pin_dialog.dart';
+import 'package:subscription_track/features/profile/presentation/widgets/personal_info_sheet.dart';
 
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key, required this.onEditIncome});
@@ -33,7 +35,8 @@ class ProfileTab extends ConsumerWidget {
             ProfileSettingsCard(
               income: income,
               onEditIncome: onEditIncome,
-              onOpenPinSettings: () => showPinSettingsInfoDialog(context),
+              onOpenPinSettings: () => ChangePinDialog.show(context),
+              onOpenPersonalInfo: () => showPersonalInfoSheet(context),
             ),
             const SizedBox(height: 16),
             const LinkedAccountsCard(),

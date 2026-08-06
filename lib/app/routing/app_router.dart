@@ -30,23 +30,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final location = state.matchedLocation;
       final isOnSplash = location == RouteConstants.splash;
-      final isOnOnboarding = location == RouteConstants.onboarding;
-      final isOnLogin = location == RouteConstants.login;
-      final appFlow = ref.read(appFlowProvider);
 
-      if (appFlow.isInitializing) {
-        return isOnSplash ? null : RouteConstants.splash;
-      }
-
-      if (!appFlow.isOnboardingCompleted) {
-        return isOnOnboarding ? null : RouteConstants.onboarding;
-      }
-
-      if (!appFlow.isAuthenticated) {
-        return isOnLogin ? null : RouteConstants.login;
-      }
-
-      if (isOnSplash || isOnOnboarding || isOnLogin) {
+      // เอา Guards Redirect ออกชั่วคราวเพื่อความสะดวกในการ dev
+      // โดยให้ข้ามหน้า Splash ไปยัง Dashboard เป็นหลัก ส่วนหน้าอื่น ๆ สามารถกดเข้าตรง ๆ ได้เลย
+      if (isOnSplash) {
         return RouteConstants.dashboard;
       }
 
