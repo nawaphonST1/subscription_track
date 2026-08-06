@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
 
-/// สถานะขั้นต่ำที่ Router ใช้ตัดสินใจเลือกหน้าเริ่มต้นของแอป
+/// State ขั้นต่ำที่ router ใช้ตัดสินใจ startup destination
 class AppFlowState {
   const AppFlowState({
     required this.isInitializing,
@@ -10,7 +10,6 @@ class AppFlowState {
     required this.isAuthenticated,
   });
 
-  /// ใช้ใน widget tests หรือ demo ที่ต้องเปิด Dashboard โดยตรง
   static const mockDashboard = AppFlowState(
     isInitializing: false,
     isOnboardingCompleted: true,
@@ -22,34 +21,27 @@ class AppFlowState {
   final bool isAuthenticated;
 }
 
-/// Mock switch ชั่วคราวระหว่างรอระบบ auth จริงพร้อมใช้งาน
-///
-/// ค่าเริ่มต้นเป็น true ตาม requirement จึงข้าม Login ไป Dashboard ได้ทันที
-/// เมื่อต้องการทดสอบ Login จริง ให้เรียก setEnabled(false)
-class MockAuthBypassController extends Notifier<bool> {
+/// ใช้เฉพาะ demo/test ที่ต้องการข้าม auth; production default เป็น false
+final mockAuthBypassProvider = NotifierProvider<MockAuthBypassController, bool>(
+  MockAuthBypassController.new,
+);
+
+final class MockAuthBypassController extends Notifier<bool> {
   @override
   bool build() => false;
 
   void setEnabled(bool value) => state = value;
 }
 
-final mockAuthBypassProvider = NotifierProvider<MockAuthBypassController, bool>(
-  MockAuthBypassController.new,
-);
-
-/// Mock onboarding persistence สำหรับช่วงที่ local storage ยังไม่เชื่อมต่อ
-/// รวม mock startup state กับ authProvider ตัวจริงของเพื่อนร่วมทีม
-///
-/// เมื่อปิด mockAuthBypassProvider แล้ว LoginScreen login สำเร็จ ค่า User จาก
-/// authProvider จะทำให้ Router redirect ไป Dashboard โดยอัตโนมัติ
+/// รวม state ข้าม feature ให้ router ตัดสินใจเส้นทางจากจุดเดียว
 final appFlowProvider = Provider<AppFlowState>((ref) {
-  final isMockAuthEnabled = ref.watch(mockAuthBypassProvider);
-  final isOnboardingCompleted = ref.watch(onboardingProvider);
+  final bypassAuth = ref.watch(mockAuthBypassProvider);
+  final onboardingCompleted = ref.watch(onboardingProvider);
   final authState = ref.watch(authProvider);
 
   return AppFlowState(
-    isInitializing: !isMockAuthEnabled && authState.isLoading,
-    isOnboardingCompleted: isOnboardingCompleted,
-    isAuthenticated: isMockAuthEnabled || authState.value != null,
+    isInitializing: !bypassAuth && authState.isLoading,
+    isOnboardingCompleted: onboardingCompleted,
+    isAuthenticated: bypassAuth || authState.value != null,
   );
 });
