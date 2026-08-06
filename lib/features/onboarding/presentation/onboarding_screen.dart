@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/providers/app_flow_provider.dart';
 import 'package:subscription_track/router/route_constants.dart';
-import 'package:subscription_track/screens/onboarding/onboarding_controls.dart';
-import 'package:subscription_track/screens/onboarding/onboarding_data.dart';
-import 'package:subscription_track/screens/onboarding/onboarding_page.dart';
+import 'package:subscription_track/features/onboarding/presentation/onboarding_controls.dart';
+import 'package:subscription_track/features/onboarding/presentation/onboarding_data.dart';
+import 'package:subscription_track/features/onboarding/presentation/onboarding_page.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
