@@ -36,6 +36,7 @@ void main() {
     await tester.tap(find.text('โปรไฟล์'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('profile-income-setting')), findsOneWidget);
+    expect(find.text('แจ้งเตือนก่อนตัดเงิน'), findsNothing);
   });
 
   testWidgets('filters subscriptions by search and category', (tester) async {
@@ -62,6 +63,51 @@ void main() {
 
     expect(find.text('Google One Cloud'), findsOneWidget);
     expect(find.text('ChatGPT Plus'), findsNothing);
+  });
+
+  testWidgets('opens subscription details when a row is tapped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildShell());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('รายการ'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('subscription-netflix-premium')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('รายละเอียดบริการ'), findsOneWidget);
+    expect(find.text('Netflix Premium'), findsWidgets);
+  });
+
+  testWidgets('allows editing reminders and marking a subscription cancelled', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildShell());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('รายการ'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('subscription-netflix-premium')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('แก้ไข'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('7 วัน'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('ยกเลิกแล้ว'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('บันทึก'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('subscription-netflix-premium')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('เตือนล่วงหน้า 7 วัน'), findsOneWidget);
+    expect(find.text('ยกเลิกแล้ว'), findsOneWidget);
   });
 
   testWidgets('updates income and recalculates the creep score', (
