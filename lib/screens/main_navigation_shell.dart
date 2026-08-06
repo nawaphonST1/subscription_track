@@ -45,6 +45,7 @@ class MainNavigationShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(currentTabProvider);
     final income = ref.watch(userIncomeProvider);
+    final theme = Theme.of(context);
 
     Future<void> editIncome() =>
         _showIncomeBottomSheet(context: context, currentIncome: income);
@@ -79,8 +80,8 @@ class MainNavigationShell extends ConsumerWidget {
                       onDestinationSelected: ref
                           .read(currentTabProvider.notifier)
                           .select,
-                      backgroundColor: AppColors.bgSecondary,
-                      indicatorColor: AppColors.primary.withValues(alpha: 0.18),
+                      backgroundColor: theme.cardColor, // ใช้สี Card จาก Theme
+                      indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.18),
                       destinations: [
                         for (final destination in _destinations)
                           NavigationRailDestination(
@@ -90,7 +91,7 @@ class MainNavigationShell extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    const VerticalDivider(width: 1),
+                    VerticalDivider(width: 1, color: theme.dividerColor), // ปรับสีเส้นแบ่ง
                     Expanded(
                       child: IndexedStack(index: currentTab, children: pages),
                     ),
@@ -113,8 +114,8 @@ class MainNavigationShell extends ConsumerWidget {
                   onDestinationSelected: ref
                       .read(currentTabProvider.notifier)
                       .select,
-                  backgroundColor: AppColors.bgSecondary,
-                  indicatorColor: AppColors.primary.withValues(alpha: 0.18),
+                  backgroundColor: theme.cardColor, // ใช้สี Card จาก Theme
+                  indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.18),
                   destinations: [
                     for (final destination in _destinations)
                       NavigationDestination(
@@ -147,9 +148,11 @@ class _MainHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final income = ref.watch(userIncomeProvider);
+    final theme = Theme.of(context);
+    
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: AppColors.bgPrimary,
+      backgroundColor: theme.scaffoldBackgroundColor, // ใช้สีพื้นหลังของ Theme
       titleSpacing: 16,
       title: Row(
         children: [
@@ -157,33 +160,33 @@ class _MainHeader extends ConsumerWidget implements PreferredSizeWidget {
             key: const Key('header-profile-button'),
             onTap: () => ref.read(currentTabProvider.notifier).select(4),
             borderRadius: BorderRadius.circular(24),
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 19,
-              backgroundColor: AppColors.primary,
+              backgroundColor: theme.colorScheme.primary, // ดึงสี Primary
               child: Text(
                 'N',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: theme.colorScheme.onPrimary, // สีตัวอักษรบนพื้น Primary
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'SUBSCRIPTION TRACK',
                   style: TextStyle(
-                    color: AppColors.primaryLight,
+                    color: theme.colorScheme.primary, // ดึงสี Primary
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
                   ),
                 ),
-                Text(
+                const Text(
                   'สวัสดี, คุณเน 👋',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -195,17 +198,17 @@ class _MainHeader extends ConsumerWidget implements PreferredSizeWidget {
           ActionChip(
             key: const Key('income-chip'),
             onPressed: onEditIncome,
-            avatar: const Icon(
+            avatar: Icon(
               Icons.account_balance_wallet_rounded,
               size: 16,
-              color: AppColors.primaryLight,
+              color: theme.colorScheme.primary,
             ),
             label: Text(
               '฿${(income / 1000).toStringAsFixed(0)}k',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            backgroundColor: AppColors.bgSecondary,
-            side: const BorderSide(color: AppColors.border),
+            backgroundColor: theme.cardColor, // เปลี่ยนให้ตรงกับ Theme
+            side: BorderSide(color: theme.dividerColor), // เปลี่ยนขอบให้ตรงกับ Theme
           ),
         ],
       ),
@@ -232,6 +235,7 @@ Future<void> _showIncomeBottomSheet({
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ปรับสีพื้น BottomSheet
     builder: (_) => _IncomeBottomSheet(initialIncome: currentIncome),
   );
 }
@@ -264,6 +268,8 @@ class _IncomeBottomSheetState extends ConsumerState<_IncomeBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -280,9 +286,12 @@ class _IncomeBottomSheetState extends ConsumerState<_IncomeBottomSheet> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'ใช้คำนวณ Creep Risk เท่านั้น และจะไม่แสดงต่อผู้ใช้อื่น',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: TextStyle(
+              color: theme.textTheme.bodySmall?.color, // ดึงสีเทาจาก Theme
+              fontSize: 12
+            ),
           ),
           const SizedBox(height: 16),
           TextField(

@@ -176,6 +176,9 @@ class _HeroPayoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final riskColor = creepScore >= 10
         ? AppColors.danger
         : creepScore >= 5
@@ -186,13 +189,15 @@ class _HeroPayoutCard extends StatelessWidget {
       key: const Key('hero-payout-card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
-        gradient: const LinearGradient(
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.35)),
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF182541), AppColors.bgSecondary],
+          colors: isDark 
+              ? [const Color(0xFF182541), theme.cardColor]
+              : [theme.colorScheme.primary.withValues(alpha: 0.05), theme.cardColor],
         ),
       ),
       child: Column(
@@ -200,10 +205,10 @@ class _HeroPayoutCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'รายจ่ายค่าสมาชิกรวม',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: theme.textTheme.bodySmall?.color),
                 ),
               ),
               DecoratedBox(
@@ -237,8 +242,8 @@ class _HeroPayoutCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'คิดเป็น ฿${(monthlyTotal * 12).toStringAsFixed(0)} ต่อปี',
-            style: const TextStyle(
-              color: AppColors.primaryLight,
+            style: TextStyle(
+              color: theme.colorScheme.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -256,6 +261,7 @@ class _RenewalChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final billingDate = subscription.nextBillingDate;
     final daysLeft = billingDate
         ?.difference(DateTime.now())
@@ -266,9 +272,9 @@ class _RenewalChip extends StatelessWidget {
       width: fillWidth ? null : 154,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
         children: [
@@ -288,8 +294,8 @@ class _RenewalChip extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   daysLeft == null ? 'ยังไม่กำหนดวัน' : 'อีก $daysLeft วัน',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: theme.textTheme.bodySmall?.color,
                     fontSize: 11,
                   ),
                 ),
@@ -315,26 +321,29 @@ class _UnusedAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final hasUnused = count > 0;
+    
+    final baseColor = hasUnused ? AppColors.danger : AppColors.success;
+    final bgAlpha = isDark ? 0.1 : 0.05;
+    final borderAlpha = isDark ? 0.4 : 0.2;
+
     return Container(
       key: const Key('unused-service-alert'),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: (hasUnused ? AppColors.danger : AppColors.success).withValues(
-          alpha: 0.1,
-        ),
+        color: baseColor.withValues(alpha: bgAlpha),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: (hasUnused ? AppColors.danger : AppColors.success).withValues(
-            alpha: 0.4,
-          ),
+          color: baseColor.withValues(alpha: borderAlpha),
         ),
       ),
       child: Row(
         children: [
           Icon(
             hasUnused ? Icons.warning_amber_rounded : Icons.verified_rounded,
-            color: hasUnused ? AppColors.danger : AppColors.success,
+            color: baseColor,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -350,8 +359,8 @@ class _UnusedAlertCard extends StatelessWidget {
                 if (hasUnused)
                   Text(
                     'อาจประหยัดได้ ฿${monthlySavings.toStringAsFixed(0)}/เดือน',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color,
                       fontSize: 12,
                     ),
                   ),
@@ -374,6 +383,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Expanded(
@@ -384,7 +394,10 @@ class _SectionTitle extends StatelessWidget {
         ),
         Text(
           subtitle,
-          style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
+          style: TextStyle(
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+            fontSize: 11
+          ),
         ),
       ],
     );
