@@ -4,10 +4,6 @@ final currentTabProvider = NotifierProvider<CurrentTabController, int>(
   CurrentTabController.new,
 );
 
-final userIncomeProvider = NotifierProvider<UserIncomeController, double>(
-  UserIncomeController.new,
-);
-
 final notificationReminderProvider =
     NotifierProvider<NotificationReminderController, bool>(
       NotificationReminderController.new,
@@ -19,17 +15,6 @@ final class CurrentTabController extends Notifier<int> {
 
   void select(int index) {
     if (index >= 0 && index < 5) state = index;
-  }
-}
-
-final class UserIncomeController extends Notifier<double> {
-  @override
-  double build() => 35000;
-
-  bool update(double income) {
-    if (!income.isFinite || income <= 0) return false;
-    state = income;
-    return true;
   }
 }
 
