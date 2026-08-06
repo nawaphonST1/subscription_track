@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:subscription_track/models/user.dart';
-import 'package:subscription_track/services/auth_service.dart';
+import 'package:subscription_track/features/auth/data/auth_service.dart';
+import 'package:subscription_track/features/auth/domain/user.dart';
 import 'package:subscription_track/services/service_providers.dart';
 
 part 'auth_provider.g.dart';

@@ -1,5 +1,5 @@
 import 'package:mocktail/mocktail.dart';
-import 'package:subscription_track/services/auth_service.dart';
+import 'package:subscription_track/features/auth/data/auth_service.dart';
 import 'package:subscription_track/services/storage_service.dart';
 import 'package:subscription_track/services/subscription_service.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription_repository.dart';

@@ -1,7 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/utils/logger.dart';
-import 'package:subscription_track/models/user.dart';
+import 'package:subscription_track/features/auth/domain/user.dart';
 
 class AuthService {
   User? _currentUser;
