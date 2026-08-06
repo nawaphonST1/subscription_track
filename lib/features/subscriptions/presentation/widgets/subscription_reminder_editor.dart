@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 
 class SubscriptionReminderEditor extends StatelessWidget {
   const SubscriptionReminderEditor({
@@ -17,13 +16,14 @@ class SubscriptionReminderEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'การแจ้งเตือน',
           style: TextStyle(
-            color: Colors.white,
+            color: theme.textTheme.titleMedium?.color,
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
@@ -31,9 +31,9 @@ class SubscriptionReminderEditor extends StatelessWidget {
         const SizedBox(height: 8),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text(
+          title: Text(
             'เปิดการแจ้งเตือน',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: theme.textTheme.bodyLarge?.color),
           ),
           value: enabled,
           onChanged: onEnabledChanged,
@@ -75,22 +75,25 @@ class _ReminderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.bgPrimary,
+          color: selected ? theme.colorScheme.primary : theme.cardColor,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
+            color: selected ? theme.colorScheme.primary : theme.dividerColor,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textTertiary,
+            color: selected
+                ? theme.colorScheme.onPrimary
+                : theme.textTheme.bodyMedium?.color,
           ),
         ),
       ),

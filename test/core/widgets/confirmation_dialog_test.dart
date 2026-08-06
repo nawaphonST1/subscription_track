@@ -76,18 +76,53 @@ void main() {
 
     expect(result, isTrue);
   });
+
+  for (final mode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets('uses readable colors in ${mode.name} mode', (tester) async {
+      await tester.pumpWidget(
+        _DialogTestApp(
+          themeMode: mode,
+          onResult: (_) {},
+          showDialog: (context) => ConfirmationDialog.show(
+            context: context,
+            title: 'ยืนยันธีม',
+            message: 'ข้อความต้องอ่านได้',
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('open-dialog-button')));
+      await tester.pumpAndSettle();
+
+      final dialogContext = tester.element(
+        find.byKey(const Key('confirmation-dialog')),
+      );
+      final theme = Theme.of(dialogContext);
+      final title = tester.widget<Text>(find.text('ยืนยันธีม'));
+      final message = tester.widget<Text>(find.text('ข้อความต้องอ่านได้'));
+      expect(title.style?.color, theme.textTheme.titleMedium?.color);
+      expect(message.style?.color, theme.textTheme.bodySmall?.color);
+    });
+  }
 }
 
 class _DialogTestApp extends StatelessWidget {
-  const _DialogTestApp({required this.showDialog, required this.onResult});
+  const _DialogTestApp({
+    required this.showDialog,
+    required this.onResult,
+    this.themeMode = ThemeMode.dark,
+  });
 
   final Future<bool> Function(BuildContext context) showDialog;
   final ValueChanged<bool> onResult;
+  final ThemeMode themeMode;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       home: Scaffold(
         body: Builder(
           builder: (context) => Center(

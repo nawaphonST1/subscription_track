@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 
 const _destinations = <_MainDestination>[
   _MainDestination(
@@ -43,6 +42,8 @@ class MainAppNavigationRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return NavigationRail(
       key: const Key('main-navigation-rail'),
       selectedIndex: selectedIndex,
@@ -51,8 +52,8 @@ class MainAppNavigationRail extends StatelessWidget {
           ? NavigationRailLabelType.none
           : NavigationRailLabelType.all,
       onDestinationSelected: onSelected,
-      backgroundColor: AppColors.bgSecondary,
-      indicatorColor: AppColors.primary.withValues(alpha: 0.18),
+      backgroundColor: theme.cardColor,
+      indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.18),
       destinations: [
         for (final destination in _destinations)
           NavigationRailDestination(
@@ -77,12 +78,14 @@ class MainAppNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return NavigationBar(
       key: const Key('main-bottom-navigation'),
       selectedIndex: selectedIndex,
       onDestinationSelected: onSelected,
-      backgroundColor: AppColors.bgSecondary,
-      indicatorColor: AppColors.primary.withValues(alpha: 0.18),
+      backgroundColor: theme.cardColor,
+      indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.18),
       destinations: [
         for (final destination in _destinations)
           NavigationDestination(

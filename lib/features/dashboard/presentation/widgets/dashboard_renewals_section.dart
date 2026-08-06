@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/widgets/service_icon.dart';
 import 'package:subscription_track/features/dashboard/application/dashboard_summary_provider.dart';
 
@@ -15,12 +14,14 @@ class DashboardRenewalsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Row(
+        Row(
           children: [
-            Expanded(
+            const Expanded(
               child: Text(
                 'รายการใกล้ตัดเงิน',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -28,7 +29,10 @@ class DashboardRenewalsSection extends StatelessWidget {
             ),
             Text(
               'เรียงตามวันชำระถัดไป',
-              style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+              style: TextStyle(
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
             ),
           ],
         ),
@@ -72,17 +76,19 @@ class _RenewalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final daysLeft = renewal.nextBillingDate
         ?.difference(DateTime.now())
         .inDays
         .clamp(0, 999);
+
     return Container(
       width: fillWidth ? null : 154,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
         children: [
@@ -102,8 +108,8 @@ class _RenewalCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   daysLeft == null ? 'ยังไม่กำหนดวัน' : 'อีก $daysLeft วัน',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: theme.textTheme.bodySmall?.color,
                     fontSize: 11,
                   ),
                 ),

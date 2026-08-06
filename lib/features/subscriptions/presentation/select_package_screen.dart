@@ -31,22 +31,18 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1D),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0F1D),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'เลือกแพ็กเกจแนะนำ',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -67,10 +63,10 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'แพ็กเกจยอดนิยม',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: theme.textTheme.titleMedium?.color,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),

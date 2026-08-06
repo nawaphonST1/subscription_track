@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 
 Future<void> showIncomeEditorSheet({
@@ -43,6 +42,8 @@ class _IncomeEditorSheetState extends ConsumerState<_IncomeEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -59,10 +60,13 @@ class _IncomeEditorSheetState extends ConsumerState<_IncomeEditorSheet> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'ใช้คำนวณ Creep Risk เท่านั้น '
             'และจะไม่แสดงต่อผู้ใช้อื่น',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: TextStyle(
+              color: theme.textTheme.bodySmall?.color,
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 16),
           TextField(

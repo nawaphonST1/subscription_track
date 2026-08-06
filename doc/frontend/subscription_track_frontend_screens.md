@@ -746,7 +746,7 @@ class AddSubscriptionState {
 │                              │
 │ 🌐 General                   │
 │ ├─ Language: [Thai ▼]        │
-│ ├─ Theme: Dark (auto)        │
+│ ├─ Theme: Light/Dark Mode (Toggle Switch active via themeModeProvider) │
 │ └─ Version: 1.0.0            │
 │                              │
 │ ─────────────────────────    │
@@ -761,6 +761,11 @@ class AddSubscriptionState {
 │                              │
 └──────────────────────────────┘
 ```
+
+**Theme Policy & Specifications:**
+- Default Theme: `ThemeMode.light` (dynamic light & dark themes via `AppTheme.light` and `AppTheme.dark`)
+- Theme State Owner: `app/application` (`themeModeProvider`, `ThemeModeController`), SettingsTab is a presentation consumer
+- Branded-Dark Exception: Splash Screen and Onboarding Screen are intentionally branded-dark screens in the app design identity, rendering white text over dark backgrounds across all global ThemeModes.
 
 **Widgets:**
 - `SwitchListTile` (toggles)

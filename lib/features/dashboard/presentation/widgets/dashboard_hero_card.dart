@@ -13,6 +13,9 @@ class DashboardHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final riskColor = creepScore >= 10
         ? AppColors.danger
         : creepScore >= 5
@@ -23,13 +26,20 @@ class DashboardHeroCard extends StatelessWidget {
       key: const Key('hero-payout-card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
-        gradient: const LinearGradient(
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.35),
+        ),
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF182541), AppColors.bgSecondary],
+          colors: isDark
+              ? [const Color(0xFF182541), theme.cardColor]
+              : [
+                  theme.colorScheme.primary.withValues(alpha: 0.05),
+                  theme.cardColor,
+                ],
         ),
       ),
       child: Column(
@@ -37,10 +47,10 @@ class DashboardHeroCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'รายจ่ายค่าสมาชิกรวม',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: theme.textTheme.bodySmall?.color),
                 ),
               ),
               DecoratedBox(
@@ -74,8 +84,8 @@ class DashboardHeroCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'คิดเป็น ฿${(monthlyTotal * 12).toStringAsFixed(0)} ต่อปี',
-            style: const TextStyle(
-              color: AppColors.primaryLight,
+            style: TextStyle(
+              color: theme.colorScheme.primary,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -20,15 +20,17 @@ class SubscriptionListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Material(
-      color: AppColors.bgSecondary,
+      color: theme.cardColor,
       borderRadius: BorderRadius.circular(14),
       child: ListTile(
         key: Key('subscription-${subscription.id}'),
         onTap: onShowDetails,
         contentPadding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
         leading: CircleAvatar(
-          backgroundColor: AppColors.bgPrimary,
+          backgroundColor: theme.scaffoldBackgroundColor,
           child: ServiceIcon(
             serviceName: subscription.name,
             category: subscription.category,
@@ -68,7 +70,7 @@ class SubscriptionListTile extends StatelessWidget {
                     : Icons.add_circle_outline_rounded,
                 color: subscription.isSelected
                     ? AppColors.success
-                    : AppColors.textTertiary,
+                    : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               ),
             ),
             PopupMenuButton<String>(

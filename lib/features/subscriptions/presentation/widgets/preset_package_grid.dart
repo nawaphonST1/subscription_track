@@ -42,19 +42,21 @@ class _PresetPackageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final accent = serviceIconColor(
       serviceName: package.name,
       category: package.category,
     );
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF131C2E),
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF243049), width: 1.5),
+          border: Border.all(color: theme.dividerColor, width: 1.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,8 +80,8 @@ class _PresetPackageCard extends StatelessWidget {
               package.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: theme.textTheme.titleMedium?.color,
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
               ),
@@ -88,7 +90,10 @@ class _PresetPackageCard extends StatelessWidget {
             Text(
               '฿${package.price.toStringAsFixed(0)} / '
               '${package.billingPeriod == 'Monthly' ? 'เดือน' : 'ปี'}',
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+              style: TextStyle(
+                color: theme.textTheme.bodySmall?.color,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -102,21 +107,33 @@ class _PresetEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final theme = Theme.of(context);
+
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off_rounded, size: 64, color: Color(0x8064748B)),
-          SizedBox(height: 16),
+          Icon(
+            Icons.search_off_rounded,
+            size: 64,
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
           Text(
             'ไม่พบแพ็กเกจที่ต้องการค้นหา',
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 16),
+            style: TextStyle(
+              color: theme.textTheme.bodyLarge?.color,
+              fontSize: 16,
+            ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'คุณสามารถกดเพิ่มเองแบบกำหนดเองในหน้าก่อนหน้าได้',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF475569), fontSize: 13),
+            style: TextStyle(
+              color: theme.textTheme.bodySmall?.color,
+              fontSize: 13,
+            ),
           ),
         ],
       ),

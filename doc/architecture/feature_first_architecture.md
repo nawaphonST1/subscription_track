@@ -73,6 +73,7 @@ application/presentation เพราะ reminder preference ยังเป็�
 | Auth state | `features/auth/application` | ซ่อน repository implementation หลัง domain contract และรองรับ override ใน test |
 | Onboarding completion | `features/onboarding/application` | เป็น state ของ onboarding flow โดยตรง |
 | Startup redirect และ current tab | `app/application` | เป็น orchestration ระดับแอป ไม่ใช่ business feature |
+| ThemeMode (Light/Dark mode) | `app/application` | เป็น app-level UI state ที่ MaterialApp และ SettingsTab ใช้งานร่วมกัน โดยมี owner เดียวที่ `app/application` (SettingsTab เป็น presentation consumer และ Auth ไม่เป็นเจ้าของ theme state) |
 
 ## Migration notes
 
@@ -107,3 +108,14 @@ Security/Biometric ยังอยู่นอก implementation scope ตาม
 - `dart analyze`: ผ่าน ไม่มี issue
 - `flutter test --coverage`: ผ่าน 33 tests
 - LCOV line coverage: 59.86% (1,190/1,988 lines จาก 83 source files)
+
+ผลตรวจ ThemeMode integration วันที่ 7 August 2026:
+
+- แยก Light/Dark ThemeData และคง ThemeMode source of truth ไว้ที่ `app/application`
+- Splash/Onboarding คง branded-dark policy อย่างชัดเจน ส่วน main app surfaces
+  รองรับ Light/Dark ผ่าน ThemeData
+- architecture import/legacy path/200-line guardrails: ผ่าน
+- `dart analyze`: ผ่าน ไม่มี issue
+- `flutter test`: ผ่าน 46 tests
+- `flutter test --coverage`: ผ่าน 46 tests
+- LCOV line coverage: 67.84% (1,508/2,223 lines)

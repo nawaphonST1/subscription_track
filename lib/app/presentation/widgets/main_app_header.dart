@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/app/application/current_tab_controller.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 
 class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
@@ -15,9 +14,11 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final income = ref.watch(userIncomeProvider);
+    final theme = Theme.of(context);
+
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: AppColors.bgPrimary,
+      backgroundColor: theme.scaffoldBackgroundColor,
       titleSpacing: 16,
       title: Row(
         children: [
@@ -25,27 +26,27 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
             key: const Key('header-profile-button'),
             onTap: () => ref.read(currentTabProvider.notifier).select(4),
             borderRadius: BorderRadius.circular(24),
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 19,
-              backgroundColor: AppColors.primary,
+              backgroundColor: theme.colorScheme.primary,
               child: Text(
                 'N',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'SUBSCRIPTION TRACK',
                   style: TextStyle(
-                    color: AppColors.primaryLight,
+                    color: theme.colorScheme.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
@@ -55,7 +56,11 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   'สวัสดี, คุณเน 👋',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
                 ),
               ],
             ),
@@ -63,17 +68,17 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
           ActionChip(
             key: const Key('income-chip'),
             onPressed: onEditIncome,
-            avatar: const Icon(
+            avatar: Icon(
               Icons.account_balance_wallet_rounded,
               size: 16,
-              color: AppColors.primaryLight,
+              color: theme.colorScheme.primary,
             ),
             label: Text(
               '฿${(income / 1000).toStringAsFixed(0)}k',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            backgroundColor: AppColors.bgSecondary,
-            side: const BorderSide(color: AppColors.border),
+            backgroundColor: theme.cardColor,
+            side: BorderSide(color: theme.dividerColor),
           ),
         ],
       ),

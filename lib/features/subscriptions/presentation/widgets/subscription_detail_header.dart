@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/widgets/service_icon.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 
@@ -15,13 +14,14 @@ class SubscriptionDetailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         Row(
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: AppColors.bgPrimary,
+              backgroundColor: theme.scaffoldBackgroundColor,
               child: ServiceIcon(
                 serviceName: subscription.name,
                 category: subscription.category,
@@ -35,8 +35,8 @@ class SubscriptionDetailHeader extends StatelessWidget {
                 children: [
                   Text(
                     subscription.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: theme.textTheme.titleMedium?.color,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -44,8 +44,8 @@ class SubscriptionDetailHeader extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subscription.billingPeriod,
-                    style: const TextStyle(
-                      color: AppColors.textTertiary,
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color,
                       fontSize: 13,
                     ),
                   ),
@@ -57,11 +57,11 @@ class SubscriptionDetailHeader extends StatelessWidget {
         const SizedBox(height: 20),
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'รายละเอียดบริการ',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: theme.textTheme.titleMedium?.color,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),

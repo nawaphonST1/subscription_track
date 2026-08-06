@@ -22,28 +22,31 @@ class ConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AlertDialog(
       key: const Key('confirmation-dialog'),
-      backgroundColor: AppColors.bgOverlay,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       icon: Icon(
         icon ??
             (isDanger
                 ? Icons.warning_amber_rounded
                 : Icons.help_outline_rounded),
-        color: isDanger ? AppColors.danger : AppColors.primary,
+        color: isDanger ? AppColors.danger : theme.colorScheme.primary,
         size: 34,
       ),
       title: Text(
         title,
         textAlign: TextAlign.center,
-        style: AppTypography.headingSmall,
+        style: AppTypography.headingSmall.copyWith(
+          color: theme.textTheme.titleMedium?.color,
+        ),
       ),
       content: Text(
         message,
         textAlign: TextAlign.center,
         style: AppTypography.bodyMedium.copyWith(
-          color: AppColors.textSecondary,
+          color: theme.textTheme.bodySmall?.color,
         ),
       ),
       actions: [
@@ -56,8 +59,10 @@ class ConfirmationDialog extends StatelessWidget {
           key: const Key('confirmation-confirm-button'),
           onPressed: () => Navigator.of(context).pop(true),
           style: FilledButton.styleFrom(
-            backgroundColor: isDanger ? AppColors.danger : AppColors.primary,
-            foregroundColor: AppColors.textPrimary,
+            backgroundColor: isDanger
+                ? AppColors.danger
+                : theme.colorScheme.primary,
+            foregroundColor: Colors.white,
           ),
           child: Text(confirmText),
         ),

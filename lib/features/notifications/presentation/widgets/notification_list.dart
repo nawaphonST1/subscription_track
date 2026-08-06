@@ -64,6 +64,7 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final accent = item.accentColor;
     return InkWell(
       onTap: onTap,
@@ -71,14 +72,10 @@ class _NotificationTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(
-            0xFF131C2E,
-          ).withValues(alpha: item.isRead ? 0.6 : 1),
+          color: theme.cardColor.withValues(alpha: item.isRead ? 0.65 : 1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(
-              0xFF243049,
-            ).withValues(alpha: item.isRead ? 0.5 : 1),
+            color: theme.dividerColor.withValues(alpha: item.isRead ? 0.5 : 1),
             width: 1.5,
           ),
         ),
@@ -118,8 +115,10 @@ class _NotificationTile extends StatelessWidget {
                     item.title,
                     style: TextStyle(
                       color: item.isRead
-                          ? const Color(0xFF94A3B8)
-                          : Colors.white,
+                          ? theme.textTheme.bodyMedium?.color?.withValues(
+                              alpha: 0.65,
+                            )
+                          : theme.textTheme.bodyLarge?.color,
                       fontWeight: item.isRead
                           ? FontWeight.normal
                           : FontWeight.bold,
@@ -129,8 +128,8 @@ class _NotificationTile extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     item.body,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color,
                       fontSize: 12,
                       height: 1.4,
                     ),
@@ -138,8 +137,10 @@ class _NotificationTile extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     formatNotificationDate(item.scheduledAt),
-                    style: const TextStyle(
-                      color: Color(0xFF475569),
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color?.withValues(
+                        alpha: 0.7,
+                      ),
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
@@ -161,20 +162,21 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.notifications_off_outlined,
             size: 56,
-            color: Color(0x9964748B),
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'ไม่มีการแจ้งเตือน',
             style: TextStyle(
-              color: Colors.white,
+              color: theme.textTheme.titleMedium?.color,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -185,7 +187,10 @@ class _EmptyState extends StatelessWidget {
                 ? 'ไม่มีการแจ้งเตือนใหม่ในขณะนี้'
                 : 'ไม่มีรายการตามตัวกรองที่เลือก',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+            style: TextStyle(
+              color: theme.textTheme.bodySmall?.color,
+              fontSize: 13,
+            ),
           ),
         ],
       ),
