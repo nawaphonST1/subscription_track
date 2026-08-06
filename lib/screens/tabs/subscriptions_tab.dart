@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/models/subscription.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
@@ -14,85 +15,132 @@ class SubscriptionsTab extends ConsumerWidget {
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final subscriptions = ref.watch(visibleSubscriptionsProvider);
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-          child: Column(
-            children: [
-              TextField(
-                key: const Key('subscription-search-field'),
-                onChanged: ref.read(searchQueryProvider.notifier).update,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  hintText: 'ค้นหาตามชื่อบริการ...',
-                  prefixIcon: Icon(Icons.search_rounded),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useGrid = constraints.maxWidth >= AppBreakpoints.tablet;
+
+        return Column(
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppBreakpoints.contentMaxWidth,
                 ),
-              ),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final category in SubscriptionCategoryFilter.values)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 7),
-                        child: ChoiceChip(
-                          key: Key('category-${category.name}'),
-                          label: Text(category.label),
-                          selected: selectedCategory == category,
-                          onSelected: (_) => ref
-                              .read(selectedCategoryProvider.notifier)
-                              .select(category),
-                          selectedColor: AppColors.primary,
-                          backgroundColor: AppColors.bgSecondary,
-                          side: BorderSide(
-                            color: selectedCategory == category
-                                ? AppColors.primary
-                                : AppColors.border,
-                          ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                  child: Column(
+                    children: [
+                      TextField(
+                        key: const Key('subscription-search-field'),
+                        onChanged: ref
+                            .read(searchQueryProvider.notifier)
+                            .update,
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          hintText: 'ค้นหาตามชื่อบริการ...',
+                          prefixIcon: Icon(Icons.search_rounded),
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            for (final category
+                                in SubscriptionCategoryFilter.values)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 7),
+                                child: ChoiceChip(
+                                  key: Key('category-${category.name}'),
+                                  label: Text(category.label),
+                                  selected: selectedCategory == category,
+                                  onSelected: (_) => ref
+                                      .read(selectedCategoryProvider.notifier)
+                                      .select(category),
+                                  selectedColor: AppColors.primary,
+                                  backgroundColor: AppColors.bgSecondary,
+                                  side: BorderSide(
+                                    color: selectedCategory == category
+                                        ? AppColors.primary
+                                        : AppColors.border,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: subscriptions.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(
-              child: FilledButton.icon(
-                onPressed: ref.read(subscriptionListProvider.notifier).refresh,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('ลองอีกครั้ง'),
               ),
             ),
-            data: (items) {
-              if (items.isEmpty) {
-                return const _EmptySubscriptions();
-              }
-              return ListView.separated(
-                key: const PageStorageKey<String>('subscriptions-tab'),
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, index) => _SubscriptionListTile(
-                  subscription: items[index],
-                  onToggle: () => ref
-                      .read(subscriptionListProvider.notifier)
-                      .toggleSelection(items[index].id),
-                  onDelete: () =>
-                      _deleteSubscription(context, ref, items[index]),
-                  onShowDetails: () =>
-                      _showSubscriptionDetails(context, ref, items[index]),
+            Expanded(
+              child: subscriptions.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(
+                  child: FilledButton.icon(
+                    onPressed: ref
+                        .read(subscriptionListProvider.notifier)
+                        .refresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('ลองอีกครั้ง'),
+                  ),
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+                data: (items) {
+                  if (items.isEmpty) {
+                    return const _EmptySubscriptions();
+                  }
+                  Widget buildTile(BuildContext context, int index) {
+                    final subscription = items[index];
+                    return _SubscriptionListTile(
+                      subscription: subscription,
+                      onToggle: () => ref
+                          .read(subscriptionListProvider.notifier)
+                          .toggleSelection(subscription.id),
+                      onDelete: () =>
+                          _deleteSubscription(context, ref, subscription),
+                      onShowDetails: () =>
+                          _showSubscriptionDetails(context, ref, subscription),
+                    );
+                  }
+
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppBreakpoints.contentMaxWidth,
+                      ),
+                      child: useGrid
+                          ? GridView.builder(
+                              key: const Key('subscriptions-desktop-grid'),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                              itemCount: items.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 560,
+                                    mainAxisExtent: 76,
+                                    crossAxisSpacing: 10,
+                                    mainAxisSpacing: 10,
+                                  ),
+                              itemBuilder: buildTile,
+                            )
+                          : ListView.separated(
+                              key: const PageStorageKey<String>(
+                                'subscriptions-tab',
+                              ),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                              itemCount: items.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: buildTile,
+                            ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

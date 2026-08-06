@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
 import 'package:subscription_track/screens/tabs/dashboard_tab.dart';
@@ -12,6 +13,34 @@ import 'package:subscription_track/screens/tabs/setting_tab.dart';
 class MainNavigationShell extends ConsumerWidget {
   const MainNavigationShell({super.key});
 
+  static const _destinations = <_MainDestination>[
+    _MainDestination(
+      label: 'หน้าแรก',
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard_rounded,
+    ),
+    _MainDestination(
+      label: 'รายการ',
+      icon: Icons.subscriptions_outlined,
+      selectedIcon: Icons.subscriptions_rounded,
+    ),
+    _MainDestination(
+      label: 'ประหยัด',
+      icon: Icons.savings_outlined,
+      selectedIcon: Icons.savings_rounded,
+    ),
+    _MainDestination(
+      label: 'ตั้งค่า',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+    ),
+    _MainDestination(
+      label: 'โปรไฟล์',
+      icon: Icons.person_outline_rounded,
+      selectedIcon: Icons.person_rounded,
+    ),
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(currentTabProvider);
@@ -20,60 +49,83 @@ class MainNavigationShell extends ConsumerWidget {
     Future<void> editIncome() =>
         _showIncomeBottomSheet(context: context, currentIncome: income);
 
-    return Scaffold(
-      appBar: _MainHeader(onEditIncome: editIncome),
-      body: IndexedStack(
-        index: currentTab,
-        children: [
-          const DashboardTab(),
-          const SubscriptionsTab(),
-          const SavingsTab(),
-          const SettingTab(),
-          ProfileTab(onEditIncome: editIncome),
-        ],
-      ),
-      floatingActionButton: currentTab == 1
-          ? FloatingActionButton.extended(
-              key: const Key('add-subscription-button'),
-              onPressed: () => _showFeatureComingSoon(context),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('เพิ่มบริการ'),
-            )
-          : null,
-      bottomNavigationBar: NavigationBar(
-        key: const Key('main-bottom-navigation'),
-        selectedIndex: currentTab,
-        onDestinationSelected: ref.read(currentTabProvider.notifier).select,
-        backgroundColor: AppColors.bgSecondary,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.18),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded),
-            label: 'หน้าแรก',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.subscriptions_outlined),
-            selectedIcon: Icon(Icons.subscriptions_rounded),
-            label: 'รายการ',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.savings_outlined),
-            selectedIcon: Icon(Icons.savings_rounded),
-            label: 'ประหยัด',
-          ),
-          NavigationDestination(
-            icon:Icon(Icons.settings_outlined),
-            selectedIcon:Icon(Icons.settings_rounded),
-            label: 'ตั้งค่า',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'โปรไฟล์',
-          ),
-        ],
-      ),
+    final pages = <Widget>[
+      const DashboardTab(),
+      const SubscriptionsTab(),
+      const SavingsTab(),
+      const SettingTab(),
+      ProfileTab(onEditIncome: editIncome),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useNavigationRail =
+            constraints.maxWidth >= AppBreakpoints.desktop;
+        final expandNavigation =
+            constraints.maxWidth >= AppBreakpoints.expandedNavigation;
+
+        return Scaffold(
+          appBar: _MainHeader(onEditIncome: editIncome),
+          body: useNavigationRail
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      key: const Key('main-navigation-rail'),
+                      selectedIndex: currentTab,
+                      extended: expandNavigation,
+                      labelType: expandNavigation
+                          ? NavigationRailLabelType.none
+                          : NavigationRailLabelType.all,
+                      onDestinationSelected: ref
+                          .read(currentTabProvider.notifier)
+                          .select,
+                      backgroundColor: AppColors.bgSecondary,
+                      indicatorColor: AppColors.primary.withValues(alpha: 0.18),
+                      destinations: [
+                        for (final destination in _destinations)
+                          NavigationRailDestination(
+                            icon: Icon(destination.icon),
+                            selectedIcon: Icon(destination.selectedIcon),
+                            label: Text(destination.label),
+                          ),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(
+                      child: IndexedStack(index: currentTab, children: pages),
+                    ),
+                  ],
+                )
+              : IndexedStack(index: currentTab, children: pages),
+          floatingActionButton: currentTab == 1
+              ? FloatingActionButton.extended(
+                  key: const Key('add-subscription-button'),
+                  onPressed: () => _showFeatureComingSoon(context),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('เพิ่มบริการ'),
+                )
+              : null,
+          bottomNavigationBar: useNavigationRail
+              ? null
+              : NavigationBar(
+                  key: const Key('main-bottom-navigation'),
+                  selectedIndex: currentTab,
+                  onDestinationSelected: ref
+                      .read(currentTabProvider.notifier)
+                      .select,
+                  backgroundColor: AppColors.bgSecondary,
+                  indicatorColor: AppColors.primary.withValues(alpha: 0.18),
+                  destinations: [
+                    for (final destination in _destinations)
+                      NavigationDestination(
+                        icon: Icon(destination.icon),
+                        selectedIcon: Icon(destination.selectedIcon),
+                        label: destination.label,
+                      ),
+                  ],
+                ),
+        );
+      },
     );
   }
 
@@ -103,7 +155,7 @@ class _MainHeader extends ConsumerWidget implements PreferredSizeWidget {
         children: [
           InkWell(
             key: const Key('header-profile-button'),
-            onTap: () => ref.read(currentTabProvider.notifier).select(3),
+            onTap: () => ref.read(currentTabProvider.notifier).select(4),
             borderRadius: BorderRadius.circular(24),
             child: const CircleAvatar(
               radius: 19,
@@ -159,6 +211,18 @@ class _MainHeader extends ConsumerWidget implements PreferredSizeWidget {
       ),
     );
   }
+}
+
+class _MainDestination {
+  const _MainDestination({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
 }
 
 Future<void> _showIncomeBottomSheet({

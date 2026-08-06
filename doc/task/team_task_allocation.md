@@ -144,7 +144,7 @@ Dialogs (Week 4) [Used by Person 2 & 3 for Add/Edit]
     - Connect subscription search/category/list ✅
     - Connect saving simulation checklist and totals ✅
     - Add loading/error/refresh states ✅
-    - Tablet/desktop optimization ⏳
+    - Tablet/desktop optimization ✅ (NavigationRail + adaptive columns/grid)
   
   Day 4-5: Polish & test
     - Responsive design verification
@@ -481,7 +481,7 @@ Week 8:
 
 ### Person 1 (เน) ✅
 - [x] Startup screens + focused 4-tab mobile shell pass widget tests
-- [ ] Responsive design verified (mobile 375px + desktop 1200px)
+- [x] Responsive design verified (mobile 375px + desktop 1200px)
 - [x] Repository/navigation providers working correctly
 - [x] Architecture and current integration points documented
 - [ ] 90%+ test coverage for providers
@@ -604,13 +604,13 @@ develop ← merge all features here
 **Week 3-4:**
 - [x] Dashboard refactored to repository-backed providers
 - [x] Focused mobile layout verified by widget tests
-- [x] Four main tabs integrated
+- [x] Five destinations integrated after Settings/Profile team merge (original Option 5 remains a future IA decision)
 - [x] Loading/error/refresh states working
-- [ ] Tablet/desktop layout verified
+- [x] Tablet/desktop layout verified
 
 **Week 4:**
 - [ ] PIN dialog refactored
-- [ ] Biometric dialog added
+- [ ] Biometric dialog deferred until a real sensitive action is in MVP scope (YAGNI)
 - [ ] Confirm dialog created
 - [ ] All dialogs tested
 

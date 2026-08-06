@@ -29,8 +29,8 @@
 รายละเอียดส่วนนี้เป็น source of truth สำหรับ Dashboard MVP และใช้แทนตัวอย่าง proposal เดิมที่อาจยังปรากฏในหัวข้อถัดไป:
 
 - Startup flow เป็น state-driven redirect: Splash → Onboarding → Login → Dashboard โดยไม่มี `Future.delayed` navigation ใน Splash
-- `/dashboard` render `MainNavigationShell` และใช้ `IndexedStack` เก็บ state ของ 4 tabs
-- tabs แยกเป็น `dashboard_tab.dart`, `subscriptions_tab.dart`, `savings_tab.dart` และ `profile_tab.dart`
+- `/dashboard` render `MainNavigationShell` และใช้ `IndexedStack` เก็บ state ของ 5 destinations ที่รวมจากงานทีม
+- tabs แยกเป็น `dashboard_tab.dart`, `subscriptions_tab.dart`, `savings_tab.dart`, `setting_tab.dart` และ `profile_tab.dart`
 - state ของ navigation/search/category/income/reminder อยู่ใน `main_navigation_provider.dart`
 - subscription data ใช้ `SubscriptionRepository` → `InMemorySubscriptionRepository` ผ่าน `subscriptionRepositoryProvider`
 - `subscriptionListProvider` เป็น `AsyncNotifierProvider<SubscriptionListController, List<Subscription>>` ไม่ใช่ `FutureProvider` หรือ legacy `StateNotifierProvider`
@@ -312,18 +312,21 @@ class MockUser {
 | Property | Value |
 |----------|-------|
 | **Purpose** | Main hub - view KPIs, subscriptions, simulate savings |
-| **Current State** | ✅ Option 5 focused 4-tab mobile layout implemented |
+| **Current State** | ✅ Adaptive navigation shell with 5 integrated destinations |
 | **State Management** | Riverpod `AsyncNotifier` + Repository Pattern + derived providers |
-| **Responsive** | Mobile layout implemented; tablet/desktop optimization remains |
+| **Responsive** | ✅ Bottom navigation on mobile; NavigationRail + adaptive columns/grid at 900px+ |
 
-**Implemented 4-tab structure:**
+**Implemented navigation structure:**
 
 | Tab | Content | State binding |
 |-----|---------|---------------|
 | 0 — Dashboard | Hero payout KPI, Creep Risk, renewal timeline, unused alert | `subscriptionListProvider`, `userIncomeProvider` |
 | 1 — Subscriptions | Search, category chips, list tiles, Add FAB | `visibleSubscriptionsProvider` |
 | 2 — Savings | yearly saving goal, checklist, cancel selected | `subscriptionListProvider.notifier` |
-| 3 — Profile | avatar, income sheet, PIN entry point, reminder toggle | `userIncomeProvider`, `notificationReminderProvider` |
+| 3 — Settings | reminder toggle, language/currency integration points | `notificationReminderProvider` |
+| 4 — Profile | avatar, income sheet, PIN entry point, linked accounts | `userIncomeProvider` |
+
+> เดิม Option 5 กำหนด 4 tabs โดยรวม Profile/Settings ไว้ด้วยกัน แต่หลัง team integration มี `SettingTab` แยกต่างหาก จึงคง 5 destinations ไว้ก่อนเพื่อไม่ทับงานของ Person 3; สามารถรวมกลับภายหลังเมื่อทีมยืนยัน information architecture รอบสุดท้าย
 
 **Historical proposal below (superseded):** ตัวอย่าง `FutureProvider` และ layout หน้าเดียวด้านล่างเก็บไว้เป็น design history เท่านั้น ไม่ใช่ API ปัจจุบัน
 
@@ -431,8 +434,9 @@ Desktop Layout (900px+):
 1. ย้าย hardcoded subscription list ออกจาก `DashboardScreen` ไปไว้หลัง repository interface
 2. ใช้ `AsyncNotifier` เป็น single source of truth สำหรับ CRUD/selection
 3. แยก search/category เป็น derived provider และใช้ typed `SubscriptionCategoryFilter`
-4. แยก 4 tab views ออกจาก navigation shell
+4. แยก 5 tab views ออกจาก navigation shell ตามผล team integration
 5. รองรับ loading/error/refresh และทดสอบ state binding ด้วย Provider override
+6. ใช้ breakpoint กลางจาก `AppBreakpoints`: mobile เป็น `NavigationBar`, desktop เป็น `NavigationRail`; Dashboard/Savings ใช้สองคอลัมน์และ Subscriptions ใช้ adaptive grid
 
 ---
 
@@ -645,7 +649,8 @@ class AddSubscriptionState {
 
 **Buttons:**
 - **Edit** → Edit Subscription Screen
-- **Cancel/Delete** → Show PIN/Biometric Dialog → Confirm → Delete → Back to Dashboard + Undo SnackBar
+- **Cancel/Delete tracking item** → Generic Confirmation → Delete → Show result SnackBar
+- PIN/Biometric สงวนไว้สำหรับ sensitive action จริง เช่น เปลี่ยน PIN, เปิด biometric lock หรือเชื่อม API เพื่อยกเลิกบริการภายนอก
 
 ---
 
@@ -654,7 +659,7 @@ class AddSubscriptionState {
 | Property | Value |
 |----------|-------|
 | **Purpose** | Modify existing subscription details |
-| **Flow** | Dashboard → Detail → Edit → [PIN verify] → Save |
+| **Flow** | Dashboard → Detail → Edit → Save |
 | **Differences from Add** | Pre-filled form + Delete option |
 
 **UI Layout:** (Same as Add Custom Form, but with pre-filled values)
@@ -687,7 +692,7 @@ class AddSubscriptionState {
 
 **On Save:**
 1. Show loading spinner
-2. Optionally trigger PIN/Biometric dialog (if sensitive field changed)
+2. ไม่เรียก PIN/Biometric สำหรับการแก้ข้อมูล tracking ทั่วไป
 3. 🔄 Mock update to local storage
 4. Show success SnackBar
 5. Navigate back to Dashboard or Detail
@@ -1505,7 +1510,7 @@ ThemeData darkTheme = ThemeData(
 - [x] Search and typed category derived provider
 - [x] Category filter functionality
 - [x] Savings selection and dynamic Creep Score
-- [ ] Tablet/desktop layout optimization
+- [x] Tablet/desktop layout optimization (NavigationRail, constrained content, adaptive columns/grid)
 
 ### Week 4: Add/Edit Subscriptions
 - [ ] Add Subscription screen
