@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:subscription_track/features/subscriptions/presentation/add_subscription_screen.dart';
+import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
 import 'package:subscription_track/providers/app_flow_provider.dart';
 import 'package:subscription_track/router/route_constants.dart';
 import 'package:subscription_track/screens/login/login_screen.dart';
 import 'package:subscription_track/screens/main_navigation_shell.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_screen.dart';
 import 'package:subscription_track/screens/splash_screen.dart';
-import 'package:subscription_track/screens/subscription/add_subscription_screen.dart';
-import 'package:subscription_track/screens/subscription/select_package_screen.dart';
 import 'package:subscription_track/screens/notifications/notification_center_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {

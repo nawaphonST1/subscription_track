@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:subscription_track/models/subscription.dart';
-import 'package:subscription_track/providers/subscription_provider.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 
 part 'subscription_filter_provider.g.dart';
 

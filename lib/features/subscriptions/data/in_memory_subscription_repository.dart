@@ -1,5 +1,5 @@
-import 'package:subscription_track/models/subscription.dart';
-import 'package:subscription_track/repositories/subscription_repository.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription_repository.dart';
 
 /// Repository สำหรับพัฒนา UI และทดสอบโดยไม่ต้องรอฐานข้อมูลหรือ API
 final class InMemorySubscriptionRepository implements SubscriptionRepository {

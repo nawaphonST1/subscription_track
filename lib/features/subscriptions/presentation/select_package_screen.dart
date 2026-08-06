@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Preset view model retained during the path-only migration.
 class PresetPackage {
   final String name;
   final double price;
@@ -119,8 +120,10 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
       return _presets;
     }
     return _presets
-        .where((preset) =>
-            preset.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where(
+          (preset) =>
+              preset.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+        )
         .toList();
   }
 
@@ -133,7 +136,9 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1D), // Dark background matching the main app
+      backgroundColor: const Color(
+        0xFF0A0F1D,
+      ), // Dark background matching the main app
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0F1D),
         elevation: 0,
@@ -170,10 +175,16 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                 decoration: InputDecoration(
                   hintText: 'ค้นหาแพ็กเกจ เช่น Netflix, Spotify...',
                   hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF64748B),
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Color(0xFF64748B)),
+                          icon: const Icon(
+                            Icons.clear,
+                            color: Color(0xFF64748B),
+                          ),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {
@@ -223,12 +234,18 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                             const SizedBox(height: 16),
                             const Text(
                               'ไม่พบแพ็กเกจที่ต้องการค้นหา',
-                              style: TextStyle(color: Color(0xFF64748B), fontSize: 16),
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 16,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             const Text(
                               'คุณสามารถกดเพิ่มเองแบบกำหนดเองในหน้าก่อนหน้าได้',
-                              style: TextStyle(color: Color(0xFF475569), fontSize: 13),
+                              style: TextStyle(
+                                color: Color(0xFF475569),
+                                fontSize: 13,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -236,12 +253,13 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                       )
                     : GridView.builder(
                         itemCount: _filteredPresets.length,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 1.1,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 1.1,
+                            ),
                         itemBuilder: (context, index) {
                           final preset = _filteredPresets[index];
                           return InkWell(
@@ -268,7 +286,9 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                                       width: 60,
                                       height: 60,
                                       decoration: BoxDecoration(
-                                        color: preset.iconColor.withOpacity(0.12),
+                                        color: preset.iconColor.withOpacity(
+                                          0.12,
+                                        ),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -276,13 +296,16 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                                   Padding(
                                     padding: const EdgeInsets.all(16.0),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         // Icon
                                         Container(
                                           padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            color: preset.iconColor.withOpacity(0.15),
+                                            color: preset.iconColor.withOpacity(
+                                              0.15,
+                                            ),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(

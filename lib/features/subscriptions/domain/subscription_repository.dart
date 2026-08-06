@@ -1,4 +1,4 @@
-import 'package:subscription_track/models/subscription.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 
 /// Contract กลางสำหรับแหล่งข้อมูล subscription
 ///

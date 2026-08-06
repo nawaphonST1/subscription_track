@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/models/subscription.dart';
-import 'package:subscription_track/screens/subscription/select_package_screen.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
 
 class AddSubscriptionScreen extends StatefulWidget {
   const AddSubscriptionScreen({super.key});
@@ -16,7 +16,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
 
   String _billingPeriod = 'Monthly';
   UsageStatus _usageStatus = UsageStatus.frequent;
-  
+
   // Icon and color selection
   IconData _selectedIcon = Icons.play_circle_fill;
   Color _selectedColor = const Color(0xFF3B82F6);
@@ -58,9 +58,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
   Future<void> _pickFromPresets() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const SelectPackageScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const SelectPackageScreen()),
     );
 
     if (result != null && result is PresetPackage) {
@@ -80,7 +78,8 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
       final double price = double.parse(_priceController.text.trim());
 
       String category = 'other';
-      if (_selectedIcon == Icons.play_circle_fill || _selectedIcon == Icons.movie_filter) {
+      if (_selectedIcon == Icons.play_circle_fill ||
+          _selectedIcon == Icons.movie_filter) {
         category = 'entertainment';
       } else if (_selectedIcon == Icons.music_note) {
         category = 'music';
@@ -225,7 +224,9 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                   decoration: InputDecoration(
                     labelText: 'ชื่อบริการ / ร้านค้า',
                     labelStyle: const TextStyle(color: Color(0xFF64748B)),
-                    floatingLabelStyle: const TextStyle(color: Color(0xFF3B82F6)),
+                    floatingLabelStyle: const TextStyle(
+                      color: Color(0xFF3B82F6),
+                    ),
                     filled: true,
                     fillColor: const Color(0xFF131C2E),
                     border: OutlineInputBorder(
@@ -257,14 +258,29 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                 // Price Input
                 TextFormField(
                   controller: _priceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'ราคา (บาท)',
-                    labelStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14, fontWeight: FontWeight.normal),
-                    floatingLabelStyle: const TextStyle(color: Color(0xFF3B82F6)),
+                    labelStyle: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Color(0xFF3B82F6),
+                    ),
                     prefixText: '฿ ',
-                    prefixStyle: const TextStyle(color: Colors.white, fontSize: 18),
+                    prefixStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFF131C2E),
                     border: OutlineInputBorder(
@@ -300,7 +316,11 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                 // Billing Period Choices
                 const Text(
                   'รอบชำระเงิน',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -339,7 +359,11 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                 // Usage Status Choices
                 const Text(
                   'ระดับการใช้งานในปัจจุบัน',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Column(
@@ -371,7 +395,11 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                 // Icon selection
                 const Text(
                   'เลือกไอคอนสำหรับบริการ',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -397,13 +425,17 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                                 : const Color(0xFF131C2E),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isSelected ? _selectedColor : const Color(0xFF243049),
+                              color: isSelected
+                                  ? _selectedColor
+                                  : const Color(0xFF243049),
                               width: 2,
                             ),
                           ),
                           child: Icon(
                             icon,
-                            color: isSelected ? _selectedColor : const Color(0xFF94A3B8),
+                            color: isSelected
+                                ? _selectedColor
+                                : const Color(0xFF94A3B8),
                             size: 24,
                           ),
                         ),
@@ -416,7 +448,11 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                 // Color selection
                 const Text(
                   'เลือกสีธีม',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -440,7 +476,9 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                             color: color,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? Colors.white : Colors.transparent,
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
                               width: 3,
                             ),
                             boxShadow: isSelected
@@ -449,7 +487,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                                       color: color.withOpacity(0.6),
                                       blurRadius: 10,
                                       spreadRadius: 2,
-                                    )
+                                    ),
                                   ]
                                 : [],
                           ),
@@ -518,9 +556,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
         color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF243049),
         width: 1.5,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       showCheckmark: false,
     );
   }
@@ -582,8 +618,12 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                   Text(
                     title,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFFCBD5E1),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       fontSize: 14,
                     ),
                   ),

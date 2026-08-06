@@ -1,7 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/utils/logger.dart';
-import 'package:subscription_track/models/subscription.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 
 class SubscriptionService {
   final List<Subscription> _subscriptions = [
@@ -71,14 +71,18 @@ class SubscriptionService {
     return right(_subscriptions[index]);
   }
 
-  Future<Either<Failure, Subscription>> create(Subscription subscription) async {
+  Future<Either<Failure, Subscription>> create(
+    Subscription subscription,
+  ) async {
     logger.i('Creating subscription: ${subscription.name}');
     await Future.delayed(const Duration(milliseconds: 300));
     _subscriptions.add(subscription);
     return right(subscription);
   }
 
-  Future<Either<Failure, Subscription>> update(Subscription subscription) async {
+  Future<Either<Failure, Subscription>> update(
+    Subscription subscription,
+  ) async {
     logger.i('Updating subscription: ${subscription.id}');
     await Future.delayed(const Duration(milliseconds: 300));
     final index = _subscriptions.indexWhere((s) => s.id == subscription.id);

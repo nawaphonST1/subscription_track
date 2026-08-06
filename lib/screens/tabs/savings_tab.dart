@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
-import 'package:subscription_track/models/subscription.dart';
-import 'package:subscription_track/providers/subscription_provider.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
 
 class SavingsTab extends ConsumerWidget {

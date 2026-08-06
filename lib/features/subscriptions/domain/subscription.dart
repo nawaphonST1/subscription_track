@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'subscription.freezed.dart';
 part 'subscription.g.dart';
 
+/// Compatibility alias for call sites that still use the previous model name.
 typedef SubscriptionModel = Subscription;
 
 enum UsageStatus {
