@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/models/subscription.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
@@ -45,43 +46,124 @@ class _DashboardContent extends ConsumerWidget {
         return aDate.compareTo(bDate);
       });
 
-    return RefreshIndicator(
-      onRefresh: ref.read(subscriptionListProvider.notifier).refresh,
-      child: ListView(
-        key: const PageStorageKey<String>('dashboard-tab'),
-        padding: const EdgeInsets.all(16),
-        children: [
-          _HeroPayoutCard(monthlyTotal: monthlyTotal, creepScore: creepScore),
-          const SizedBox(height: 22),
-          const _SectionTitle(
-            title: 'รายการใกล้ตัดเงิน',
-            subtitle: 'เรียงตามวันชำระถัดไป',
+    final unusedAlert = _UnusedAlertCard(
+      count: unused.length,
+      monthlySavings: unused.fold<double>(
+        0,
+        (total, item) => total + item.monthlyPrice,
+      ),
+      onOpenSavings: () => ref.read(currentTabProvider.notifier).select(2),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useTwoColumns = constraints.maxWidth >= AppBreakpoints.desktop;
+
+        return RefreshIndicator(
+          onRefresh: ref.read(subscriptionListProvider.notifier).refresh,
+          child: ListView(
+            key: const PageStorageKey<String>('dashboard-tab'),
+            padding: const EdgeInsets.all(16),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppBreakpoints.contentMaxWidth,
+                  ),
+                  child: useTwoColumns
+                      ? Row(
+                          key: const Key('dashboard-desktop-layout'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _HeroPayoutCard(
+                                    monthlyTotal: monthlyTotal,
+                                    creepScore: creepScore,
+                                  ),
+                                  const SizedBox(height: 22),
+                                  unusedAlert,
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 22),
+                            Expanded(
+                              child: _RenewalsSection(
+                                subscriptions: upcoming,
+                                useGrid: true,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _HeroPayoutCard(
+                              monthlyTotal: monthlyTotal,
+                              creepScore: creepScore,
+                            ),
+                            const SizedBox(height: 22),
+                            _RenewalsSection(subscriptions: upcoming),
+                            const SizedBox(height: 22),
+                            unusedAlert,
+                          ],
+                        ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+        );
+      },
+    );
+  }
+}
+
+class _RenewalsSection extends StatelessWidget {
+  const _RenewalsSection({required this.subscriptions, this.useGrid = false});
+
+  final List<Subscription> subscriptions;
+  final bool useGrid;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionTitle(
+          title: 'รายการใกล้ตัดเงิน',
+          subtitle: 'เรียงตามวันชำระถัดไป',
+        ),
+        const SizedBox(height: 10),
+        if (useGrid)
+          GridView.builder(
+            key: const Key('renewals-desktop-grid'),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: subscriptions.length,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 250,
+              mainAxisExtent: 90,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemBuilder: (context, index) => _RenewalChip(
+              subscription: subscriptions[index],
+              fillWidth: true,
+            ),
+          )
+        else
           SizedBox(
             height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: upcoming.length,
+              itemCount: subscriptions.length,
               separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final subscription = upcoming[index];
-                return _RenewalChip(subscription: subscription);
-              },
+              itemBuilder: (context, index) =>
+                  _RenewalChip(subscription: subscriptions[index]),
             ),
           ),
-          const SizedBox(height: 22),
-          _UnusedAlertCard(
-            count: unused.length,
-            monthlySavings: unused.fold<double>(
-              0,
-              (total, item) => total + item.monthlyPrice,
-            ),
-            onOpenSavings: () =>
-                ref.read(currentTabProvider.notifier).select(2),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -167,9 +249,10 @@ class _HeroPayoutCard extends StatelessWidget {
 }
 
 class _RenewalChip extends StatelessWidget {
-  const _RenewalChip({required this.subscription});
+  const _RenewalChip({required this.subscription, this.fillWidth = false});
 
   final Subscription subscription;
+  final bool fillWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +263,7 @@ class _RenewalChip extends StatelessWidget {
         .clamp(0, 999);
 
     return Container(
-      width: 154,
+      width: fillWidth ? null : 154,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,

@@ -18,7 +18,7 @@ Widget _buildShell() {
 }
 
 void main() {
-  testWidgets('switches between all four destinations', (tester) async {
+  testWidgets('switches between every integrated destination', (tester) async {
     await tester.pumpWidget(_buildShell());
     await tester.pumpAndSettle();
 
@@ -33,8 +33,78 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('savings-goal-banner')), findsOneWidget);
 
+    await tester.tap(find.text('ตั้งค่า'));
+    await tester.pumpAndSettle();
+    expect(find.text('แจ้งเตือนก่อนตัดเงิน'), findsOneWidget);
+
     await tester.tap(find.text('โปรไฟล์'));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('profile-income-setting')), findsOneWidget);
+    expect(find.text('แจ้งเตือนก่อนตัดเงิน'), findsNothing);
+  });
+
+  testWidgets('uses bottom navigation on a mobile-width window', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_buildShell());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('main-bottom-navigation')), findsOneWidget);
+    expect(find.byKey(const Key('main-navigation-rail')), findsNothing);
+    expect(find.byKey(const Key('dashboard-desktop-layout')), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    for (final destination in ['รายการ', 'ประหยัด', 'ตั้งค่า', 'โปรไฟล์']) {
+      await tester.tap(find.text(destination));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: destination);
+    }
+  });
+
+  testWidgets('adapts navigation and tab content for desktop width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_buildShell());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('main-navigation-rail')), findsOneWidget);
+    expect(find.byKey(const Key('main-bottom-navigation')), findsNothing);
+    expect(find.byKey(const Key('dashboard-desktop-layout')), findsOneWidget);
+    expect(find.byKey(const Key('renewals-desktop-grid')), findsOneWidget);
+
+    await tester.tap(find.text('รายการ'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('subscriptions-desktop-grid')), findsOneWidget);
+
+    await tester.tap(find.text('ประหยัด'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('savings-desktop-layout')), findsOneWidget);
+
+    for (final destination in ['ตั้งค่า', 'โปรไฟล์']) {
+      await tester.tap(find.text(destination));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: destination);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('header avatar opens the profile destination', (tester) async {
+    await tester.pumpWidget(_buildShell());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('header-profile-button')));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const Key('profile-income-setting')), findsOneWidget);
     expect(find.text('แจ้งเตือนก่อนตัดเงิน'), findsNothing);
   });
