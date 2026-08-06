@@ -54,7 +54,7 @@ class MainNavigationShell extends ConsumerWidget {
       const DashboardTab(),
       const SubscriptionsTab(),
       const SavingsTab(),
-      const SettingTab(),
+      const SettingsTab(),
       ProfileTab(onEditIncome: editIncome),
     ];
 

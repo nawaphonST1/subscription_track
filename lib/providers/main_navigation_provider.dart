@@ -4,11 +4,6 @@ final currentTabProvider = NotifierProvider<CurrentTabController, int>(
   CurrentTabController.new,
 );
 
-final notificationReminderProvider =
-    NotifierProvider<NotificationReminderController, bool>(
-      NotificationReminderController.new,
-    );
-
 final class CurrentTabController extends Notifier<int> {
   @override
   int build() => 0;
@@ -16,11 +11,4 @@ final class CurrentTabController extends Notifier<int> {
   void select(int index) {
     if (index >= 0 && index < 5) state = index;
   }
-}
-
-final class NotificationReminderController extends Notifier<bool> {
-  @override
-  bool build() => true;
-
-  void update({required bool enabled}) => state = enabled;
 }
