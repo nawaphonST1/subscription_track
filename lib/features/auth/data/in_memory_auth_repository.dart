@@ -1,17 +1,19 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/utils/logger.dart';
+import 'package:subscription_track/features/auth/domain/auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
-class AuthService {
+class InMemoryAuthRepository implements AuthRepository {
   User? _currentUser;
 
   User? get currentUser => _currentUser;
 
+  @override
   Future<Either<Failure, User>> loginWithGoogle() async {
     logger.i('Mock Google login');
     await Future.delayed(const Duration(seconds: 1));
-    
+
     _currentUser = const User(
       id: 'mock-user-123',
       email: 'user@example.com',
@@ -21,14 +23,15 @@ class AuthService {
       income: 35000,
       currency: 'THB',
     );
-    
+
     return right(_currentUser!);
   }
 
+  @override
   Future<Either<Failure, User>> loginWithApple() async {
     logger.i('Mock Apple login');
     await Future.delayed(const Duration(seconds: 1));
-    
+
     _currentUser = const User(
       id: 'mock-user-456',
       email: 'user@icloud.com',
@@ -38,10 +41,11 @@ class AuthService {
       income: 35000,
       currency: 'THB',
     );
-    
+
     return right(_currentUser!);
   }
 
+  @override
   Future<Either<Failure, Unit>> logout() async {
     logger.i('Logout');
     _currentUser = null;
