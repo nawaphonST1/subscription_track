@@ -17,6 +17,8 @@ class RouteConstants {
   static const String notifications = 'notifications';
 
   // Helper methods
-  static String subscriptionDetailPath(String id) => '/dashboard/subscription/$id';
-  static String editSubscriptionPath(String id) => '/dashboard/subscription/$id/edit';
+  static String subscriptionDetailPath(String id) =>
+      '/dashboard/subscription/$id';
+  static String editSubscriptionPath(String id) =>
+      '/dashboard/subscription/$id/edit';
 }
