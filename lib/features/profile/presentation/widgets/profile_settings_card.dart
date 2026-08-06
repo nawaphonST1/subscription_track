@@ -6,12 +6,14 @@ class ProfileSettingsCard extends StatelessWidget {
     required this.income,
     required this.onEditIncome,
     required this.onOpenPinSettings,
+    required this.onOpenPersonalInfo,
     super.key,
   });
 
   final double income;
   final VoidCallback onEditIncome;
   final VoidCallback onOpenPinSettings;
+  final VoidCallback onOpenPersonalInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +41,16 @@ class ProfileSettingsCard extends StatelessWidget {
             onTap: onOpenPinSettings,
             leading: const Icon(Icons.shield_rounded, color: AppColors.warning),
             title: const Text('รหัส PIN ความปลอดภัย'),
-            subtitle: const Text('ยังไม่เปิดใช้งานใน MVP'),
+            subtitle: const Text('ตั้งค่าหรือเปลี่ยนรหัสผ่านใช้งาน'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const Key('personal-info-setting'),
+            onTap: onOpenPersonalInfo,
+            leading: const Icon(Icons.person_rounded, color: AppColors.primary),
+            title: const Text('ข้อมูลส่วนตัว'),
+            subtitle: const Text('จัดการ ชื่อ, นามสกุล, เบอร์โทร, บัตรปชช, วันเกิด'),
             trailing: const Icon(Icons.chevron_right_rounded),
           ),
         ],

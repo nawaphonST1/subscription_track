@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/application/current_tab_controller.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
+import 'package:subscription_track/features/profile/application/personal_info_controller.dart';
 
 class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
   const MainAppHeader({required this.onEditIncome, super.key});
@@ -14,7 +16,9 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final income = ref.watch(userIncomeProvider);
+    final personalInfo = ref.watch(personalInfoProvider);
     final theme = Theme.of(context);
+    final initialLetter = personalInfo.firstName.isNotEmpty ? personalInfo.firstName[0].toUpperCase() : 'N';
 
     return AppBar(
       automaticallyImplyLeading: false,
@@ -30,7 +34,7 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
               radius: 19,
               backgroundColor: theme.colorScheme.primary,
               child: Text(
-                'N',
+                initialLetter,
                 style: TextStyle(
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w800,
@@ -53,7 +57,7 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   ),
                 ),
                 Text(
-                  'สวัสดี, คุณเน 👋',
+                  'สวัสดี, คุณ${personalInfo.firstName} 👋',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -64,6 +68,15 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            key: const Key('notification-button'),
+            onPressed: () => context.push('/dashboard/notifications'),
+            icon: Icon(
+              Icons.notifications_none_rounded,
+              color: theme.colorScheme.primary,
+            ),
+            tooltip: 'การแจ้งเตือน',
           ),
           ActionChip(
             key: const Key('income-chip'),

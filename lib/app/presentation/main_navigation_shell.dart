@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/application/current_tab_controller.dart';
 import 'package:subscription_track/app/presentation/widgets/main_app_header.dart';
 import 'package:subscription_track/app/presentation/widgets/main_app_navigation.dart';
@@ -11,6 +12,9 @@ import 'package:subscription_track/features/profile/presentation/profile_tab.dar
 import 'package:subscription_track/features/savings/presentation/savings_tab.dart';
 import 'package:subscription_track/features/settings/presentation/settings_tab.dart';
 import 'package:subscription_track/features/subscriptions/presentation/subscriptions_tab.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/core/widgets/pin_verification_dialog.dart';
 
 class MainNavigationShell extends ConsumerWidget {
   const MainNavigationShell({super.key});
@@ -55,11 +59,30 @@ class MainNavigationShell extends ConsumerWidget {
           floatingActionButton: currentTab == 1
               ? FloatingActionButton.extended(
                   key: const Key('add-subscription-button'),
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('แบบฟอร์มเพิ่มบริการจะเชื่อมในงานถัดไป'),
-                    ),
-                  ),
+                  onPressed: () async {
+                    final subscription = await context.push<Subscription>('/dashboard/add');
+                    if (subscription != null && context.mounted) {
+                      final pinVerified = await PinVerificationDialog.show(
+                        context: context,
+                        title: 'ยืนยันการเพิ่มบริการ',
+                        message: 'กรุณากรอกรหัส PIN เพื่อเพิ่มบริการ ${subscription.name}',
+                      );
+                      if (!pinVerified || !context.mounted) return;
+
+                      try {
+                        await ref.read(subscriptionListProvider.notifier).addSubscription(subscription);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('เพิ่มบริการ ${subscription.name} สำเร็จ')),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('เพิ่มบริการไม่สำเร็จ กรุณาลองอีกครั้ง')),
+                        );
+                      }
+                    }
+                  },
                   icon: const Icon(Icons.add_rounded),
                   label: const Text('เพิ่มบริการ'),
                 )

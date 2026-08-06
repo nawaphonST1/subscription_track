@@ -8,6 +8,7 @@ import 'package:subscription_track/features/subscriptions/presentation/widgets/s
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_empty_state.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_filter_bar.dart';
 import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
+import 'package:subscription_track/core/widgets/pin_verification_dialog.dart';
 
 class SubscriptionsTab extends ConsumerWidget {
   const SubscriptionsTab({super.key});
@@ -91,6 +92,13 @@ class SubscriptionsTab extends ConsumerWidget {
       icon: Icons.delete_outline_rounded,
     );
     if (!shouldDelete || !context.mounted) return;
+
+    final pinVerified = await PinVerificationDialog.show(
+      context: context,
+      title: 'ยืนยันการลบบริการ',
+      message: 'กรุณากรอกรหัส PIN เพื่อลบบริการ ${subscription.name}',
+    );
+    if (!pinVerified || !context.mounted) return;
 
     try {
       await ref

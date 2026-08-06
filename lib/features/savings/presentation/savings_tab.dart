@@ -5,6 +5,7 @@ import 'package:subscription_track/features/savings/application/savings_provider
 import 'package:subscription_track/features/savings/presentation/widgets/savings_checklist.dart';
 import 'package:subscription_track/features/savings/presentation/widgets/savings_summary.dart';
 import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
+import 'package:subscription_track/core/widgets/pin_verification_dialog.dart';
 
 class SavingsTab extends ConsumerWidget {
   const SavingsTab({super.key});
@@ -99,6 +100,13 @@ class _SavingsContent extends ConsumerWidget {
       icon: Icons.delete_sweep_rounded,
     );
     if (!confirmed || !context.mounted) return;
+
+    final pinVerified = await PinVerificationDialog.show(
+      context: context,
+      title: 'ยืนยันการยกเลิกบริการ',
+      message: 'กรุณากรอกรหัส PIN เพื่อยกเลิกบริการที่เลือกทั้งหมด ${state.selectedCount} รายการ',
+    );
+    if (!pinVerified || !context.mounted) return;
 
     try {
       await actions.deleteSelected();
