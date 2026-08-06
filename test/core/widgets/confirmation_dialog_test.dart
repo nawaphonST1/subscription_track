@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_theme.dart';
-import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
+import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
 
 void main() {
   testWidgets('returns false when the user cancels', (tester) async {

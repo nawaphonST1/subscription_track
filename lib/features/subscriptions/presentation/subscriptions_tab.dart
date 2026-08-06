@@ -7,7 +7,7 @@ import 'package:subscription_track/features/subscriptions/presentation/widgets/s
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_detail_sheet.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_empty_state.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_filter_bar.dart';
-import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
+import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
 
 class SubscriptionsTab extends ConsumerWidget {
   const SubscriptionsTab({super.key});
