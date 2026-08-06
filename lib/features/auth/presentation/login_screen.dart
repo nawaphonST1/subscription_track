@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:subscription_track/models/user.dart';
-import 'package:subscription_track/providers/auth_provider.dart';
+import 'package:subscription_track/features/auth/application/auth_provider.dart';
+import 'package:subscription_track/features/auth/domain/user.dart';
 import 'package:subscription_track/router/route_constants.dart';
 
 class LoginScreen extends ConsumerWidget {
