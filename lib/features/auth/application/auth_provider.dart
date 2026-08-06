@@ -1,23 +1,27 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:subscription_track/features/auth/data/auth_service.dart';
+import 'package:subscription_track/features/auth/data/in_memory_auth_repository.dart';
+import 'package:subscription_track/features/auth/domain/auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
-import 'package:subscription_track/services/service_providers.dart';
 
 part 'auth_provider.g.dart';
 
+final authRepositoryProvider = Provider<AuthRepository>(
+  (ref) => InMemoryAuthRepository(),
+);
+
 @riverpod
 class AuthNotifier extends _$AuthNotifier {
-  late final AuthService _authService;
+  AuthRepository get _repository => ref.read(authRepositoryProvider);
 
   @override
   AsyncValue<User?> build() {
-    _authService = ref.read(authServiceProvider);
     return const AsyncValue.data(null);
   }
 
   Future<void> loginWithGoogle() async {
     state = const AsyncValue.loading();
-    final result = await _authService.loginWithGoogle();
+    final result = await _repository.loginWithGoogle();
     state = result.fold(
       (failure) => AsyncValue.error(failure, StackTrace.current),
       (user) => AsyncValue.data(user),
@@ -26,7 +30,7 @@ class AuthNotifier extends _$AuthNotifier {
 
   Future<void> loginWithApple() async {
     state = const AsyncValue.loading();
-    final result = await _authService.loginWithApple();
+    final result = await _repository.loginWithApple();
     state = result.fold(
       (failure) => AsyncValue.error(failure, StackTrace.current),
       (user) => AsyncValue.data(user),
@@ -35,7 +39,10 @@ class AuthNotifier extends _$AuthNotifier {
 
   Future<void> logout() async {
     state = const AsyncValue.loading();
-    await _authService.logout();
-    state = const AsyncValue.data(null);
+    final result = await _repository.logout();
+    state = result.fold(
+      (failure) => AsyncValue.error(failure, StackTrace.current),
+      (_) => const AsyncValue.data(null),
+    );
   }
 }
