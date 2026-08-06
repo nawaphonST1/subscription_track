@@ -4,7 +4,7 @@ import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/features/savings/application/savings_provider.dart';
 import 'package:subscription_track/features/savings/presentation/widgets/savings_checklist.dart';
 import 'package:subscription_track/features/savings/presentation/widgets/savings_summary.dart';
-import 'package:subscription_track/widgets/common/confirmation_dialog.dart';
+import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
 
 class SavingsTab extends ConsumerWidget {
   const SavingsTab({super.key});
