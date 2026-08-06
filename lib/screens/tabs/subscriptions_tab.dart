@@ -84,12 +84,38 @@ class SubscriptionsTab extends ConsumerWidget {
                       .toggleSelection(items[index].id),
                   onDelete: () =>
                       _deleteSubscription(context, ref, items[index]),
+                  onShowDetails: () =>
+                      _showSubscriptionDetails(context, ref, items[index]),
                 ),
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showSubscriptionDetails(
+    BuildContext context,
+    WidgetRef ref,
+    Subscription subscription,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.bgSecondary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return _SubscriptionDetailSheet(
+          subscription: subscription,
+          onSaved: (updatedSubscription) {
+            ref.read(subscriptionListProvider.notifier).updateSubscription(updatedSubscription);
+          },
+        );
+      },
     );
   }
 
@@ -135,11 +161,13 @@ class _SubscriptionListTile extends StatelessWidget {
     required this.subscription,
     required this.onToggle,
     required this.onDelete,
+    required this.onShowDetails,
   });
 
   final Subscription subscription;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onShowDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +176,7 @@ class _SubscriptionListTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: ListTile(
         key: Key('subscription-${subscription.id}'),
+        onTap: onShowDetails,
         contentPadding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
         leading: CircleAvatar(
           backgroundColor: AppColors.bgPrimary,
@@ -201,6 +230,273 @@ class _SubscriptionListTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SubscriptionDetailSheet extends StatefulWidget {
+  const _SubscriptionDetailSheet({
+    required this.subscription,
+    required this.onSaved,
+  });
+
+  final Subscription subscription;
+  final ValueChanged<Subscription> onSaved;
+
+  @override
+  State<_SubscriptionDetailSheet> createState() => _SubscriptionDetailSheetState();
+}
+
+class _SubscriptionDetailSheetState extends State<_SubscriptionDetailSheet> {
+  late bool reminderEnabled = widget.subscription.reminderEnabled;
+  late int reminderDays = widget.subscription.reminderEnabled ? 3 : 0;
+  late bool markCancelled = widget.subscription.usageStatus.toLowerCase() == 'cancelled';
+
+  @override
+  Widget build(BuildContext context) {
+    final nextBillingDate = widget.subscription.nextBillingDate?.toLocal().toString().split(' ')[0] ?? 'ยังไม่กำหนด';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.bgPrimary,
+                  child: Icon(
+                    widget.subscription.iconData,
+                    color: widget.subscription.iconColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.subscription.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.subscription.billingPeriod,
+                        style: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'รายละเอียดบริการ',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      reminderEnabled = widget.subscription.reminderEnabled;
+                      reminderDays = widget.subscription.reminderEnabled ? 3 : 0;
+                      markCancelled = widget.subscription.usageStatus.toLowerCase() == 'cancelled';
+                    });
+                  },
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  label: const Text('แก้ไข'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DetailRow(label: 'หมวดหมู่', value: widget.subscription.category),
+            _DetailRow(label: 'งวดชำระ', value: widget.subscription.billingPeriod),
+            _DetailRow(label: 'วันชำระครั้งถัดไป', value: nextBillingDate),
+            _DetailRow(
+              label: 'ค่าใช้จ่ายต่อเดือน',
+              value: '฿${widget.subscription.monthlyPrice.toStringAsFixed(0)}',
+            ),
+            _DetailRow(label: 'สถานะการใช้งาน', value: widget.subscription.usageStatusText),
+            _DetailRow(label: 'ความเชื่อมั่น', value: '${widget.subscription.confidence}%'),
+            const SizedBox(height: 16),
+            const Text(
+              'การแจ้งเตือน',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('เปิดการแจ้งเตือน', style: TextStyle(color: Colors.white)),
+              value: reminderEnabled,
+              onChanged: (value) {
+                setState(() {
+                  reminderEnabled = value;
+                  if (!value) {
+                    reminderDays = 0;
+                  } else if (reminderDays == 0) {
+                    reminderDays = 3;
+                  }
+                });
+              },
+            ),
+            if (reminderEnabled)
+              Wrap(
+                spacing: 8,
+                children: [
+                  _ReminderChip(label: '3 วัน', selected: reminderDays == 3, onTap: () {
+                    setState(() => reminderDays = 3);
+                  }),
+                  _ReminderChip(label: '7 วัน', selected: reminderDays == 7, onTap: () {
+                    setState(() => reminderDays = 7);
+                  }),
+                ],
+              ),
+            const SizedBox(height: 12),
+            CheckboxListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('ยกเลิกแล้ว', style: TextStyle(color: Colors.white)),
+              value: markCancelled,
+              onChanged: (value) {
+                setState(() => markCancelled = value ?? false);
+              },
+            ),
+            const SizedBox(height: 16),
+            if (reminderEnabled)
+              Text(
+                'เตือนล่วงหน้า $reminderDays วัน',
+                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+              ),
+            if (markCancelled)
+              Text(
+                'ยกเลิกแล้ว',
+                style: const TextStyle(color: AppColors.success, fontSize: 12),
+              ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('ยกเลิก'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      final reminderFields = widget.subscription.customFields
+                          .where((entry) => entry['key'] != 'reminderDays')
+                          .toList(growable: false);
+
+                      final updatedSubscription = widget.subscription.copyWith(
+                        reminderEnabled: reminderEnabled,
+                        usageStatus: markCancelled
+                            ? 'cancelled'
+                            : (widget.subscription.usageStatus.toLowerCase() == 'cancelled'
+                                  ? 'moderate'
+                                  : widget.subscription.usageStatus),
+                        customFields: reminderEnabled
+                            ? [
+                                ...reminderFields,
+                                {'key': 'reminderDays', 'value': reminderDays.toString()},
+                              ]
+                            : reminderFields,
+                      );
+
+                      widget.onSaved(updatedSubscription);
+                      Navigator.of(context).pop();
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                    child: const Text('บันทึก'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReminderChip extends StatelessWidget {
+  const _ReminderChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.bgPrimary,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(color: selected ? Colors.white : AppColors.textTertiary),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }
