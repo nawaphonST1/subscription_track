@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/subscription.dart';
-import 'select_package_screen.dart';
+import 'package:subscription_track/models/subscription.dart';
+import 'package:subscription_track/screens/subscription/select_package_screen.dart';
 
 class AddSubscriptionScreen extends StatefulWidget {
   const AddSubscriptionScreen({super.key});
@@ -79,15 +79,27 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
       final String name = _nameController.text.trim();
       final double price = double.parse(_priceController.text.trim());
 
+      String category = 'other';
+      if (_selectedIcon == Icons.play_circle_fill || _selectedIcon == Icons.movie_filter) {
+        category = 'entertainment';
+      } else if (_selectedIcon == Icons.music_note) {
+        category = 'music';
+      } else if (_selectedIcon == Icons.chat_bubble) {
+        category = 'ai';
+      } else if (_selectedIcon == Icons.cloud) {
+        category = 'cloud';
+      } else if (_selectedIcon == Icons.palette) {
+        category = 'design';
+      }
+
       final newSubscription = SubscriptionModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: name,
         price: price,
         confidence: 100, // Manual additions have 100% confidence
-        usageStatus: _usageStatus,
-        billingPeriod: _billingPeriod,
-        iconData: _selectedIcon,
-        iconColor: _selectedColor,
+        usageStatus: _usageStatus.nameValue,
+        billingPeriod: _billingPeriod.toLowerCase(),
+        category: category,
       );
 
       Navigator.pop(context, newSubscription);
