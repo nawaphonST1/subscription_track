@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/providers/app_flow_provider.dart';
+import 'package:subscription_track/router/route_constants.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_controls.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_data.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_page.dart';
@@ -54,8 +56,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _finishOnboarding() {
-    // เปลี่ยน state แล้วให้ Router เลือก Login/Dashboard แทนการสั่ง context.go
     ref.read(onboardingProvider.notifier).setCompleted(true);
+    if (mounted) {
+      context.go(RouteConstants.login);
+    }
   }
 
   @override
