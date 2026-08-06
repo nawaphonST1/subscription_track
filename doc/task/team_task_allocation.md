@@ -609,10 +609,10 @@ develop ← merge all features here
 - [x] Tablet/desktop layout verified
 
 **Week 4:**
-- [ ] PIN dialog refactored
+- [ ] PIN dialog deferred until a real sensitive action is in MVP scope (YAGNI)
 - [ ] Biometric dialog deferred until a real sensitive action is in MVP scope (YAGNI)
-- [ ] Confirm dialog created
-- [ ] All dialogs tested
+- [x] Generic confirmation dialog created
+- [x] Implemented confirmation flows covered by widget tests
 
 **Week 5+:**
 - [ ] Code review for P2 & P3

@@ -119,7 +119,7 @@ InMemorySubscriptionRepository (mock I/O delay 300 ms)
 | **Onboarding** | หน้าแนะนำแอปครั้งแรก, กรอกรายได้ |
 | **Dashboard** | 4-tab mobile shell: KPI/Creep, รายการ, Saving Simulation และ Profile/Settings |
 | **Add Subscription** | เลือกจาก Preset Packages หรือกรอกเอง |
-| **Edit/Delete Subscription** | แก้ไขรายละเอียด, ลบพร้อม PIN/Biometric |
+| **Edit/Delete Subscription** | แก้ไขรายละเอียด; ลบด้วย Generic Confirmation หรือ Undo (ไม่ใช้ PIN/Biometric สำหรับ tracking action) |
 | **Category Filter** | ทั้งหมด, สตรีมมิ่ง, AI, คลาวด์, สร้างสรรค์ (มีอยู่แล้ว) |
 | **Saving Simulation** | คำนวณเงินประหยัดเมื่อเลือกยกเลิก (มีอยู่แล้ว) |
 | **Local Storage** | Hive เก็บข้อมูล subscription, รองรับ Offline |
@@ -259,7 +259,7 @@ GET    /subscriptions              → ดึงรายการทั้ง�
 POST   /subscriptions              → เพิ่ม subscription
 GET    /subscriptions/:id          → ดึงรายละเอียด
 PATCH  /subscriptions/:id          → แก้ไข
-DELETE /subscriptions/:id          → ลบ (ต้องผ่าน PIN/Biometric)
+DELETE /subscriptions/:id          → ลบหลังผู้ใช้ยืนยันแบบ Generic Confirmation
 POST   /subscriptions/:id/toggle   → Toggle isSelected (simulation)
 GET    /subscriptions/analytics    → ดึงสถิติรายจ่าย
 ```
