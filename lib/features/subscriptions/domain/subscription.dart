@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'subscription.freezed.dart';
@@ -57,66 +56,6 @@ extension SubscriptionExtension on Subscription {
       'monthly' => price * 12,
       'quarterly' => price * 4,
       _ => price,
-    };
-  }
-
-  IconData get iconData {
-    final lowerName = name.toLowerCase();
-    final lowerCat = category.toLowerCase();
-    if (lowerName.contains('netflix') || lowerCat.contains('entertainment')) {
-      return Icons.play_circle_fill;
-    }
-    if (lowerName.contains('spotify') || lowerCat.contains('music')) {
-      return Icons.music_note;
-    }
-    if (lowerName.contains('chatgpt') || lowerCat.contains('ai')) {
-      return Icons.chat_bubble;
-    }
-    if (lowerName.contains('google') || lowerCat.contains('cloud')) {
-      return Icons.cloud;
-    }
-    if (lowerName.contains('adobe') || lowerCat.contains('design')) {
-      return Icons.palette;
-    }
-    return Icons.subscriptions;
-  }
-
-  Color get iconColor {
-    final lowerName = name.toLowerCase();
-    final lowerCat = category.toLowerCase();
-    if (lowerName.contains('netflix') || lowerCat.contains('entertainment')) {
-      return const Color(0xFF3B82F6);
-    }
-    if (lowerName.contains('spotify') || lowerCat.contains('music')) {
-      return const Color(0xFF10B981);
-    }
-    if (lowerName.contains('chatgpt') || lowerCat.contains('ai')) {
-      return const Color(0xFF8B5CF6);
-    }
-    if (lowerName.contains('google') || lowerCat.contains('cloud')) {
-      return const Color(0xFFF59E0B);
-    }
-    if (lowerName.contains('adobe') || lowerCat.contains('design')) {
-      return const Color(0xFFEF4444);
-    }
-    return const Color(0xFF6366F1);
-  }
-
-  Color get usageStatusColor {
-    return switch (usageStatus.toLowerCase()) {
-      'frequent' => const Color(0xFF10B981),
-      'moderate' => const Color(0xFFF59E0B),
-      'unused' => const Color(0xFFEF4444),
-      _ => const Color(0xFF64748B),
-    };
-  }
-
-  String get usageStatusText {
-    return switch (usageStatus.toLowerCase()) {
-      'frequent' => 'ใช้งานบ่อย',
-      'moderate' => 'ใช้งานปานกลาง',
-      'unused' => 'ไม่ได้ใช้งาน',
-      _ => usageStatus,
     };
   }
 }
