@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:subscription_track/app/application/app_flow_provider.dart';
+import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/linked_accounts_card.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/profile_identity_card.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/profile_settings_card.dart';
-import 'package:subscription_track/providers/app_flow_provider.dart';
-import 'package:subscription_track/router/route_constants.dart';
 
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key, required this.onEditIncome});

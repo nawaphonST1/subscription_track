@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:subscription_track/app.dart';
-import 'package:subscription_track/providers/app_flow_provider.dart';
+import 'package:subscription_track/app/app.dart';
+import 'package:subscription_track/app/application/app_flow_provider.dart';
 
 ProviderScope _buildTestApp(AppFlowState initialState) {
   return ProviderScope(

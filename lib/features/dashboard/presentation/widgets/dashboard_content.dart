@@ -6,7 +6,7 @@ import 'package:subscription_track/features/dashboard/presentation/widgets/dashb
 import 'package:subscription_track/features/dashboard/presentation/widgets/dashboard_renewals_section.dart';
 import 'package:subscription_track/features/dashboard/presentation/widgets/dashboard_unused_alert.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
-import 'package:subscription_track/providers/main_navigation_provider.dart';
+import 'package:subscription_track/app/application/current_tab_controller.dart';
 
 class DashboardContent extends ConsumerWidget {
   const DashboardContent({required this.summary, super.key});
