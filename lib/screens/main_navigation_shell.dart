@@ -8,7 +8,7 @@ import 'package:subscription_track/providers/main_navigation_provider.dart';
 import 'package:subscription_track/features/dashboard/presentation/dashboard_tab.dart';
 import 'package:subscription_track/features/profile/presentation/profile_tab.dart';
 import 'package:subscription_track/features/savings/presentation/savings_tab.dart';
-import 'package:subscription_track/screens/tabs/setting_tab.dart';
+import 'package:subscription_track/features/settings/presentation/settings_tab.dart';
 
 class MainNavigationShell extends ConsumerWidget {
   const MainNavigationShell({super.key});
