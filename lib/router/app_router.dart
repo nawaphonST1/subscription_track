@@ -8,6 +8,9 @@ import 'package:subscription_track/screens/login/login_screen.dart';
 import 'package:subscription_track/screens/main_navigation_shell.dart';
 import 'package:subscription_track/screens/onboarding/onboarding_screen.dart';
 import 'package:subscription_track/screens/splash_screen.dart';
+import 'package:subscription_track/screens/subscription/add_subscription_screen.dart';
+import 'package:subscription_track/screens/subscription/select_package_screen.dart';
+import 'package:subscription_track/screens/notifications/notification_center_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
@@ -66,6 +69,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.dashboard,
         builder: (context, state) => const MainNavigationShell(),
+        routes: [
+          GoRoute(
+            path: RouteConstants.addSubscription,
+            builder: (context, state) => const AddSubscriptionScreen(),
+            routes: [
+              GoRoute(
+                path: RouteConstants.selectPackage,
+                builder: (context, state) => const SelectPackageScreen(),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: RouteConstants.notifications,
+            builder: (context, state) => const NotificationCenterScreen(),
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
