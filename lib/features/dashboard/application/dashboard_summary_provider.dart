@@ -1,12 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
-import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
-import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_read_model.dart';
 
 final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
   final income = ref.watch(userIncomeProvider);
   return ref
-      .watch(subscriptionListProvider)
+      .watch(subscriptionReadModelsProvider)
       .whenData(
         (subscriptions) => DashboardSummary.fromSubscriptions(
           subscriptions: subscriptions,
@@ -25,16 +24,14 @@ class DashboardSummary {
   });
 
   factory DashboardSummary.fromSubscriptions({
-    required List<Subscription> subscriptions,
+    required List<SubscriptionReadModel> subscriptions,
     required double monthlyIncome,
   }) {
     final monthlyTotal = subscriptions.fold<double>(
       0,
       (total, item) => total + item.monthlyPrice,
     );
-    final unused = subscriptions.where(
-      (item) => item.usageStatus == UsageStatus.unused.nameValue,
-    );
+    final unused = subscriptions.where((item) => item.usageStatus == 'unused');
     final upcoming =
         subscriptions
             .map(DashboardRenewal.fromSubscription)
@@ -71,7 +68,9 @@ class DashboardRenewal {
     required this.nextBillingDate,
   });
 
-  factory DashboardRenewal.fromSubscription(Subscription subscription) {
+  factory DashboardRenewal.fromSubscription(
+    SubscriptionReadModel subscription,
+  ) {
     return DashboardRenewal(
       name: subscription.name,
       category: subscription.category,

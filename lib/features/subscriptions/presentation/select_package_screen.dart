@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/features/subscriptions/data/preset_package_catalog.dart';
 import 'package:subscription_track/features/subscriptions/domain/preset_package.dart';
+import 'package:subscription_track/features/subscriptions/domain/preset_package_catalog.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/preset_package_grid.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/preset_search_field.dart';
 

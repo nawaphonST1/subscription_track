@@ -5,7 +5,7 @@ import 'package:subscription_track/features/dashboard/application/dashboard_summ
 import 'package:subscription_track/features/dashboard/presentation/widgets/dashboard_hero_card.dart';
 import 'package:subscription_track/features/dashboard/presentation/widgets/dashboard_renewals_section.dart';
 import 'package:subscription_track/features/dashboard/presentation/widgets/dashboard_unused_alert.dart';
-import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_read_model.dart';
 import 'package:subscription_track/app/application/current_tab_controller.dart';
 
 class DashboardContent extends ConsumerWidget {
@@ -25,7 +25,7 @@ class DashboardContent extends ConsumerWidget {
       builder: (context, constraints) {
         final useTwoColumns = constraints.maxWidth >= AppBreakpoints.desktop;
         return RefreshIndicator(
-          onRefresh: ref.read(subscriptionListProvider.notifier).refresh,
+          onRefresh: ref.read(subscriptionCommandsProvider).refresh,
           child: ListView(
             key: const PageStorageKey<String>('dashboard-tab'),
             padding: const EdgeInsets.all(16),

@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
-import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_read_model.dart';
 
 final savingsViewStateProvider = Provider<AsyncValue<SavingsViewState>>((ref) {
-  return ref.watch(subscriptionListProvider).whenData(SavingsViewState.from);
+  return ref
+      .watch(subscriptionReadModelsProvider)
+      .whenData(SavingsViewState.from);
 });
 
 final savingsActionsProvider = Provider<SavingsActions>(SavingsActions.new);
@@ -14,15 +15,15 @@ class SavingsActions {
   final Ref _ref;
 
   Future<void> refresh() {
-    return _ref.read(subscriptionListProvider.notifier).refresh();
+    return _ref.read(subscriptionCommandsProvider).refresh();
   }
 
   Future<void> toggleSelection(String id) {
-    return _ref.read(subscriptionListProvider.notifier).toggleSelection(id);
+    return _ref.read(subscriptionCommandsProvider).toggleSelection(id);
   }
 
   Future<void> deleteSelected() {
-    return _ref.read(subscriptionListProvider.notifier).deleteSelected();
+    return _ref.read(subscriptionCommandsProvider).deleteSelected();
   }
 }
 
@@ -33,7 +34,7 @@ class SavingsViewState {
     required this.yearlySavings,
   });
 
-  factory SavingsViewState.from(List<Subscription> subscriptions) {
+  factory SavingsViewState.from(List<SubscriptionReadModel> subscriptions) {
     final items = subscriptions.map(SavingsItem.from).toList(growable: false);
     final selectedItems = items.where((item) => item.isSelected);
     return SavingsViewState(
@@ -62,7 +63,7 @@ class SavingsItem {
     required this.isSelected,
   });
 
-  factory SavingsItem.from(Subscription subscription) {
+  factory SavingsItem.from(SubscriptionReadModel subscription) {
     return SavingsItem(
       id: subscription.id,
       name: subscription.name,

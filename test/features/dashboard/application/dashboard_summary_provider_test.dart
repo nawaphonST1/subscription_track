@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/features/dashboard/application/dashboard_summary_provider.dart';
-import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_read_model.dart';
 
 void main() {
   test('calculates totals, risk, savings, and renewal order', () {
@@ -9,19 +9,22 @@ void main() {
     final summary = DashboardSummary.fromSubscriptions(
       monthlyIncome: 10000,
       subscriptions: [
-        Subscription(
+        SubscriptionReadModel(
           id: 'yearly-unused',
           name: 'Annual Service',
-          price: 1200,
-          billingPeriod: 'yearly',
-          usageStatus: UsageStatus.unused.nameValue,
+          category: 'other',
+          monthlyPrice: 100,
+          usageStatus: 'unused',
+          isSelected: false,
           nextBillingDate: later,
         ),
-        Subscription(
+        SubscriptionReadModel(
           id: 'monthly-active',
           name: 'Monthly Service',
-          price: 400,
-          usageStatus: UsageStatus.frequent.nameValue,
+          category: 'other',
+          monthlyPrice: 400,
+          usageStatus: 'frequent',
+          isSelected: false,
           nextBillingDate: sooner,
         ),
       ],

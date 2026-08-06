@@ -1,24 +1,37 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/features/savings/application/savings_provider.dart';
-import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_read_model.dart';
 
 void main() {
   test('derives selected count and yearly savings from subscription state', () {
     final state = SavingsViewState.from([
-      const Subscription(
+      const SubscriptionReadModel(
         id: 'monthly',
         name: 'Monthly',
-        price: 100,
+        category: 'other',
+        monthlyPrice: 100,
+        usageStatus: 'frequent',
         isSelected: true,
+        nextBillingDate: null,
       ),
-      const Subscription(
+      const SubscriptionReadModel(
         id: 'yearly',
         name: 'Yearly',
-        price: 1200,
-        billingPeriod: 'yearly',
+        category: 'other',
+        monthlyPrice: 100,
+        usageStatus: 'frequent',
         isSelected: true,
+        nextBillingDate: null,
       ),
-      const Subscription(id: 'ignored', name: 'Ignored', price: 500),
+      const SubscriptionReadModel(
+        id: 'ignored',
+        name: 'Ignored',
+        category: 'other',
+        monthlyPrice: 500,
+        usageStatus: 'frequent',
+        isSelected: false,
+        nextBillingDate: null,
+      ),
     ]);
 
     expect(state.selectedCount, 2);
