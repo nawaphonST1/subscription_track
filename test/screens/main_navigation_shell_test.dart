@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/core/theme/app_theme.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
-import 'package:subscription_track/screens/main_navigation_shell.dart';
+import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 
 Widget _buildShell() {
   return ProviderScope(

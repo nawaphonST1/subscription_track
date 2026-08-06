@@ -6,10 +6,10 @@ import 'package:subscription_track/features/subscriptions/presentation/add_subsc
 import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
 import 'package:subscription_track/features/auth/presentation/login_screen.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_screen.dart';
-import 'package:subscription_track/providers/app_flow_provider.dart';
-import 'package:subscription_track/router/route_constants.dart';
-import 'package:subscription_track/screens/main_navigation_shell.dart';
-import 'package:subscription_track/screens/splash_screen.dart';
+import 'package:subscription_track/app/application/app_flow_provider.dart';
+import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
+import 'package:subscription_track/app/presentation/splash_screen.dart';
+import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/features/notifications/presentation/notification_center_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
