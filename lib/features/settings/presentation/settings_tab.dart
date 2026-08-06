@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/app/application/theme_mode_controller.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/settings/application/notification_reminder_controller.dart';
@@ -10,6 +11,9 @@ class SettingsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reminderEnabled = ref.watch(notificationReminderProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -58,6 +62,22 @@ class SettingsTab extends ConsumerWidget {
                       style: TextStyle(color: Colors.grey),
                     ),
                     onTap: () => _showComingSoon(context),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: Icon(
+                      isDarkMode
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                    ),
+                    title: const Text('โหมดกลางคืน'),
+                    subtitle: Text(isDarkMode ? 'เปิดใช้งาน' : 'ปิดอยู่'),
+                    value: isDarkMode,
+                    onChanged: (value) {
+                      ref
+                          .read(themeModeProvider.notifier)
+                          .setMode(value ? ThemeMode.dark : ThemeMode.light);
+                    },
                   ),
                 ],
               ),

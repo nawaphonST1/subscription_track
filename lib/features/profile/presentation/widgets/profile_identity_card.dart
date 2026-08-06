@@ -6,12 +6,13 @@ class ProfileIdentityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Card(
+    final theme = Theme.of(context);
+    return Card(
       child: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 34,
               backgroundColor: AppColors.primary,
               child: Text(
@@ -23,14 +24,17 @@ class ProfileIdentityCard extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(height: 10),
-            Text(
+            const SizedBox(height: 10),
+            const Text(
               'คุณเน',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             Text(
               'nay.subtrack@example.com',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(
+                color: theme.textTheme.bodySmall?.color,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

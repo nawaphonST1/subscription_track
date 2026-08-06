@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 
 class SubscriptionEmptyState extends StatelessWidget {
   const SubscriptionEmptyState({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final theme = Theme.of(context);
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.search_off_rounded,
             size: 44,
-            color: AppColors.textTertiary,
+            color: theme.textTheme.bodySmall?.color,
           ),
-          SizedBox(height: 10),
-          Text('ไม่พบบริการที่ตรงกับการค้นหา'),
+          const SizedBox(height: 10),
+          const Text('ไม่พบบริการที่ตรงกับการค้นหา'),
         ],
       ),
     );

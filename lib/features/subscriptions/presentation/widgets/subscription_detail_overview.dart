@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/features/subscriptions/presentation/subscription_ui_extensions.dart';
 
@@ -44,6 +43,7 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -53,8 +53,8 @@ class _DetailRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textTertiary,
+              style: TextStyle(
+                color: theme.textTheme.bodySmall?.color,
                 fontSize: 13,
               ),
             ),
@@ -62,7 +62,10 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(
+                color: theme.textTheme.bodyMedium?.color,
+                fontSize: 13,
+              ),
             ),
           ),
         ],

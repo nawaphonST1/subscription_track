@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/notifications/application/notification_center_controller.dart';
 import 'package:subscription_track/features/notifications/presentation/widgets/notification_filter_bar.dart';
 import 'package:subscription_track/features/notifications/presentation/widgets/notification_list.dart';
@@ -13,49 +14,45 @@ class NotificationCenterScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(notificationCenterProvider);
     final controller = ref.read(notificationCenterProvider.notifier);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1D),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0F1D),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'การแจ้งเตือน',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
           if (state.items.isNotEmpty)
             PopupMenuButton<_NotificationMenuAction>(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              color: const Color(0xFF131C2E),
+              icon: const Icon(Icons.more_vert),
+              color: theme.cardColor,
               onSelected: (action) => _handleAction(
                 context: context,
                 controller: controller,
                 action: action,
               ),
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(
                   value: _NotificationMenuAction.markAllRead,
                   child: _MenuItem(
                     icon: Icons.done_all,
                     label: 'อ่านทั้งหมดแล้ว',
-                    color: Colors.white,
+                    color: theme.textTheme.bodyLarge?.color ?? Colors.black,
                   ),
                 ),
-                PopupMenuItem(
+                const PopupMenuItem(
                   value: _NotificationMenuAction.clearAll,
                   child: _MenuItem(
                     icon: Icons.delete_outline,
                     label: 'ล้างทั้งหมด',
-                    color: Color(0xFFEF4444),
+                    color: AppColors.danger,
                   ),
                 ),
               ],

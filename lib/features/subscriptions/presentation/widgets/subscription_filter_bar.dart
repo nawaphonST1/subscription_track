@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
-import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_filter_controller.dart';
 
 class SubscriptionFilterBar extends StatelessWidget {
@@ -17,6 +16,7 @@ class SubscriptionFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(
@@ -48,12 +48,12 @@ class SubscriptionFilterBar extends StatelessWidget {
                           label: Text(category.label),
                           selected: filter.category == category,
                           onSelected: (_) => onCategorySelected(category),
-                          selectedColor: AppColors.primary,
-                          backgroundColor: AppColors.bgSecondary,
+                          selectedColor: theme.colorScheme.primary,
+                          backgroundColor: theme.cardColor,
                           side: BorderSide(
                             color: filter.category == category
-                                ? AppColors.primary
-                                : AppColors.border,
+                                ? theme.colorScheme.primary
+                                : theme.dividerColor,
                           ),
                         ),
                       ),

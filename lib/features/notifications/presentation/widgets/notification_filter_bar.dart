@@ -52,26 +52,31 @@ class _FilterChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-    label: Text(
-      label,
-      style: TextStyle(
-        color: selected ? Colors.white : const Color(0xFF94A3B8),
-        fontSize: 13,
-        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          color: selected
+              ? theme.colorScheme.onPrimary
+              : theme.textTheme.bodyMedium?.color,
+          fontSize: 13,
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
-    ),
-    selected: selected,
-    onSelected: (value) {
-      if (value) onTap();
-    },
-    selectedColor: const Color(0xFF2563EB),
-    backgroundColor: const Color(0xFF131C2E),
-    side: BorderSide(
-      color: selected ? const Color(0xFF3B82F6) : const Color(0xFF243049),
-      width: 1.5,
-    ),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    showCheckmark: false,
-  );
+      selected: selected,
+      onSelected: (value) {
+        if (value) onTap();
+      },
+      selectedColor: theme.colorScheme.primary,
+      backgroundColor: theme.cardColor,
+      side: BorderSide(
+        color: selected ? theme.colorScheme.primary : theme.dividerColor,
+        width: 1.5,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      showCheckmark: false,
+    );
+  }
 }

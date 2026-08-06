@@ -73,22 +73,18 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1D),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0F1D),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'เพิ่มการสมัครสมาชิก',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -136,7 +132,8 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                   child: ElevatedButton(
                     onPressed: _saveForm,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3B82F6),
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -144,7 +141,6 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                     child: const Text(
                       'บันทึกบริการ',
                       style: TextStyle(
-                        color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),

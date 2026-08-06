@@ -20,6 +20,7 @@ class MainNavigationShell extends ConsumerWidget {
     final currentTab = ref.watch(currentTabProvider);
     final income = ref.watch(userIncomeProvider);
     final selectTab = ref.read(currentTabProvider.notifier).select;
+    final theme = Theme.of(context);
     Future<void> editIncome() =>
         showIncomeEditorSheet(context: context, currentIncome: income);
     final pages = <Widget>[
@@ -46,7 +47,7 @@ class MainNavigationShell extends ConsumerWidget {
                       extended: extendRail,
                       onSelected: selectTab,
                     ),
-                    const VerticalDivider(width: 1),
+                    VerticalDivider(width: 1, color: theme.dividerColor),
                     Expanded(child: content),
                   ],
                 )

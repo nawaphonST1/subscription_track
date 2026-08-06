@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_data.dart';
 
@@ -27,7 +28,10 @@ class OnboardingPage extends StatelessWidget {
                     Text(
                       data.title,
                       textAlign: TextAlign.center,
-                      style: AppTypography.headingLarge.copyWith(height: 1.3),
+                      style: AppTypography.headingLarge.copyWith(
+                        height: 1.3,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Padding(
@@ -35,7 +39,10 @@ class OnboardingPage extends StatelessWidget {
                       child: Text(
                         data.subtitle,
                         textAlign: TextAlign.center,
-                        style: AppTypography.bodyMedium.copyWith(height: 1.45),
+                        style: AppTypography.bodyMedium.copyWith(
+                          height: 1.45,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),

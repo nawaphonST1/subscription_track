@@ -33,6 +33,8 @@ class _SubscriptionDetailSheetState extends State<SubscriptionDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       child: SingleChildScrollView(
@@ -57,10 +59,7 @@ class _SubscriptionDetailSheetState extends State<SubscriptionDetailSheet> {
             CheckboxListTile.adaptive(
               key: const Key('mark-subscription-cancelled'),
               contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'ยกเลิกแล้ว',
-                style: TextStyle(color: Colors.white),
-              ),
+              title: const Text('ยกเลิกแล้ว'),
               value: markCancelled,
               onChanged: (value) {
                 setState(() => markCancelled = value ?? false);
@@ -70,8 +69,10 @@ class _SubscriptionDetailSheetState extends State<SubscriptionDetailSheet> {
             if (reminderEnabled)
               Text(
                 'เตือนล่วงหน้า $reminderDays วัน',
-                style: const TextStyle(
-                  color: AppColors.textTertiary,
+                style: TextStyle(
+                  color: theme.textTheme.bodySmall?.color?.withValues(
+                    alpha: 0.6,
+                  ),
                   fontSize: 12,
                 ),
               ),

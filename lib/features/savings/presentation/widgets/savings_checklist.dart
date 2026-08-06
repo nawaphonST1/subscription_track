@@ -38,6 +38,7 @@ class _SavingsChecklistTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: CheckboxListTile(
@@ -54,7 +55,10 @@ class _SavingsChecklistTile extends StatelessWidget {
         ),
         subtitle: Text(
           '฿${item.monthlyPrice.toStringAsFixed(0)}/เดือน',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          style: TextStyle(
+            color: theme.textTheme.bodySmall?.color,
+            fontSize: 11,
+          ),
         ),
       ),
     );

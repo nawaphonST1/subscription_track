@@ -7,25 +7,25 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.track_changes_rounded,
               size: 80,
               color: AppColors.primary,
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Text(
               'ระบบติดตามการสมัครสมาชิก',
               textAlign: TextAlign.center,
-              style: AppTypography.displayMedium,
+              style: AppTypography.displayMedium.copyWith(color: Colors.white),
             ),
-            SizedBox(height: 32),
-            CircularProgressIndicator(color: AppColors.primary),
+            const SizedBox(height: 32),
+            const CircularProgressIndicator(color: AppColors.primary),
           ],
         ),
       ),

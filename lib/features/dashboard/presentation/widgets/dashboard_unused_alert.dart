@@ -15,21 +15,27 @@ class DashboardUnusedAlert extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final hasUnused = count > 0;
-    final statusColor = hasUnused ? AppColors.danger : AppColors.success;
+
+    final baseColor = hasUnused ? AppColors.danger : AppColors.success;
+    final bgAlpha = isDark ? 0.1 : 0.05;
+    final borderAlpha = isDark ? 0.4 : 0.2;
+
     return Container(
       key: const Key('unused-service-alert'),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.1),
+        color: baseColor.withValues(alpha: bgAlpha),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+        border: Border.all(color: baseColor.withValues(alpha: borderAlpha)),
       ),
       child: Row(
         children: [
           Icon(
             hasUnused ? Icons.warning_amber_rounded : Icons.verified_rounded,
-            color: statusColor,
+            color: baseColor,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -45,8 +51,8 @@ class DashboardUnusedAlert extends StatelessWidget {
                 if (hasUnused)
                   Text(
                     'อาจประหยัดได้ ฿${monthlySavings.toStringAsFixed(0)}/เดือน',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color,
                       fontSize: 12,
                     ),
                   ),

@@ -29,22 +29,17 @@ class SubscriptionGeneralFields extends StatelessWidget {
           controller: nameController,
           validator: nameValidator,
           textCapitalization: TextCapitalization.words,
-          style: const TextStyle(color: Colors.white),
-          decoration: _inputDecoration(label: 'ชื่อบริการ / ร้านค้า'),
+          decoration: const InputDecoration(labelText: 'ชื่อบริการ / ร้านค้า'),
         ),
         const SizedBox(height: 20),
         TextFormField(
           controller: priceController,
           validator: priceValidator,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-          decoration: _inputDecoration(label: 'ราคา (บาท)').copyWith(
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          decoration: const InputDecoration(
+            labelText: 'ราคา (บาท)',
             prefixText: '฿ ',
-            prefixStyle: const TextStyle(color: Colors.white, fontSize: 18),
           ),
         ),
         const SizedBox(height: 24),
@@ -72,33 +67,6 @@ class SubscriptionGeneralFields extends StatelessWidget {
       ],
     );
   }
-
-  InputDecoration _inputDecoration({required String label}) {
-    const border = BorderSide(color: Color(0xFF243049));
-    return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF64748B)),
-      floatingLabelStyle: const TextStyle(color: Color(0xFF3B82F6)),
-      filled: true,
-      fillColor: const Color(0xFF131C2E),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: border,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: border,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF3B82F6)),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF4444)),
-      ),
-    );
-  }
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -107,14 +75,17 @@ class _SectionTitle extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: const TextStyle(
-      color: Color(0xFF94A3B8),
-      fontSize: 14,
-      fontWeight: FontWeight.bold,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      text,
+      style: TextStyle(
+        color: theme.textTheme.bodySmall?.color,
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
 }
 
 class _PeriodChip extends StatelessWidget {
@@ -129,30 +100,36 @@ class _PeriodChip extends StatelessWidget {
   final VoidCallback onSelected;
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-    label: SizedBox(
-      height: 36,
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF94A3B8),
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ChoiceChip(
+      label: SizedBox(
+        height: 36,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? Colors.white
+                  : theme.textTheme.bodyMedium?.color,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ),
       ),
-    ),
-    selected: selected,
-    onSelected: (value) {
-      if (value) onSelected();
-    },
-    selectedColor: const Color(0xFF2563EB),
-    backgroundColor: const Color(0xFF131C2E),
-    side: BorderSide(
-      color: selected ? const Color(0xFF3B82F6) : const Color(0xFF243049),
-      width: 1.5,
-    ),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    showCheckmark: false,
-  );
+      selected: selected,
+      onSelected: (value) {
+        if (value) onSelected();
+      },
+      selectedColor: theme.colorScheme.primary,
+      backgroundColor: theme.cardColor,
+      side: BorderSide(
+        color: selected ? theme.colorScheme.primary : theme.dividerColor,
+        width: 1.5,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      showCheckmark: false,
+    );
+  }
 }
