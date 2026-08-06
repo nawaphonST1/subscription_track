@@ -4,9 +4,9 @@
 
 **Phase:** MVP (Full Frontend Design)
 
-**Status:** Living Specification (aligned with commits through `f81d3f5`)
+**Status:** Living Specification (Feature-First Architecture implemented)
 
-**Last Updated:** 3 August 2026
+**Last Updated:** 6 August 2026
 
 ---
 
@@ -30,8 +30,9 @@
 
 - Startup flow เป็น state-driven redirect: Splash → Onboarding → Login → Dashboard โดยไม่มี `Future.delayed` navigation ใน Splash
 - `/dashboard` render `MainNavigationShell` และใช้ `IndexedStack` เก็บ state ของ 5 destinations ที่รวมจากงานทีม
-- tabs แยกเป็น `dashboard_tab.dart`, `subscriptions_tab.dart`, `savings_tab.dart`, `setting_tab.dart` และ `profile_tab.dart`
-- state ของ navigation/search/category/income/reminder อยู่ใน `main_navigation_provider.dart`
+- source code จัดแบบ feature-first; ดูกฎฉบับปัจจุบันที่ [`doc/architecture/feature_first_architecture.md`](../architecture/feature_first_architecture.md)
+- tabs อยู่ใน `lib/features/<feature>/presentation/`; app shell อยู่ใน `lib/app/presentation/`
+- navigation, filter, income และ reminder มี controller แยกตาม owner จริง ไม่มี provider รวมหลาย feature
 - subscription data ใช้ `SubscriptionRepository` → `InMemorySubscriptionRepository` ผ่าน `subscriptionRepositoryProvider`
 - `subscriptionListProvider` เป็น `AsyncNotifierProvider<SubscriptionListController, List<Subscription>>` ไม่ใช่ `FutureProvider` หรือ legacy `StateNotifierProvider`
 - CRUD/toggle เรียกผ่าน controller; delete/toggle อัปเดต UI แบบ optimistic และจัดการ rollback/error
@@ -51,68 +52,26 @@
 | File Size | ✅ โครงการจะเล็ก | ❌ โครงการจะใหญ่ |
 | Team Ramp-up | ✅ 3 คน เรียนได้เร็ว | ❌ ช้า |
 
-### Folder Structure
-```
+### Folder Structure (Current)
+
+```text
 lib/
-├── main.dart
-├── models/                          # Data models
-│   ├── subscription.dart            # (existing)
-│   ├── user.dart                    # (new)
-│   ├── package.dart                 # (new)
-│   ├── notification.dart            # (new)
-│   └── usage_log.dart               # (new)
-├── providers/                       # Riverpod providers
-│   ├── auth_provider.dart           # OAuth + JWT state
-│   ├── user_provider.dart           # User profile & settings
-│   ├── subscription_provider.dart   # Subscription CRUD + list
-│   ├── package_provider.dart        # Package catalog
-│   ├── notification_provider.dart   # Notifications
-│   ├── filter_provider.dart         # Category filter state
-│   └── theme_provider.dart          # Dark/Light theme
-├── screens/                         # Full screens
-│   ├── splash_screen.dart           # (new)
-│   ├── onboarding/
-│   │   ├── onboarding_screen.dart
-│   │   ├── onboarding_page_1.dart
-│   │   ├── onboarding_page_2.dart
-│   │   └── onboarding_page_3.dart
+├── app/                             # routing, startup, navigation shell
+├── core/                            # shared concerns/widgets ที่มีผู้ใช้จริง
+├── features/
 │   ├── auth/
-│   │   └── login_screen.dart        # (new)
-│   ├── dashboard_screen.dart        # (refactor)
-│   ├── subscription/
-│   │   ├── add_subscription_screen.dart       # (new)
-│   │   ├── select_package_screen.dart         # (new)
-│   │   ├── subscription_detail_screen.dart    # (new)
-│   │   └── edit_subscription_screen.dart      # (new)
+│   ├── dashboard/
+│   ├── notifications/
+│   ├── onboarding/
 │   ├── profile/
-│   │   ├── profile_screen.dart                # (new)
-│   │   └── settings_screen.dart               # (new)
-│   └── notifications/
-│       └── notification_center_screen.dart    # (new)
-├── widgets/                         # Reusable widgets
-│   ├── kpi_card.dart                # (existing)
-│   ├── subscription_tile.dart       # (existing - refactor)
-│   ├── saving_simulation_card.dart  # (existing)
-│   ├── subscription_filter_bar.dart # (existing)
-│   ├── pin_verification_dialog.dart # (existing)
-│   ├── custom_app_bar.dart          # (new)
-│   ├── package_card.dart            # (new)
-│   ├── category_chip.dart           # (new)
-│   ├── biometric_prompt.dart        # (new)
-│   ├── loading_skeleton.dart        # (new)
-│   ├── error_state_widget.dart      # (new)
-│   └── empty_state_widget.dart      # (new)
-├── services/                        # Services (mock for MVP)
-│   ├── auth_service.dart            # 🔄 Mock OAuth
-│   ├── subscription_service.dart    # 🔄 Mock API
-│   ├── package_service.dart         # 🔄 Mock API
-│   ├── storage_service.dart         # 🔄 Hive/SharedPref
-│   └── notification_service.dart    # 🔄 Mock FCM
-└── utils/
-    ├── constants.dart
-    ├── validators.dart
-    └── extensions.dart
+│   ├── savings/
+│   ├── settings/
+│   └── subscriptions/
+└── main.dart
 ```
+
+แต่ละ feature แยก `domain/`, `data/`, `application/`, `presentation/` เท่าที่จำเป็น
+และใช้ `application/` แทน `bloc/` เนื่องจากโปรเจกต์ใช้ Riverpod เท่านั้น
 
 ---
 
@@ -328,7 +287,9 @@ class MockUser {
 
 > เดิม Option 5 กำหนด 4 tabs โดยรวม Profile/Settings ไว้ด้วยกัน แต่หลัง team integration มี `SettingTab` แยกต่างหาก จึงคง 5 destinations ไว้ก่อนเพื่อไม่ทับงานของ Person 3; สามารถรวมกลับภายหลังเมื่อทีมยืนยัน information architecture รอบสุดท้าย
 
-**Historical proposal below (superseded):** ตัวอย่าง `FutureProvider` และ layout หน้าเดียวด้านล่างเก็บไว้เป็น design history เท่านั้น ไม่ใช่ API ปัจจุบัน
+**Historical proposal below (superseded):** ตัวอย่าง `FutureProvider`, path แบบ
+`providers/`/`screens/` และ layout หน้าเดียวด้านล่างเก็บไว้เป็น design history เท่านั้น
+ไม่ใช่ API หรือโครงสร้างปัจจุบัน
 
 **New Architecture Approach:**
 
@@ -1470,15 +1431,15 @@ ThemeData darkTheme = ThemeData(
 | 1 | Splash | Setup | ✅ IMPLEMENTED | High |
 | 2 | Onboarding | Setup | ✅ IMPLEMENTED | High |
 | 3 | Login | Auth | ✅ MOCK IMPLEMENTED | High |
-| 4 | Dashboard / 4-tab Shell | Core | ✅ MOBILE IMPLEMENTED | High |
-| 5 | Add Subscription | Core | 🔴 NEW | High |
-| 6 | Select Package | Core | 🔴 NEW | High |
-| 7 | Subscription Detail | Core | 🔴 NEW | High |
+| 4 | Dashboard / adaptive shell | Core | ✅ IMPLEMENTED | High |
+| 5 | Add Subscription | Core | ✅ IMPLEMENTED | High |
+| 6 | Select Package | Core | ✅ IMPLEMENTED | High |
+| 7 | Subscription Detail | Core | ✅ DETAIL SHEET IMPLEMENTED | High |
 | 8 | Edit Subscription | Core | 🔴 NEW | High |
-| 9 | Profile | User | 🟡 TAB SCAFFOLD | Medium |
-| 10 | Settings | User | 🟡 INCOME/PIN/REMINDER SCAFFOLD | Medium |
-| 11 | Notification Center | Notifications | 🔴 NEW | Medium |
-| 12 | Dialogs (PIN, Bio, Confirm) | Modals | 🟡 REFACTOR | High |
+| 9 | Profile | User | ✅ TAB IMPLEMENTED | Medium |
+| 10 | Settings | User | 🟡 REMINDER SCAFFOLD; SECURITY DEFERRED | Medium |
+| 11 | Notification Center | Notifications | ✅ IMPLEMENTED | Medium |
+| 12 | Dialogs (PIN, Bio, Confirm) | Modals | 🟡 CONFIRM DONE; SECURITY DEFERRED | High |
 
 ### Total New Widgets: **10 Major Widgets**
 
@@ -1495,7 +1456,7 @@ ThemeData darkTheme = ThemeData(
 - [x] Create models (User, Notification, Package)
 - [x] Create in-memory repository and mock data source
 - [x] Setup theme & color system
-- [x] Create reusable Loading/Error/Empty widgets
+- [x] Keep only shared widgets with at least two real consumers; remove unused scaffolds
 
 ### Week 2: Auth & Onboarding
 - [x] Splash screen
@@ -1513,30 +1474,30 @@ ThemeData darkTheme = ThemeData(
 - [x] Tablet/desktop layout optimization (NavigationRail, constrained content, adaptive columns/grid)
 
 ### Week 4: Add/Edit Subscriptions
-- [ ] Add Subscription screen
-- [ ] Select Package screen (preset list)
-- [ ] Custom form validation
+- [x] Add Subscription screen
+- [x] Select Package screen (preset list)
+- [x] Custom form validation
 - [ ] Edit Subscription screen
-- [ ] Delete with PIN verification
+- [x] Delete with generic confirmation (tracking action; no PIN/Biometric)
 
 ### Week 5: User Profile & Settings
-- [ ] Profile screen
-- [ ] Settings screen (all sections)
-- [ ] Notification settings provider
+- [x] Profile tab
+- [x] Settings tab (MVP reminder preference; security deferred)
+- [x] Notification reminder provider owned by Settings
 - [ ] Language/Theme switching (mock)
 
 ### Week 6: Notifications & Polish
-- [ ] Notification Center screen
-- [ ] Notification provider
+- [x] Notification Center screen
+- [x] Notification Center controller
 - [ ] Mock notification scheduling
 - [ ] UI Polish & animations
 
 ### Week 7-8: Testing & Refinement
-- [ ] Unit tests for providers
-- [ ] Widget tests for complex screens
+- [x] Unit tests for application/controllers
+- [x] Widget tests for routing, navigation shell and shared confirmation
 - [ ] Integration test navigation flow
 - [ ] Final bug fixes
-- [ ] Documentation
+- [x] Feature-first architecture and state ownership documentation
 
 ---
 
