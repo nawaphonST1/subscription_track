@@ -7,10 +7,6 @@ Future<void> showPersonalInfoSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF151D31),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (_) => const _PersonalInfoSheet(),
   );
 }
@@ -68,22 +64,6 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
       initialDate: _selectedBirthDate ?? DateTime(2000, 1, 1),
       firstDate: DateTime(1900),
       lastDate: now,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: Theme.of(context).colorScheme.primary,
-              onPrimary: Colors.white,
-              surface: const Color(0xFF1E293B),
-              onSurface: Colors.white,
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF151D31),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (pickedDate != null) {
@@ -139,17 +119,17 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'แก้ไขข้อมูลส่วนตัว',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: Colors.white70),
+                  icon: const Icon(Icons.close),
                 ),
               ],
             ),
@@ -166,7 +146,6 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              style: const TextStyle(color: Colors.white),
               validator: (val) => val == null || val.trim().isEmpty ? 'กรุณากรอกชื่อ' : null,
             ),
             const SizedBox(height: 20),
@@ -181,7 +160,6 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              style: const TextStyle(color: Colors.white),
               validator: (val) => val == null || val.trim().isEmpty ? 'กรุณากรอกนามสกุล' : null,
             ),
             const SizedBox(height: 20),
@@ -200,7 +178,6 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              style: const TextStyle(color: Colors.white),
               validator: (val) {
                 if (val == null || val.trim().isEmpty) {
                   return 'กรุณากรอกเบอร์โทรศัพท์';
@@ -227,7 +204,6 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              style: const TextStyle(color: Colors.white),
               validator: (val) {
                 if (val == null || val.trim().isEmpty) {
                   return 'กรุณากรอกเลขบัตรประชาชน';
@@ -265,9 +241,9 @@ class _PersonalInfoSheetState extends ConsumerState<_PersonalInfoSheet> {
                         const SizedBox(height: 4),
                         Text(
                           formattedDate,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white,
+                            color: theme.textTheme.titleMedium?.color,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
