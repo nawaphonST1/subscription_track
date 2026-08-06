@@ -5,7 +5,7 @@ import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/features/subscriptions/presentation/subscriptions_tab.dart';
 import 'package:subscription_track/providers/main_navigation_provider.dart';
-import 'package:subscription_track/screens/tabs/dashboard_tab.dart';
+import 'package:subscription_track/features/dashboard/presentation/dashboard_tab.dart';
 import 'package:subscription_track/screens/tabs/profile_tab.dart';
 import 'package:subscription_track/screens/tabs/savings_tab.dart';
 import 'package:subscription_track/screens/tabs/setting_tab.dart';
