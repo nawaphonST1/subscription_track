@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/core/theme/app_theme.dart';
-import 'package:subscription_track/providers/subscription_provider.dart';
-import 'package:subscription_track/repositories/in_memory_subscription_repository.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
 import 'package:subscription_track/screens/main_navigation_shell.dart';
 
 Widget _buildShell() {

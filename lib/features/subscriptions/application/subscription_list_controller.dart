@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:subscription_track/models/subscription.dart';
-import 'package:subscription_track/repositories/in_memory_subscription_repository.dart';
-import 'package:subscription_track/repositories/subscription_repository.dart';
+import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
+import 'package:subscription_track/features/subscriptions/domain/subscription_repository.dart';
 
 /// จุดสลับ data source ของทั้ง feature และ override เป็น fake/mock ได้ใน test
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>(
