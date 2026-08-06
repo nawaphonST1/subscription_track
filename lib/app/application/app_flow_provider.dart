@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
+import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
 
 /// สถานะขั้นต่ำที่ Router ใช้ตัดสินใจเลือกหน้าเริ่มต้นของแอป
 class AppFlowState {
@@ -37,17 +38,6 @@ final mockAuthBypassProvider = NotifierProvider<MockAuthBypassController, bool>(
 );
 
 /// Mock onboarding persistence สำหรับช่วงที่ local storage ยังไม่เชื่อมต่อ
-class OnboardingController extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void setCompleted(bool value) => state = value;
-}
-
-final onboardingProvider = NotifierProvider<OnboardingController, bool>(
-  OnboardingController.new,
-);
-
 /// รวม mock startup state กับ authProvider ตัวจริงของเพื่อนร่วมทีม
 ///
 /// เมื่อปิด mockAuthBypassProvider แล้ว LoginScreen login สำเร็จ ค่า User จาก

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
-import 'package:subscription_track/app/application/app_flow_provider.dart';
+import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_controls.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_data.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_page.dart';
+import 'package:subscription_track/features/onboarding/presentation/onboarding_progress_bar.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});

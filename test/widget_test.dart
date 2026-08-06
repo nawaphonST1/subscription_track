@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/app/app.dart';
 import 'package:subscription_track/app/application/app_flow_provider.dart';
+import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
 
 ProviderScope _buildTestApp(AppFlowState initialState) {
   return ProviderScope(

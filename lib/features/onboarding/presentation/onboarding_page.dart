@@ -27,9 +27,7 @@ class OnboardingPage extends StatelessWidget {
                     Text(
                       data.title,
                       textAlign: TextAlign.center,
-                      style: AppTypography.headingLarge.copyWith(
-                        height: 1.3,
-                      ),
+                      style: AppTypography.headingLarge.copyWith(height: 1.3),
                     ),
                     const SizedBox(height: 10),
                     Padding(
@@ -37,9 +35,7 @@ class OnboardingPage extends StatelessWidget {
                       child: Text(
                         data.subtitle,
                         textAlign: TextAlign.center,
-                        style: AppTypography.bodyMedium.copyWith(
-                          height: 1.45,
-                        ),
+                        style: AppTypography.bodyMedium.copyWith(height: 1.45),
                       ),
                     ),
                     const SizedBox(height: 10),
