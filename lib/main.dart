@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/subscription/add_subscription_screen.dart';
+import 'screens/subscription/select_package_screen.dart';
+import 'screens/notifications/notification_center_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,7 +31,13 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const DashboardScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const DashboardScreen(),
+        '/add-subscription': (context) => const AddSubscriptionScreen(),
+        '/select-package': (context) => const SelectPackageScreen(),
+        '/notifications': (context) => const NotificationCenterScreen(),
+      },
     );
   }
 }
