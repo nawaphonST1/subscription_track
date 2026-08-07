@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$User {
 
- String get id; String get email; String get name; String get avatar; String get authProvider; double get income; String get currency; UserSettings get settings; DateTime? get createdAt; DateTime? get updatedAt;
+ String get id; String get email; String get name; String get avatar; String get authProvider; double get income; String get currency; List<CreditCard> get creditCards; UserSettings get settings; DateTime? get createdAt; DateTime? get updatedAt;
 /// Create a copy of User
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $UserCopyWith<User> get copyWith => _$UserCopyWithImpl<User>(this as User, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is User&&(identical(other.id, id) || other.id == id)&&(identical(other.email, email) || other.email == email)&&(identical(other.name, name) || other.name == name)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.authProvider, authProvider) || other.authProvider == authProvider)&&(identical(other.income, income) || other.income == income)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.settings, settings) || other.settings == settings)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is User&&(identical(other.id, id) || other.id == id)&&(identical(other.email, email) || other.email == email)&&(identical(other.name, name) || other.name == name)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.authProvider, authProvider) || other.authProvider == authProvider)&&(identical(other.income, income) || other.income == income)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other.creditCards, creditCards)&&(identical(other.settings, settings) || other.settings == settings)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,email,name,avatar,authProvider,income,currency,settings,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,email,name,avatar,authProvider,income,currency,const DeepCollectionEquality().hash(creditCards),settings,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'User(id: $id, email: $email, name: $name, avatar: $avatar, authProvider: $authProvider, income: $income, currency: $currency, settings: $settings, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'User(id: $id, email: $email, name: $name, avatar: $avatar, authProvider: $authProvider, income: $income, currency: $currency, creditCards: $creditCards, settings: $settings, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $UserCopyWith<$Res>  {
   factory $UserCopyWith(User value, $Res Function(User) _then) = _$UserCopyWithImpl;
 @useResult
 $Res call({
- String id, String email, String name, String avatar, String authProvider, double income, String currency, UserSettings settings, DateTime? createdAt, DateTime? updatedAt
+ String id, String email, String name, String avatar, String authProvider, double income, String currency, List<CreditCard> creditCards, UserSettings settings, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -65,7 +65,7 @@ class _$UserCopyWithImpl<$Res>
 
 /// Create a copy of User
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? email = null,Object? name = null,Object? avatar = null,Object? authProvider = null,Object? income = null,Object? currency = null,Object? settings = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? email = null,Object? name = null,Object? avatar = null,Object? authProvider = null,Object? income = null,Object? currency = null,Object? creditCards = null,Object? settings = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -74,7 +74,8 @@ as String,avatar: null == avatar ? _self.avatar : avatar // ignore: cast_nullabl
 as String,authProvider: null == authProvider ? _self.authProvider : authProvider // ignore: cast_nullable_to_non_nullable
 as String,income: null == income ? _self.income : income // ignore: cast_nullable_to_non_nullable
 as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,settings: null == settings ? _self.settings : settings // ignore: cast_nullable_to_non_nullable
+as String,creditCards: null == creditCards ? _self.creditCards : creditCards // ignore: cast_nullable_to_non_nullable
+as List<CreditCard>,settings: null == settings ? _self.settings : settings // ignore: cast_nullable_to_non_nullable
 as UserSettings,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
@@ -171,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String email,  String name,  String avatar,  String authProvider,  double income,  String currency,  UserSettings settings,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String email,  String name,  String avatar,  String authProvider,  double income,  String currency,  List<CreditCard> creditCards,  UserSettings settings,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _User() when $default != null:
-return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,_that.income,_that.currency,_that.settings,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,_that.income,_that.currency,_that.creditCards,_that.settings,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -192,10 +193,10 @@ return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String email,  String name,  String avatar,  String authProvider,  double income,  String currency,  UserSettings settings,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String email,  String name,  String avatar,  String authProvider,  double income,  String currency,  List<CreditCard> creditCards,  UserSettings settings,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _User():
-return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,_that.income,_that.currency,_that.settings,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,_that.income,_that.currency,_that.creditCards,_that.settings,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -212,10 +213,10 @@ return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String email,  String name,  String avatar,  String authProvider,  double income,  String currency,  UserSettings settings,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String email,  String name,  String avatar,  String authProvider,  double income,  String currency,  List<CreditCard> creditCards,  UserSettings settings,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _User() when $default != null:
-return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,_that.income,_that.currency,_that.settings,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,_that.income,_that.currency,_that.creditCards,_that.settings,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -227,7 +228,7 @@ return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,
 @JsonSerializable()
 
 class _User implements User {
-  const _User({required this.id, required this.email, this.name = '', this.avatar = '', this.authProvider = 'google', this.income = 0.0, this.currency = 'THB', this.settings = const UserSettings(), this.createdAt, this.updatedAt});
+  const _User({required this.id, required this.email, this.name = '', this.avatar = '', this.authProvider = 'google', this.income = 0.0, this.currency = 'THB', final  List<CreditCard> creditCards = const [], this.settings = const UserSettings(), this.createdAt, this.updatedAt}): _creditCards = creditCards;
   factory _User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 
 @override final  String id;
@@ -237,6 +238,13 @@ class _User implements User {
 @override@JsonKey() final  String authProvider;
 @override@JsonKey() final  double income;
 @override@JsonKey() final  String currency;
+ final  List<CreditCard> _creditCards;
+@override@JsonKey() List<CreditCard> get creditCards {
+  if (_creditCards is EqualUnmodifiableListView) return _creditCards;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_creditCards);
+}
+
 @override@JsonKey() final  UserSettings settings;
 @override final  DateTime? createdAt;
 @override final  DateTime? updatedAt;
@@ -254,16 +262,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _User&&(identical(other.id, id) || other.id == id)&&(identical(other.email, email) || other.email == email)&&(identical(other.name, name) || other.name == name)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.authProvider, authProvider) || other.authProvider == authProvider)&&(identical(other.income, income) || other.income == income)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.settings, settings) || other.settings == settings)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _User&&(identical(other.id, id) || other.id == id)&&(identical(other.email, email) || other.email == email)&&(identical(other.name, name) || other.name == name)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.authProvider, authProvider) || other.authProvider == authProvider)&&(identical(other.income, income) || other.income == income)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other._creditCards, _creditCards)&&(identical(other.settings, settings) || other.settings == settings)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,email,name,avatar,authProvider,income,currency,settings,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,email,name,avatar,authProvider,income,currency,const DeepCollectionEquality().hash(_creditCards),settings,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'User(id: $id, email: $email, name: $name, avatar: $avatar, authProvider: $authProvider, income: $income, currency: $currency, settings: $settings, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'User(id: $id, email: $email, name: $name, avatar: $avatar, authProvider: $authProvider, income: $income, currency: $currency, creditCards: $creditCards, settings: $settings, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -274,7 +282,7 @@ abstract mixin class _$UserCopyWith<$Res> implements $UserCopyWith<$Res> {
   factory _$UserCopyWith(_User value, $Res Function(_User) _then) = __$UserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String email, String name, String avatar, String authProvider, double income, String currency, UserSettings settings, DateTime? createdAt, DateTime? updatedAt
+ String id, String email, String name, String avatar, String authProvider, double income, String currency, List<CreditCard> creditCards, UserSettings settings, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -291,7 +299,7 @@ class __$UserCopyWithImpl<$Res>
 
 /// Create a copy of User
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? email = null,Object? name = null,Object? avatar = null,Object? authProvider = null,Object? income = null,Object? currency = null,Object? settings = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? email = null,Object? name = null,Object? avatar = null,Object? authProvider = null,Object? income = null,Object? currency = null,Object? creditCards = null,Object? settings = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_User(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -300,7 +308,8 @@ as String,avatar: null == avatar ? _self.avatar : avatar // ignore: cast_nullabl
 as String,authProvider: null == authProvider ? _self.authProvider : authProvider // ignore: cast_nullable_to_non_nullable
 as String,income: null == income ? _self.income : income // ignore: cast_nullable_to_non_nullable
 as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,settings: null == settings ? _self.settings : settings // ignore: cast_nullable_to_non_nullable
+as String,creditCards: null == creditCards ? _self._creditCards : creditCards // ignore: cast_nullable_to_non_nullable
+as List<CreditCard>,settings: null == settings ? _self.settings : settings // ignore: cast_nullable_to_non_nullable
 as UserSettings,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
