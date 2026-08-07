@@ -14,6 +14,11 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   authProvider: json['authProvider'] as String? ?? 'google',
   income: (json['income'] as num?)?.toDouble() ?? 0.0,
   currency: json['currency'] as String? ?? 'THB',
+  creditCards:
+      (json['creditCards'] as List<dynamic>?)
+          ?.map((e) => CreditCard.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
   settings: json['settings'] == null
       ? const UserSettings()
       : UserSettings.fromJson(json['settings'] as Map<String, dynamic>),
@@ -33,6 +38,7 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'authProvider': instance.authProvider,
   'income': instance.income,
   'currency': instance.currency,
+  'creditCards': instance.creditCards,
   'settings': instance.settings,
   'createdAt': instance.createdAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),

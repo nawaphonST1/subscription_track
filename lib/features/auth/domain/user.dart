@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-
+import 'package:subscription_track/features/auth/domain/credit_card.dart';
 part 'user.freezed.dart';
 part 'user.g.dart';
 
@@ -13,6 +13,7 @@ abstract class User with _$User {
     @Default('google') String authProvider,
     @Default(0.0) double income,
     @Default('THB') String currency,
+    @Default([]) List<CreditCard> creditCards, // <-- เพิ่มฟิลด์นี้ตรงนี้ครับ
     @Default(UserSettings()) UserSettings settings,
     DateTime? createdAt,
     DateTime? updatedAt,

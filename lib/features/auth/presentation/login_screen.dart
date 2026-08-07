@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart'; 
+import 'package:subscription_track/app/routing/route_constants.dart'; 
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
@@ -10,7 +12,9 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
+    // ดักจับสถานะการล็อกอิน
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
+      // 1. ถ้ามี Error ให้แสดง SnackBar
       if (next is AsyncError) {
         final errorText = next.error?.toString() ?? 'การเข้าสู่ระบบล้มเหลว';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -20,6 +24,10 @@ class LoginScreen extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
+      } 
+      // 2. ถ้ามีข้อมูล User (ล็อกอินสำเร็จ) ให้เปลี่ยนไปหน้า Dashboard
+      else if (next is AsyncData && next.value != null) {
+        context.go(RouteConstants.dashboard); 
       }
     });
 
@@ -102,7 +110,6 @@ class LoginScreen extends ConsumerWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ใช้ Icon ชั่วคราว (ถ้ามีไฟล์รูปโลโก้ Google ค่อยเปลี่ยนเป็น Image.asset)
                         Icon(
                           Icons.g_mobiledata_rounded,
                           size: 32,
@@ -126,7 +133,7 @@ class LoginScreen extends ConsumerWidget {
                     onPressed: () =>
                         ref.read(authProvider.notifier).loginWithApple(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF131C2E), // สีเข้ม
+                      backgroundColor: const Color(0xFF131C2E),
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(54),
                       elevation: 0,
