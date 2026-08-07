@@ -8,8 +8,6 @@ class RouteConstants {
 
   // Main App
   static const String dashboard = '/dashboard';
-  static const String addSubscription = 'add';
-  static const String selectPackage = 'select-package';
   static const String subscriptionDetail = 'subscription/:id';
   static const String editSubscription = 'edit';
   static const String profile = 'profile';

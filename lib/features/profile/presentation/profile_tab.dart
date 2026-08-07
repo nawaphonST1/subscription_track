@@ -6,6 +6,7 @@ import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
+import 'package:subscription_track/features/profile/presentation/add_payment_card_sheet.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/linked_accounts_card.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/profile_identity_card.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/profile_settings_card.dart';
@@ -40,10 +41,33 @@ class ProfileTab extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             const LinkedAccountsCard(),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              key: const Key('add-payment-card-button'),
+              onPressed: () => _addPaymentCard(context),
+              icon: const Icon(Icons.add_card_rounded),
+              label: const Text('เพิ่มบัตร'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+            ),
             const SizedBox(height: 32),
             _LogoutButton(onPressed: () => _logout(context, ref)),
             const SizedBox(height: 20),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addPaymentCard(BuildContext context) async {
+    final result = await showAddPaymentCardSheet(context);
+    if (result == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'เพิ่ม ${result.card.bankName} และนำเข้า '
+          '${result.importedSubscriptionCount} รายการแล้ว',
         ),
       ),
     );

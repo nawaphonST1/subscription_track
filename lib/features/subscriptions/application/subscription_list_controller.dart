@@ -45,6 +45,30 @@ final class SubscriptionListController
     }
   }
 
+  /// นำเข้ารายการที่ตรวจพบจากบัตร โดยข้าม id ที่มีอยู่แล้วเพื่อไม่ให้ข้อมูลซ้ำ
+  Future<int> importSubscriptions(
+    Iterable<Subscription> detectedSubscriptions,
+  ) async {
+    final previous = await future;
+    final existingIds = previous.map((item) => item.id).toSet();
+    final newItems = detectedSubscriptions
+        .where((item) => existingIds.add(item.id))
+        .toList(growable: false);
+    if (newItems.isEmpty) return 0;
+
+    try {
+      for (final subscription in newItems) {
+        await _repository.addSubscription(subscription);
+      }
+      state = AsyncData([...previous, ...newItems]);
+      return newItems.length;
+    } catch (error, stackTrace) {
+      // หาก import หลายรายการสะดุด ให้ reload จาก repository ตามข้อมูลจริง
+      state = await AsyncValue.guard(_repository.getSubscriptions);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
   Future<void> updateSubscription(Subscription subscription) async {
     final previous = await future;
     try {
