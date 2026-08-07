@@ -68,6 +68,7 @@ application/presentation เพราะ reminder preference ยังเป็�
 | Dashboard summary | `features/dashboard/application` | เป็น derived state สำหรับ KPI, renewal และ unused alert เท่านั้น |
 | Savings view state | `features/savings/application` | เป็น derived state; ไม่มี selection source ซ้ำใน Savings |
 | Monthly income | `features/profile/application` | Profile เป็นผู้แก้ค่า ส่วน Dashboard อ่านไปคำนวณ creep score |
+| Linked payment cards และ card-import flow | `features/profile/application` | Profile เป็น entry point สำหรับเพิ่มบัตร ส่วน controller แปลง recurring charges และส่งคำสั่ง import ผ่าน Subscriptions application boundary |
 | Notification reminder preference | `features/settings/application` | เป็น user preference จาก Settings ไม่ใช่ scheduling/generation state ของ Notification Center |
 | Notification inbox/filter | `features/notifications/application` | จัดการรายการ, filter และ read state ของ Notification Center |
 | Auth state | `features/auth/application` | ซ่อน repository implementation หลัง domain contract และรองรับ override ใน test |

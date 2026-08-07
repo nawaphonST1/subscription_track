@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/features/auth/application/auth_provider.dart';
+import 'package:subscription_track/features/auth/domain/credit_card.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 
 Future<void> showIncomeEditorSheet({
@@ -10,39 +11,19 @@ Future<void> showIncomeEditorSheet({
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _IncomeEditorSheet(initialIncome: currentIncome),
+    builder: (_) => const _IncomeEditorSheet(),
   );
 }
 
-class _IncomeEditorSheet extends ConsumerStatefulWidget {
-  const _IncomeEditorSheet({required this.initialIncome});
-
-  final double initialIncome;
+class _IncomeEditorSheet extends ConsumerWidget {
+  const _IncomeEditorSheet();
 
   @override
-  ConsumerState<_IncomeEditorSheet> createState() => _IncomeEditorSheetState();
-}
-
-class _IncomeEditorSheetState extends ConsumerState<_IncomeEditorSheet> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(
-      text: widget.initialIncome.toStringAsFixed(0),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final income = ref.watch(userIncomeProvider);
+    final user = ref.watch(authProvider).value;
+    final creditCards = user?.creditCards ?? const <CreditCard>[];
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -55,14 +36,25 @@ class _IncomeEditorSheetState extends ConsumerState<_IncomeEditorSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'กำหนดรายได้ต่อเดือน',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              const Icon(
+                Icons.credit_card_rounded,
+                color: Color(0xFF10B981),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'สรุปรายได้จากบัตรเครดิต',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            'ใช้คำนวณ Creep Risk เท่านั้น '
-            'และจะไม่แสดงต่อผู้ใช้อื่น',
+            'คำนวณอัตโนมัติจากผลรวมยอดเงินคงเหลือในบัตรเครดิต (CreditCard Domain) '
+            'เพื่อใช้ประเมิน Creep Risk',
             style: TextStyle(
               color: theme.textTheme.bodySmall?.color,
               fontSize: 12,
@@ -71,36 +63,77 @@ class _IncomeEditorSheetState extends ConsumerState<_IncomeEditorSheet> {
           const SizedBox(height: 16),
           TextField(
             key: const Key('income-field'),
-            controller: _controller,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            readOnly: true,
+            controller: TextEditingController(
+              text: income.toStringAsFixed(0),
+            ),
             decoration: const InputDecoration(
               prefixText: '฿ ',
-              labelText: 'รายได้ต่อเดือน',
+              labelText: 'รายได้รวมต่อเดือน (คำนวณจากบัตรเครดิต)',
+              suffixIcon: Icon(Icons.lock_outline_rounded, size: 20),
+              helperText: 'ดึงข้อมูลจาก CreditCard ในระบบ ไม่อนุญาตให้แก้ไขโดยตรง',
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+          const Text(
+            'รายการบัตรเครดิตที่ผูกไว้ (CreditCard Model):',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          if (creditCards.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Text(
+                'ไม่พบบัตรเครดิตในระบบ',
+                style: TextStyle(color: theme.textTheme.bodySmall?.color),
+              ),
+            )
+          else
+            Card(
+              clipBehavior: Clip.antiAlias,
+              margin: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (var i = 0; i < creditCards.length; i++) ...[
+                    if (i > 0) Divider(height: 1, color: theme.dividerColor),
+                    _CreditCardRowTile(card: creditCards[i]),
+                  ],
+                ],
+              ),
+            ),
+          const SizedBox(height: 20),
           FilledButton(
             key: const Key('save-income-button'),
-            onPressed: _save,
-            child: const Text('บันทึกข้อมูล'),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('เข้าใจแล้ว'),
           ),
         ],
       ),
     );
   }
+}
 
-  void _save() {
-    final income = double.tryParse(_controller.text);
-    final didUpdate =
-        income != null && ref.read(userIncomeProvider.notifier).update(income);
-    if (didUpdate) {
-      Navigator.of(context).pop();
-      return;
-    }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('กรุณากรอกรายได้มากกว่า 0')));
+class _CreditCardRowTile extends StatelessWidget {
+  const _CreditCardRowTile({required this.card});
+
+  final CreditCard card;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.credit_card_rounded, color: Color(0xFF10B981)),
+      title: Text(
+        '${card.bankName} (**** ${card.last4Digits})',
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        'วงเงินคงเหลือ ฿${card.currentBalance.toStringAsFixed(0)} / ฿${card.creditLimit.toStringAsFixed(0)}',
+      ),
+      trailing: Text(
+        '฿${card.currentBalance.toStringAsFixed(0)}',
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+      ),
+    );
   }
 }
