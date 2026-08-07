@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
@@ -11,6 +13,9 @@ class LoginScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
+      if (next is AsyncData<User?> && next.value != null) {
+        context.go(RouteConstants.dashboard);
+      }
       if (next is AsyncError) {
         final errorText = next.error?.toString() ?? 'การเข้าสู่ระบบล้มเหลว';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -102,7 +107,6 @@ class LoginScreen extends ConsumerWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ใช้ Icon ชั่วคราว (ถ้ามีไฟล์รูปโลโก้ Google ค่อยเปลี่ยนเป็น Image.asset)
                         Icon(
                           Icons.g_mobiledata_rounded,
                           size: 32,
@@ -126,7 +130,7 @@ class LoginScreen extends ConsumerWidget {
                     onPressed: () =>
                         ref.read(authProvider.notifier).loginWithApple(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF131C2E), // สีเข้ม
+                      backgroundColor: const Color(0xFF131C2E),
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(54),
                       elevation: 0,

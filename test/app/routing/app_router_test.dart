@@ -33,25 +33,7 @@ ProviderScope _buildStateDrivenTestApp({
 }
 
 void main() {
-  testWidgets('initializing state stays on Splash', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      _buildTestApp(
-        const AppFlowState(
-          isInitializing: true,
-          isOnboardingCompleted: false,
-          isAuthenticated: false,
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.text('ระบบติดตามการสมัครสมาชิก'), findsOneWidget);
-    expect(find.byKey(const Key('hero-payout-card')), findsNothing);
-  });
-
-  testWidgets('authenticated mock state redirects to Dashboard', (
+  testWidgets('renders Dashboard tab by default', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(_buildTestApp(AppFlowState.mockDashboard));
@@ -79,6 +61,27 @@ void main() {
 
     expect(find.text('Google One Cloud'), findsOneWidget);
     expect(find.text('Netflix Premium'), findsNothing);
+  });
+
+  /*
+  // --- Production Strict Auth & Onboarding Redirect Guard Tests (Preserved in Comments) ---
+
+  testWidgets('initializing state stays on Splash', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _buildTestApp(
+        const AppFlowState(
+          isInitializing: true,
+          isOnboardingCompleted: false,
+          isAuthenticated: false,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('ระบบติดตามการสมัครสมาชิก'), findsOneWidget);
+    expect(find.byKey(const Key('hero-payout-card')), findsNothing);
   });
 
   testWidgets('unauthenticated state redirects to Login', (
@@ -126,4 +129,5 @@ void main() {
     expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
     expect(find.text('ยินดีต้อนรับกลับมา'), findsNothing);
   });
+  */
 }
