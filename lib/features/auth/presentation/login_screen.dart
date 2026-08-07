@@ -12,10 +12,8 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
+    // ดักจับสถานะการล็อกอิน
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
-      if (next is AsyncData<User?> && next.value != null) {
-        context.go(RouteConstants.dashboard);
-      }
       if (next is AsyncError) {
         final errorText = next.error?.toString() ?? 'การเข้าสู่ระบบล้มเหลว';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -25,6 +23,8 @@ class LoginScreen extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
+      } else if (next is AsyncData && next.value != null) {
+        context.go(RouteConstants.dashboard);
       }
     });
 

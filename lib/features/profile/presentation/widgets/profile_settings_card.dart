@@ -23,13 +23,13 @@ class ProfileSettingsCard extends StatelessWidget {
         children: [
           ListTile(
             key: const Key('profile-income-setting'),
-            onTap: onEditIncome,
+            // นำ onTap ออก เพื่อไม่ให้เปิดหน้าแก้ยอดเงินเก่าขึ้นมา
             leading: const Icon(
               Icons.account_balance_wallet_rounded,
               color: AppColors.primary,
             ),
-            title: const Text('รายได้ต่อเดือน'),
-            subtitle: const Text('ใช้คำนวณ Creep Risk'),
+            title: const Text('ยอดเงินรวมในบัตรเครดิต'), // ปรับข้อความให้สื่อความหมาย
+            subtitle: const Text('คำนวณอัตโนมัติจากบัตรที่ผูกไว้'),
             trailing: Text(
               '฿${income.toStringAsFixed(0)}',
               style: const TextStyle(fontWeight: FontWeight.w700),
