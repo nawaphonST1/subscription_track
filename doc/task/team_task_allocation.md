@@ -18,7 +18,7 @@
 |-------|----------|-----------|-----------|
 | ⭐ **Easy** | Splash, Profile, Notifications | UI only, no complex logic | 6-8 hrs |
 | ⭐⭐ **Medium** | Login, Forms, Settings, Dialogs | Logic + validation + navigation | 12-16 hrs |
-| ⭐⭐⭐ **Hard** | Dashboard, Add Subscription | Complex logic + refactor + responsive | 20-28 hrs |
+| ⭐⭐⭐ **Hard** | Dashboard, Add Subscription via Card | Cross-feature import, async state, duplicate prevention | 20-28 hrs |
 
 ### Screen Complexity Breakdown
 
@@ -28,8 +28,8 @@
 | **Onboarding** | ⭐⭐ | PageView, dots indicator, navigation flow | 12 |
 | **Login** | ⭐⭐ | OAuth mock, auth provider setup, navigation | 14 |
 | **Dashboard** | ⭐⭐⭐ | Refactor existing, Riverpod providers, responsive layout, multiple widgets | 24 |
-| **Add Subscription** | ⭐⭐⭐ | Dual form paths, validation, two-screen flow, business logic | 26 |
-| **Select Package** | ⭐⭐ | List, search/filter, selection logic, categories | 12 |
+| **Add Subscription via Card** | ⭐⭐⭐ | Card linking, recurring-charge detection, auto-import and error recovery | 26 |
+| **Mock Card Picker** | ⭐⭐ | Card list, loading/error states and detected-item summary | 12 |
 | **Subscription Detail** | ⭐⭐ | Fetch by ID, dynamic content, edit button, delete button | 12 |
 | **Edit Subscription** | ⭐⭐ | Form pre-fill, update logic, shared validation with Add | 12 |
 | **Profile** | ⭐ | Read-only display, simple edit modal for income | 6 |
@@ -173,94 +173,78 @@ Dialogs (Week 4) [Used by Person 2 & 3 for Add/Edit]
 
 ---
 
-## 👨‍💼 PERSON 2: นะ (Forms & CRUD Lead)
+## 👨‍💼 PERSON 2: นะ (Card Import & CRUD Lead)
 
 ### 📋 Tasks (4 items | 50 hours total)
 
 | # | Task | Difficulty | Est. Hours | Status |
 |---|------|-----------|-----------|--------|
-| 1 | **Add Subscription** | ⭐⭐⭐ Hard | 26 | 🔴 Highest Priority |
-| 2 | **Select Package** | ⭐⭐ Medium | 12 | 🟡 Prerequisite for Add |
+| 1 | **Add Subscription via Card** | ⭐⭐⭐ Hard | 26 | 🟢 Mock flow implemented |
+| 2 | **Mock Card Picker** | ⭐⭐ Medium | 12 | 🟢 Implemented in Profile |
 | 3 | **Dialogs** (Wait for Person 1) | ⭐⭐ Medium | 6 | 🟠 Week 4 (after P1) |
 | 4 | **Notification Center** | ⭐ Easy | 6 | 🟢 Week 5 (quick win) |
 
 ### 📝 Responsibilities
 
 **Person 2 (นะ)'s Role:**
-- 📋 Form mastery (validation, error handling)
-- 🔀 Manage dual-path navigation (Preset vs Custom)
-- ✅ Implement form validation rules
-- 🎯 Create reusable form components
-- 🧪 Unit test validation logic
-- 📊 Setup mock save logic
+- 💳 ดูแล flow เพิ่มบัตรและการเชื่อมต่อ Card/Open Banking API ในอนาคต
+- 🔄 แปลง recurring charges เป็น Subscription ผ่าน application boundary
+- ✅ ป้องกัน duplicate import และจัดการ loading/error/rollback
+- 🎯 ดูแล Profile card picker และ Subscription CRUD ที่เกิดหลัง import
+- 🧪 Unit test card repository, mapping และ import logic
+- 📊 เปลี่ยน In-Memory repository เป็น production data source ภายหลัง
 
 ### 📌 Key Dependencies
 
 ```
-Person 1: Dashboard + Dialogs (Week 3-4)
+Person 1: Dashboard + Subscription state boundary (Week 3-4)
     ↓
-Select Package (Week 2-3) ← Can start early
+Mock Card Repository + Picker (Week 2-3)
     ↓
-Add Subscription (Week 3-4) ← Depends on Dialogs
+Add Subscription via Card (Week 3-4)
     ↓
 Notification Center (Week 5)
 ```
 
 ### 💻 Tasks Breakdown
 
-#### Week 2: Select Package (Start Early)
+#### Week 2: Mock Card Picker (Start Early)
 ```
-[ Day 1-3 ] Package List Screen
-  - Fetch/display mockPackages
-  - Category tabs (Streaming, AI, Cloud, Creative, Other)
-  - Search functionality
-  - Selection logic (tap card → select this package)
+[ Day 1-3 ] Card data source
+  - สร้าง PaymentCardRepository contract
+  - Seed KBank, SCB, UOB และ Krungsri
+  - กำหนด recurring subscriptions ที่ตรวจพบแยกตามบัตร
 
-[ Day 4-5 ] Navigation Flow
-  - Seamless back to Add form with selected package
-  - Pass package data via route parameters
+[ Day 4-5 ] Profile Flow
+  - แสดง linked cards ใน Profile
+  - เปิด Add Payment Card bottom sheet
+  - แสดงจำนวน Subscription ที่ตรวจพบก่อนเพิ่ม
 ```
 
-#### Week 3-4: Add Subscription (Main Task)
+#### Week 3-4: Add Subscription via Card (Main Task)
 ```
 [ Week 3 ]
-  Day 1-2: Setup form structure
-    - Decide: SingleChildScrollView vs TabBar approach
-    - Create form state notifier
-    - Mock save to local storage
-  
-  Day 3-5: Implement paths
-    Path A (Preset):
-      - Tap "Pick from List" → Select Package
-      - Return with package data
-      - Pre-fill: name, category, defaultPrice
-      - Allow override price
-    
-    Path B (Manual):
-      - Show custom form directly
-      - All fields: name, price, category, billing period, etc.
+  Day 1-2: Setup application flow
+    - PaymentCardLinkingController เป็น owner ของการผูกบัตร
+    - PaymentCardRepository override ได้ใน tests
+    - UI ไม่ import data implementation โดยตรง
+
+  Day 3-5: Auto-import
+    - Map DetectedSubscription → Subscription
+    - Import ผ่าน SubscriptionListController
+    - ข้าม id ที่มีอยู่แล้วเพื่อป้องกันข้อมูลซ้ำ
+    - Profile, Dashboard และ Subscriptions อ่าน state ชุดเดียวกัน
 
 [ Week 4 ]
-  Day 1-3: Validation & UX
-    - Name field: not empty, min 3 chars
-    - Price field: positive number, max 5000
-    - Category: must select
-    - Billing period: must select
-    - Show inline errors
-    - Disable submit button if invalid
-  
-  Day 4-5: Final flow
-    - Handle success → Back to Dashboard
-    - Show success toast
-    - Clear form state
-    - Coordinate with Person 1 for Dialogs (if deletion needed)
-```
+  Day 1-3: UX states
+    - Loading, empty และ error state ของ card picker
+    - Disable ปุ่มอื่นระหว่างกำลังเพิ่มบัตร
+    - Success SnackBar ระบุจำนวนรายการที่นำเข้า
 
-#### Week 4-5: Wait for Dialogs, then use
-```
-[ When P1 finishes Dialogs ]
-  - Integrate PIN verification for "Confirm & Add"
-  - Maybe add optional delete checkbox
+  Day 4-5: Production handoff
+    - ถอดปุ่มเพิ่มรายการออกจาก Subscriptions tab
+    - เก็บ manual/preset form ออกจาก active navigation
+    - เตรียม contract สำหรับ Card/Open Banking API จริง
 ```
 
 #### Week 5: Notification Center
@@ -358,7 +342,7 @@ Settings + Profile (Week 5-6)
 #### Week 4: Edit Subscription (Parallel with Detail)
 ```
 [ Day 1-2 ] Form Pre-fill
-  - Similar form to Add Subscription
+  - Edit tracking metadata ของ Subscription ที่นำเข้าจากบัตร
   - Pre-fill all fields from subscription data
   - Fetch from subscriptionProvider.family(id)
 
@@ -429,23 +413,23 @@ Week 1:
 
 Week 2:
   Person 1 (เน):      [Onboarding] ████████
-  Person 2 (นะ):      [Select Package] ████████
+  Person 2 (นะ):      [Mock Card Picker] ████████
   Person 3 (อาทิตย์): [Login] ████████
 
 Week 3:
   Person 1 (เน):      [Dashboard Refactor (Part 1)] ████████████████
-  Person 2 (นะ):      [Select Package] ████████
+  Person 2 (นะ):      [Card Repository] ████████
   Person 3 (อาทิตย์): --------
 
 Week 4:
   Person 1 (เน):      [Dashboard Refactor (Part 2)] ████████████████
-  Person 2 (นะ):      [Add Subscription (Part 1)] ████████████████
+  Person 2 (นะ):      [Card Auto-import (Part 1)] ████████████████
   Person 3 (อาทิตย์): [Subscription Detail] ████████
                      [Edit Subscription] ████████
 
 Week 5:
   Person 1 (เน):      [Dialogs] ████████
-  Person 2 (นะ):      [Add Subscription (Part 2)] ████████
+  Person 2 (นะ):      [Card Auto-import (Part 2)] ████████
   Person 3 (อาทิตย์): [Settings] ████████
                      [Profile] ████████
 
@@ -469,9 +453,9 @@ Week 8:
 ```
 1. Setup (P1, Week 1) — Foundation
 2. Dashboard + Login (P1, P3, Week 2-4) — Core flows
-3. Dialogs (P1, Week 4) — Used by Add/Edit
-4. Add Subscription (P2, Week 3-4) — Depends on Dialogs
-5. Edit Subscription (P3, Week 4) — Depends on Add validation logic
+3. Subscription application boundary (P1, Week 4) — Used by Card import/Edit
+4. Add Subscription via Card (P2, Week 3-4) — Depends on import command
+5. Edit Subscription (P3, Week 4) — Works with imported tracking data
 6. Others (P2, P3, Week 5-6) — Independent after above
 ```
 
@@ -488,12 +472,12 @@ Week 8:
 - [ ] Onboarding smooth with 60 FPS animations
 
 ### Person 2 (นะ) ✅
-- [ ] Add Subscription form complete with all validations
-- [ ] Dual path (Preset/Custom) working seamlessly
-- [ ] Select Package list with search functional
+- [x] Add Subscription via mock card flow complete
+- [x] Profile Add Card bottom sheet working
+- [x] Recurring charges import without duplicate ids
 - [ ] Notification list displaying correctly
-- [ ] Form validation rules tested
-- [ ] Mock save logic working
+- [ ] Card mapping and error paths tested
+- [x] In-Memory card repository working
 
 ### Person 3 (อาทิตย์) ✅
 - [ ] Login flow complete (OAuth mock)
@@ -534,7 +518,7 @@ develop ← merge all features here
 | Person | Screens | Tasks | Hard | Medium | Easy | Total Hrs |
 |--------|---------|-------|------|--------|------|-----------|
 | **P1 (เน)** | 4 | Splash, Onboarding, Dashboard, Dialogs | 1 | 2 | 1 | 52 |
-| **P2 (นะ)** | 4 | Select Package, Add Subscription, Notification, (Dialogs) | 1 | 2 | 1 | 50 |
+| **P2 (นะ)** | 4 | Mock Card Picker, Card Auto-import, Notification, (Dialogs) | 1 | 2 | 1 | 50 |
 | **P3 (อาทิตย์)** | 5 | Login, Detail, Edit, Settings, Profile | 0 | 4 | 1 | 56 |
 | **Total** | **12** | | **2** | **8** | **3** | **158 hrs** |
 
@@ -549,8 +533,8 @@ develop ← merge all features here
 - **Code architecture** leadership
 
 ### Person 2 (นะ):
-- **Form validation** patterns
-- **Navigation flows** between multiple screens
+- **Card import** workflow and repository integration
+- **Cross-feature commands** from Profile to Subscriptions
 - **UX/DX** polish for complex interactions
 - **Testing** validation logic
 
@@ -570,11 +554,11 @@ develop ← merge all features here
 - ✅ Review code daily (ensure consistency)
 - ✅ Anticipate blockers early
 
-### For Person 2 (นะ - Forms):
-- ✅ Start Select Package early (doesn't depend on Dashboard)
-- ✅ Create reusable form validation utilities
-- ✅ Test all edge cases (empty, invalid data, network errors)
-- ✅ Design form for easy reuse in Edit screen
+### For Person 2 (นะ - Card Import):
+- ✅ Start Mock Card Repository early (doesn't depend on Dashboard UI)
+- ✅ Keep recurring-charge mapping outside widgets
+- ✅ Test duplicate, empty, invalid data and network errors
+- ✅ แยก card data, import orchestration และ UI ออกจากกัน
 
 ### For Person 3 (อาทิตย์ - Auth & User):
 - ✅ Start Login early (only depends on Setup)
@@ -628,16 +612,16 @@ develop ← merge all features here
 - [ ] Riverpod providers understood
 
 **Week 2:**
-- [ ] Select Package list UI complete
-- [ ] Search/filter working
-- [ ] Navigation to Add works
+- [x] Mock Card Picker UI complete
+- [x] Linked/available card state working
+- [x] Profile → Add Card flow works
 
 **Week 3-4:**
-- [ ] Add Subscription form UI done
-- [ ] Validation logic complete
-- [ ] Preset path tested
-- [ ] Custom path tested
-- [ ] Mock save working
+- [x] Card auto-import UI done
+- [x] Duplicate prevention complete
+- [ ] Mapping/error paths tested
+- [x] Subscriptions update after card linking
+- [x] Mock repository working
 
 **Week 5:**
 - [ ] Dialogs integrated
