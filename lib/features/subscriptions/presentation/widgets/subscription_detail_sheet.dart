@@ -34,12 +34,11 @@ class _SubscriptionDetailSheetState extends State<SubscriptionDetailSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // หุ้มด้วย Container และกำหนดสีตาม theme.cardColor เพื่อให้เข้ากับระบบ Theme อัตโนมัติ
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    // หุ้มด้วย Material และกำหนดสีตาม theme.cardColor เพื่อให้เข้ากับระบบ Theme อัตโนมัติ
+    return Material(
+      color: theme.cardColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),

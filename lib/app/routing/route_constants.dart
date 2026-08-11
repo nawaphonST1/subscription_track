@@ -13,6 +13,8 @@ class RouteConstants {
   static const String profile = 'profile';
   static const String settings = 'settings';
   static const String notifications = 'notifications';
+  static const String addSubscription = 'add';
+  static const String selectPackage = 'select-package';
 
   // Helper methods
   static String subscriptionDetailPath(String id) =>

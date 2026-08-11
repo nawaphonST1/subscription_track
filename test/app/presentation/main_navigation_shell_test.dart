@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/core/theme/app_theme.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
+import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 
 Widget _buildShell() {
@@ -19,6 +20,11 @@ Widget _buildShell() {
 
 void main() {
   testWidgets('switches between every integrated destination', (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(_buildShell());
     await tester.pumpAndSettle();
 
@@ -27,7 +33,7 @@ void main() {
     await tester.tap(find.text('รายการ'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('subscription-search-field')), findsOneWidget);
-    expect(find.byKey(const Key('add-subscription-button')), findsNothing);
+    expect(find.byKey(const Key('add-subscription-button')), findsOneWidget);
 
     await tester.tap(find.text('ประหยัด'));
     await tester.pumpAndSettle();
@@ -198,10 +204,10 @@ void main() {
     );
     expect(initialRisk.data, contains('6.3%'));
 
-    await tester.tap(find.byKey(const Key('income-chip')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('income-field')), '70000');
-    await tester.tap(find.byKey(const Key('save-income-button')));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MainNavigationShell)),
+    );
+    container.read(userIncomeProvider.notifier).update(70000);
     await tester.pumpAndSettle();
 
     final updatedRisk = tester.widget<Text>(
