@@ -27,7 +27,7 @@ void main() {
     await tester.tap(find.text('รายการ'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('subscription-search-field')), findsOneWidget);
-    expect(find.byKey(const Key('add-subscription-button')), findsOneWidget);
+    expect(find.byKey(const Key('add-subscription-button')), findsNothing);
 
     await tester.tap(find.text('ประหยัด'));
     await tester.pumpAndSettle();
@@ -40,6 +40,7 @@ void main() {
     await tester.tap(find.text('โปรไฟล์'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('profile-income-setting')), findsOneWidget);
+    expect(find.byKey(const Key('add-payment-card-button')), findsOneWidget);
     expect(find.text('แจ้งเตือนก่อนตัดเงิน'), findsNothing);
   });
 

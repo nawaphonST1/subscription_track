@@ -38,7 +38,7 @@
 - CRUD/toggle เรียกผ่าน controller; delete/toggle อัปเดต UI แบบ optimistic และจัดการ rollback/error
 - tests override repository ด้วย `subscriptionRepositoryProvider.overrideWithValue(...)`
 
-> หมายเหตุ: Hive/REST, Add Subscription form, PIN persistence, biometric และ notification backend ยังไม่เสร็จ UI ที่แสดงใน shell เป็น integration point สำหรับงานถัดไป
+> หมายเหตุ: Hive/REST, การเชื่อมต่อข้อมูลบัตรจริง, PIN persistence, biometric และ notification backend ยังไม่เสร็จ ปัจจุบันใช้ In-Memory card repository เพื่อจำลองการค้นหา Subscription จากรายการเรียกเก็บซ้ำ
 
 ### Recommended State Management: **Riverpod**
 
@@ -401,153 +401,72 @@ Desktop Layout (900px+):
 
 ---
 
-### 5️⃣ Add Subscription Screen
+### 5️⃣ Add Payment Card & Auto-import Subscriptions
 
 | Property | Value |
 |----------|-------|
-| **Purpose** | Choose from preset package OR add custom |
-| **Navigation Flow** | Dashboard → Add Subscription → (Select Package OR Custom Form) |
-| **State** | Track form data, validation errors |
-| **Mock Data** | 🔄 Mock package list, custom validation |
+| **Purpose** | เชื่อมต่อบัตรและสร้าง Subscription จาก recurring charges ที่ตรวจพบโดยอัตโนมัติ |
+| **Navigation Flow** | Profile → เพิ่มบัตร → เลือก Mock Card → Auto-import → Subscriptions |
+| **State Owner** | `features/profile/application/payment_card_linking_controller.dart` |
+| **Mock Data** | ✅ KBank, SCB, UOB และ Krungsri พร้อมรายการ Subscription ของแต่ละบัตร |
 
-**UI Layout - Step 1: Choose Method**
+**Business rules:**
 
-```
-┌─────────────────────────┐
-│ ← Add Subscription  [X] │
-├─────────────────────────┤
-│                         │
-│  Choose How to Add      │
-│                         │
-│  ┌─────────────────────┐│
-│  │ 📱 Pick from List   ││ ← Tap → Select Package Screen
-│  │                     ││   (see next section)
-│  │ Browse Netflix,     ││
-│  │ Spotify, Disney+... ││
-│  └─────────────────────┘│
-│                         │
-│  ┌─────────────────────┐│
-│  │ ✏️ Add Manually     ││ ← Tap → Custom Form
-│  │                     ││   (see below)
-│  │ Enter subscription  ││
-│  │ name & price        ││
-│  └─────────────────────┘│
-│                         │
-└─────────────────────────┘
-```
+- หน้า Subscriptions ไม่มีปุ่ม “เพิ่มรายการ/เพิ่มบริการ” เพื่อไม่ให้ข้อมูล tracking ถูกสร้างโดยไม่มีแหล่งที่มา
+- ปุ่ม “เพิ่มบัตร” อยู่ด้านล่างของ Profile
+- เมื่อผูกบัตรสำเร็จ controller จะนำ recurring charges ที่ตรวจพบเข้า `subscriptionListProvider`
+- ใช้ subscription id ป้องกันการ import ซ้ำ
+- การค้นหา ดูรายละเอียด แก้ metadata และลบ tracking item ยังคงทำใน Subscriptions feature
+- MVP ใช้ข้อมูลจำลอง; production เปลี่ยน repository เป็น Card/Open Banking API โดยไม่แก้ Presentation
 
-**UI Layout - Step 2a: Select Package (Preset)**
-
-```
-┌─────────────────────────┐
-│ ← Select Package    [X] │
-├─────────────────────────┤
-│ 🔍 Search packages...   │
-├─────────────────────────┤
-│                         │
-│ 🎬 Streaming (5)        │
-│ ┌───────────────────┐   │
-│ │ 🎬 Netflix    ฿599│   │ ← PackageCard
-│ │                   │   │   (with icon, name, price)
-│ │ 📺 Monthly  [Select]│ ← Tap → Custom Amount Form
-│ └───────────────────┘   │
-│                         │
-│ ┌───────────────────┐   │
-│ │ 🎮 Disney+   ฿249 │   │
-│ │                   │   │
-│ │ 📺 Monthly  [Select]  │
-│ └───────────────────┘   │
-│                         │
-│ 🤖 AI (3)               │
-│ ┌───────────────────┐   │
-│ │ 🤖 ChatGPT+ ฿20  │   │
-│ │                   │   │
-│ │ 💳 Monthly  [Select]  │
-│ └───────────────────┘   │
-│                         │
-│ [... more categories]   │
-│                         │
-└─────────────────────────┘
-```
-
-**UI Layout - Step 2b: Custom Form**
+**Profile + Add Card Bottom Sheet:**
 
 ```
 ┌──────────────────────────────┐
-│ ← Add Subscription       [X] │
+│ Profile                      │
 ├──────────────────────────────┤
-│                              │
-│ Service Name                 │
+│ บัตรที่เชื่อมต่อ             │
 │ ┌──────────────────────────┐ │
-│ │ YouTube Premium [cursor] │ │
+│ │ KBank •••• 4242         │ │
+│ │ พบ 2 Subscriptions      │ │
+│ └──────────────────────────┘ │
+│ ┌──────────────────────────┐ │
+│ │ SCB •••• 8888           │ │
+│ │ พบ 3 Subscriptions      │ │
 │ └──────────────────────────┘ │
 │                              │
-│ Price                        │
-│ ┌──────────────────────────┐ │
-│ │ 99.00              [🇹🇭] │ │
-│ └──────────────────────────┘ │
-│                              │
-│ Billing Period               │
-│ ⦿ Monthly  ○ Quarterly       │
-│ ○ Yearly   ○ Custom          │
-│                              │
-│ Category                     │
-│ [▼ Streaming            ]    │
-│                              │
-│ Next Billing Date            │
-│ [📅 31 Dec 2024    ][Calc]  │
-│                              │
-│ Reminder Before (days)       │
-│ [+ 3 -]                     │
-│                              │
-│ Additional Notes (optional)  │
-│ ┌──────────────────────────┐ │
-│ │ Shared with friend       │ │
-│ └──────────────────────────┘ │
-│                              │
-│ ┌──────────────────────────┐ │
-│ │ [Cancel]    [Add Service]│ │
-│ └──────────────────────────┘ │
+│ [       + เพิ่มบัตร       ] │
+└──────────────────────────────┘
+
+          Tap “เพิ่มบัตร”
+                 ↓
+┌──────────────────────────────┐
+│ เพิ่มบัตร                    │
+│ เลือกบัตรจำลอง               │
+├──────────────────────────────┤
+│ UOB •••• 1234               │
+│ ตรวจพบ 2 รายการ      [เพิ่ม] │
+├──────────────────────────────┤
+│ Krungsri •••• 5454          │
+│ ตรวจพบ 2 รายการ      [เพิ่ม] │
 └──────────────────────────────┘
 ```
 
+**Auto-import flow:**
+
+```
+PaymentCardLinkingController
+  ├─ link card ผ่าน PaymentCardRepository
+  ├─ map DetectedSubscription → Subscription
+  ├─ import ผ่าน SubscriptionListController
+  └─ refresh Profile + Dashboard + Subscriptions จาก state เดียวกัน
+```
+
 **Widgets Used:**
-- `TextFormField` (with validation)
-- `RadioListTile` (billing period)
-- `DropdownButton` (category)
-- `DatePickerField` (custom)
-- `CustomPackageCard` (for preset selection)
-- `ListView` (scrollable form)
-
-**State Management:**
-```dart
-// providers/add_subscription_provider.dart
-final addSubscriptionFormProvider = StateNotifierProvider((ref) {
-  return AddSubscriptionNotifier();
-});
-
-// Track form state: loading, success, error
-class AddSubscriptionState {
-  final bool isLoading;
-  final String? error;
-  final Subscription? savedSubscription;
-}
-```
-
-**Mock Data:**
-```dart
-🔄 List<Package> mockPackages = [
-  Package(
-    id: 'netflix',
-    name: 'Netflix',
-    category: 'streaming',
-    defaultPrice: 599,
-    iconUrl: 'assets/icons/netflix.png',
-    websiteUrl: 'netflix.com',
-  ),
-  // ... more
-];
-```
+- `LinkedAccountsCard`
+- `FilledButton.icon` (`เพิ่มบัตร`)
+- `showModalBottomSheet` (`AddPaymentCardSheet`)
+- `ListTile` สำหรับ mock cards และจำนวนรายการที่ตรวจพบ
 
 ---
 
@@ -664,8 +583,8 @@ class AddSubscriptionState {
 
 | Property | Value |
 |----------|-------|
-| **Purpose** | View & edit user profile |
-| **Content** | Avatar, name, email, income summary |
+| **Purpose** | View/edit profile และจัดการบัตรที่ใช้ค้นหา Subscription |
+| **Content** | Avatar, name, email, monthly income, linked cards และปุ่มเพิ่มบัตร |
 | **Navigation** | Tap profile icon on Dashboard |
 
 **UI Layout:**
@@ -696,9 +615,10 @@ class AddSubscriptionState {
 │  └─────────────┴────────────┘│
 │                              │
 │  ─────────────────────────   │
-│  [Edit Profile]              │
-│  [Settings]                  │
-│  [Help & Feedback]           │
+│  บัตรที่เชื่อมต่อ             │
+│  [KBank •••• 4242]          │
+│  [SCB   •••• 8888]          │
+│  [     + เพิ่มบัตร      ]    │
 │  ─────────────────────────   │
 │                              │
 └──────────────────────────────┘
@@ -708,6 +628,7 @@ class AddSubscriptionState {
 - `CircleAvatar` (with image picker on tap)
 - `ListTile` (for each stat)
 - Custom edit modal for income
+- `LinkedAccountsCard` และ `AddPaymentCardSheet`
 
 ---
 
@@ -1121,7 +1042,9 @@ final mockSubscriptions = [
 ];
 ```
 
-### 3. Mock Packages (Preset List)
+### 3. Legacy Mock Packages (Not in Active Navigation)
+
+> เก็บ catalog เดิมไว้ชั่วคราวเพื่ออ้างอิงงานของ Person 2 แต่ active flow ปัจจุบันนำเข้า Subscription จาก mock payment cards ใน Profile
 
 ```dart
 // services/mock_data/mock_packages.dart
@@ -1437,8 +1360,8 @@ ThemeData darkTheme = ThemeData(
 | 2 | Onboarding | Setup | ✅ IMPLEMENTED | High |
 | 3 | Login | Auth | ✅ MOCK IMPLEMENTED | High |
 | 4 | Dashboard / adaptive shell | Core | ✅ IMPLEMENTED | High |
-| 5 | Add Subscription | Core | ✅ IMPLEMENTED | High |
-| 6 | Select Package | Core | ✅ IMPLEMENTED | High |
+| 5 | Add Payment Card + Auto-import | Profile/Core | ✅ MOCK IMPLEMENTED | High |
+| 6 | Select Package / Manual Add | Core | ⏸️ REMOVED FROM ACTIVE FLOW | Low |
 | 7 | Subscription Detail | Core | ✅ DETAIL SHEET IMPLEMENTED | High |
 | 8 | Edit Subscription | Core | 🔴 NEW | High |
 | 9 | Profile | User | ✅ TAB IMPLEMENTED | Medium |
@@ -1478,10 +1401,11 @@ ThemeData darkTheme = ThemeData(
 - [x] Savings selection and dynamic Creep Score
 - [x] Tablet/desktop layout optimization (NavigationRail, constrained content, adaptive columns/grid)
 
-### Week 4: Add/Edit Subscriptions
-- [x] Add Subscription screen
-- [x] Select Package screen (preset list)
-- [x] Custom form validation
+### Week 4: Card Import/Edit Subscriptions
+- [x] Add Payment Card bottom sheet ใน Profile
+- [x] Mock cards พร้อม recurring subscriptions ของแต่ละบัตร
+- [x] Auto-import และ duplicate prevention ผ่าน Riverpod controller
+- [x] นำปุ่มเพิ่มรายการออกจากหน้า Subscriptions
 - [ ] Edit Subscription screen
 - [x] Delete with generic confirmation (tracking action; no PIN/Biometric)
 
