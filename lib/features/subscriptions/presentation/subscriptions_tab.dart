@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_filter_controller.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
@@ -18,43 +19,82 @@ class SubscriptionsTab extends ConsumerWidget {
     final filter = ref.watch(subscriptionFilterProvider);
     final subscriptions = ref.watch(visibleSubscriptionsProvider);
 
-    return Column(
-      children: [
-        SubscriptionFilterBar(
-          filter: filter,
-          onQueryChanged: ref
-              .read(subscriptionFilterProvider.notifier)
-              .updateQuery,
-          onCategorySelected: ref
-              .read(subscriptionFilterProvider.notifier)
-              .selectCategory,
-        ),
-        Expanded(
-          child: subscriptions.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(
-              child: FilledButton.icon(
-                onPressed: ref.read(subscriptionListProvider.notifier).refresh,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('ลองอีกครั้ง'),
-              ),
-            ),
-            data: (items) => items.isEmpty
-                ? const SubscriptionEmptyState()
-                : SubscriptionCollection(
-                    subscriptions: items,
-                    onToggle: (subscription) => ref
-                        .read(subscriptionListProvider.notifier)
-                        .toggleSelection(subscription.id),
-                    onDelete: (subscription) =>
-                        _deleteSubscription(context, ref, subscription),
-                    onShowDetails: (subscription) =>
-                        _showSubscriptionDetails(context, ref, subscription),
-                  ),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          SubscriptionFilterBar(
+            filter: filter,
+            onQueryChanged: ref
+                .read(subscriptionFilterProvider.notifier)
+                .updateQuery,
+            onCategorySelected: ref
+                .read(subscriptionFilterProvider.notifier)
+                .selectCategory,
           ),
-        ),
-      ],
+          Expanded(
+            child: subscriptions.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(
+                child: FilledButton.icon(
+                  onPressed: ref.read(subscriptionListProvider.notifier).refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('ลองอีกครั้ง'),
+                ),
+              ),
+              data: (items) => items.isEmpty
+                  ? const SubscriptionEmptyState()
+                  : SubscriptionCollection(
+                      subscriptions: items,
+                      onToggle: (subscription) => ref
+                          .read(subscriptionListProvider.notifier)
+                          .toggleSelection(subscription.id),
+                      onDelete: (subscription) =>
+                          _deleteSubscription(context, ref, subscription),
+                      onShowDetails: (subscription) =>
+                          _showSubscriptionDetails(context, ref, subscription),
+                    ),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('add-subscription-button'),
+        onPressed: () => _navigateToAddSubscription(context, ref),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('เพิ่มรายการ'),
+      ),
     );
+  }
+
+  Future<void> _navigateToAddSubscription(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final subscription = await context.push<Subscription>('/dashboard/add');
+    if (subscription != null && context.mounted) {
+      final pinVerified = await PinVerificationDialog.show(
+        context: context,
+        title: 'ยืนยันการเพิ่มบริการ',
+        message: 'กรุณากรอกรหัส PIN เพื่อเพิ่มบริการ ${subscription.name}',
+      );
+      if (!pinVerified || !context.mounted) return;
+
+      try {
+        await ref
+            .read(subscriptionListProvider.notifier)
+            .addSubscription(subscription);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เพิ่มบริการ ${subscription.name} สำเร็จ')),
+        );
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('เพิ่มบริการไม่สำเร็จ กรุณาลองอีกครั้ง')),
+        );
+      }
+    }
   }
 
   Future<void> _showSubscriptionDetails(
