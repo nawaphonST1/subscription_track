@@ -1,4 +1,4 @@
 interface:
-  display_name: "Clean Code"
-  short_description: "Review and refactor code with clean boundaries"
-  default_prompt: "Use $clean-code to review and refactor this code for clear responsibilities and maintainable architecture."
+  display_name: "Clean Code & Architecture Review"
+  short_description: "Review and refactor full-stack code (Flutter, NestJS, Postgres, Redis, Docker) with clean architectural boundaries"
+  default_prompt: "Use $clean-code to review and refactor this code for clear responsibilities, modular monolith boundaries, and maintainable full-stack architecture."

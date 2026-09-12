@@ -15,6 +15,7 @@ ProviderScope _buildTestApp(AppFlowState initialState) {
   );
 }
 
+// ignore: unused_element
 ProviderScope _buildStateDrivenTestApp({
   required bool isMockAuthEnabled,
   required bool isOnboardingCompleted,
