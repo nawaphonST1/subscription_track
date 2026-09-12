@@ -87,45 +87,51 @@
 | **Notification Service** | จัดการ cron job ส่ง Push Notification ก่อนวันต่ออายุ | แยกออกจาก Main API เพราะมี cron job หนัก, ทำงาน background |
 | **Analytics Service** | คำนวณ Creep Score, Confidence Score, Usage Pattern | ประมวลผลหนัก, ไม่กระทบ Main API |
 
-### MVP Frontend Data Architecture (Implementation Baseline — 3 August 2026)
+### MVP Frontend Data Architecture (Implementation Baseline — 12 September 2026)
 
-Flutter client ใช้ Repository Pattern เป็นขอบเขตระหว่าง UI state กับ data source:
+Flutter client ใช้ Repository Pattern ร่วมกับ **Riverpod Feature-First Architecture** เป็นขอบเขตระหว่าง UI state กับ data source:
 
 ```text
-Tab Views / Widgets
+Tab Views / Sub-Screens / Modal Sheets
         ↓ watch / command
-Riverpod AsyncNotifier (SubscriptionListController)
-        ↓ depends on interface
-SubscriptionRepository
-        ↓ current implementation
-InMemorySubscriptionRepository (mock I/O delay 300 ms)
+Riverpod Application Controllers (List, Filter, Linking, Info, Pin, Theme)
+        ↓ depends on contracts
+Abstract Repositories (SubscriptionRepository, PaymentCardRepository, AuthRepository)
+        ↓ current implementations
+InMemory Repositories (Mock I/O delay, Seed Data, Auto-import, State-driven Auth)
 ```
 
 - `SubscriptionRepository` กำหนด CRUD, lookup และ `toggleSelection`
-- `InMemorySubscriptionRepository` เป็น mock data source ระหว่างรอ Hive/REST API
-- `subscriptionRepositoryProvider` สามารถ override ใน test หรือสลับ implementation ภายหลังได้
-- `subscriptionListProvider` เก็บ `AsyncValue<List<Subscription>>` และรองรับ loading/error
-- delete และ toggle ใช้ optimistic UI พร้อม rollback/reload เมื่อ data source ล้มเหลว
-- Hive/REST API ยังเป็นงานถัดไป ไม่ถือว่าเสร็จจาก baseline นี้
+- `InMemorySubscriptionRepository` เป็น mock data source ระหว่างรอเชื่อมต่อ NestJS REST API
+- `subscriptionListProvider` เป็น `AsyncNotifierProvider<SubscriptionListController, List<Subscription>>` รองรับ optimistic UI, rollback และ auto-import
+- `PaymentCardLinkingController` บริหารการผูกบัตรชำระเงินจำลอง พร้อมนำเข้า Subscription รายการเรียกเก็บซ้ำโดยอัตโนมัติ (ป้องกัน ID ซ้ำ)
+- `userIncomeProvider` คำนวณรายได้/ยอดเงินรวมจากผลรวมยอดเงินคงเหลือในบัตร (`currentBalance`) ที่ผูกไว้
+- `securityPinProvider` ดูแลรหัสความปลอดภัย PIN 6 หลัก รองรับการยืนยันก่อนทำรายการ (`PinVerificationDialog`) และเปลี่ยนรหัส (`ChangePinDialog`)
+- `themeModeProvider` ควบคุมธีมแอปพลิเคชัน รองรับทั้ง Light Theme และ Dark Theme แบบ Realtime
+- `MainNavigationShell` รวม 5 แท็บหลัก (`IndexedStack`) พร้อมระบบ Nested Routing (`/dashboard/notifications`, `/dashboard/add`, `/dashboard/add/select-package`)
 
 ---
 
 ## 4. Feature Scope & Priority
 
 ### 🔴 MVP (เดือนที่ 1) — Must Have
-| Feature | รายละเอียด |
-|---------|------------|
-| **Authentication** | OAuth Google/Apple Sign-In, JWT Token |
-| **Onboarding** | หน้าแนะนำแอปครั้งแรก, กรอกรายได้ |
-| **Dashboard** | 4-tab mobile shell: KPI/Creep, รายการ, Saving Simulation และ Profile/Settings |
-| **Add Subscription** | เลือกจาก Preset Packages หรือกรอกเอง |
-| **Edit/Delete Subscription** | แก้ไขรายละเอียด; ลบด้วย Generic Confirmation หรือ Undo (ไม่ใช้ PIN/Biometric สำหรับ tracking action) |
-| **Category Filter** | ทั้งหมด, สตรีมมิ่ง, AI, คลาวด์, สร้างสรรค์ (มีอยู่แล้ว) |
-| **Saving Simulation** | คำนวณเงินประหยัดเมื่อเลือกยกเลิก (มีอยู่แล้ว) |
-| **Local Storage** | Hive เก็บข้อมูล subscription, รองรับ Offline |
-| **Biometric Lock** | Face ID / Fingerprint + PIN 6 หลัก fallback |
-| **Push Notification** | FCM เตือนก่อนวันต่ออายุ (ตั้งค่าวันเองได้) |
-| **Profile/Settings** | แก้ไขรายได้, ตั้งค่าแจ้งเตือน, ออกจากระบบ |
+
+| Feature | รายละเอียด | สถานะปัจจุบัน |
+|---------|------------|---------------|
+| **Authentication** | OAuth Google/Apple Sign-In (Mock), Guest Mode, JWT Session State | ✅ พัฒนาเสร็จสิ้น (Frontend UI + Mock Auth Repository) |
+| **Onboarding** | หน้าแนะนำแอป 3 สไลด์พร้อมแถบความคืบหน้า (Progress Bar) | ✅ พัฒนาเสร็จสิ้น |
+| **Dashboard** | 5-tab adaptive shell: หน้าแรก (KPI/Creep), รายการ, ประหยัด, ตั้งค่า, โปรไฟล์ | ✅ พัฒนาเสร็จสิ้น (Mobile NavigationBar + Desktop NavigationRail) |
+| **Add Subscription** | เพิ่มรายการใหม่ผ่านฟอร์ม, กำหนดสี/ไอคอน, เลือกจาก Preset Packages | ✅ พัฒนาเสร็จสิ้น (`AddSubscriptionScreen` + `SelectPackageScreen`) |
+| **Edit/Detail Subscription** | ดูรายละเอียด, แก้ไขวันเตือนล่วงหน้า, ทำเครื่องหมายยกเลิก | ✅ พัฒนาเสร็จสิ้น (`SubscriptionDetailSheet`) |
+| **Delete Subscription** | ลบรายการพร้อมระบบ Generic Confirmation + ยืนยันรหัส PIN 6 หลัก | ✅ พัฒนาเสร็จสิ้น (`ConfirmationDialog` + `PinVerificationDialog`) |
+| **Category Filter** | ทั้งหมด, สตรีมมิ่ง, AI, คลาวด์, สร้างสรรค์, อื่นๆ พร้อมระบบค้นหา | ✅ พัฒนาเสร็จสิ้น (`SubscriptionFilterBar` + derived provider) |
+| **Saving Simulation** | คำนวณยอดเงินประหยัดรวมต่อปีเมื่อเลือกยกเลิกบริการ | ✅ พัฒนาเสร็จสิ้น (`SavingsTab` + `savingsViewStateProvider`) |
+| **Card Linking & Auto-import** | ผูกบัตรจำลอง (KBank, SCB, UOB, Krungsri) และดึงรายการอัตโนมัติ | ✅ พัฒนาเสร็จสิ้น (`LinkedAccountsCard` + `AddPaymentCardSheet`) |
+| **Personal Info Management** | แก้ไขชื่อ-นามสกุล, เบอร์โทร, วันเกิด พร้อมซิงก์ขึ้น Header | ✅ พัฒนาเสร็จสิ้น (`PersonalInfoSheet` + `personalInfoProvider`) |
+| **Security PIN** | รหัสความปลอดภัย 6 หลัก พร้อมระบบสั่นเตือนเมื่อผิด และเปลี่ยนรหัส 3 ขั้นตอน | ✅ พัฒนาเสร็จสิ้น (`securityPinProvider`, `PinVerificationDialog`, `ChangePinDialog`) |
+| **Notification Center** | หน้าต่างการแจ้งเตือน, แยกแท็บ (ทั้งหมด, ยังไม่อ่าน, ระบบ), มาร์กอ่านแล้ว | ✅ พัฒนาเสร็จสิ้น (`NotificationCenterScreen` + controller) |
+| **Theme System** | สลับโหมดสี Dark Mode / Light Mode แบบไดนามิก | ✅ พัฒนาเสร็จสิ้น (`themeModeProvider` + AppDarkTheme / AppLightTheme) |
+| **Local Storage** | Hive / SharedPreferences เก็บข้อมูลออฟไลน์ถาวร | 🔄 Baseline ปัจจุบันใช้ In-Memory Repository (พร้อมสำหรับ Hive/REST) |
 
 ### 🟡 Phase 2 (เดือนที่ 2) — Should Have
 | Feature | รายละเอียด |
@@ -281,49 +287,69 @@ POST   /notifications/test → ทดสอบส่ง Push (dev only)
 
 ---
 
-## 7. Screen List & Navigation Flow
+## 7. ข้อมูลหน้าจอและ Navigation (UI Flow)
+
+### 7.1 Living Navigation Architecture (5-Destination Shell)
+
+แอปพลิเคชันได้รับการพัฒนาบนสถาปัตยกรรม **5-Tab Navigation Shell** ด้วย `IndexedStack` เพื่อคงสถานะ State และ Scroll Position ในทุกหน้าจอหลัก พร้อม Sub-Routes สำหรับขั้นตอนการทำงานสำคัญ:
 
 ```text
-[Splash] → [Onboarding] → [Login (OAuth)] → [/dashboard: MainNavigationShell]
-                                               │
-                  ┌────────────────────────────┼────────────────────────────┐
-                  ▼                            ▼                            ▼
-          [0 Dashboard]                [1 Subscriptions]           [2 Savings]
-          Hero KPI / Creep             Search / Category           Checklist
-          Renewal Timeline             Subscription List           Saving Goal
-          Unused Alert                 + Add FAB                    Cancel Selected
-                                               │
-                                               ▼
-                                      [3 Profile & Settings]
-                                      Income / PIN / Reminder
+[Splash (/splash)] ──(Auto Session Check)──> [Onboarding (/onboarding)] ──> [Login (/login)]
+                                                                                   │
+                                                                       (Guest / Google / Apple)
+                                                                                   ▼
+┌────────────────────────────────────────────── [/dashboard: MainNavigationShell (IndexedStack)] ──────────────────────────────────────────────┐
+│                                                                                                                                              │
+│   [0: หน้าแรก Dashboard]          [1: รายการ Subscriptions]     [2: ประหยัด Savings]       [3: ตั้งค่า Settings]         [4: โปรไฟล์ Profile]        │
+│   • Header (Avatar/Name/Income)  • Filter (All/Active/Overdue) • Simulator Checklist    • Theme Switch (Light/Dark)  • Personal Info Sheet         │
+│   • Hero KPI Cards & Summary     • Subscription Cards List     • Monthly Saving Target   • Reminder Push Switch       • Linked Cards Balance Auto-Sum│
+│   • Renewal Timeline             • FAB "+ เพิ่มรายการ"         • Selected Items Cancel   • Language / Currency Sheets • Security PIN Setup Dialog   │
+│   • Unused Services Warning      • Pin Verification on Action                                                         • Card Auto-Import Sheet      │
+└──────────────┬───────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────┘
+               │                                   │
+               │ [Tap Notification Icon]          │ [Tap FAB "+ เพิ่มรายการ"]
+               ▼                                   ▼
+   [/dashboard/notifications]             [/dashboard/add: AddSubscriptionScreen]
+   • All / Unread / System Tabs           • Preset vs Custom Selection
+   • Mark as Read / Dismiss All           • Form Validation & PIN Verification
+                                                   │
+                                                   │ [Tap "เลือกจากแพ็กเกจ"]
+                                                   ▼
+                                          [/dashboard/add/select-package: SelectPackageScreen]
+                                          • PresetPackageCatalog (Netflix, Spotify, etc.)
+                                          • Tier & Billing Cycle Selection
 ```
 
-#### Startup redirect rules
+#### Startup & Deep-Linking Redirect Rules
+1. **Startup Check**: แอปเริ่มทำงานที่ `/splash` ตรวจสอบ Token ใน Secure Storage / Hive
+2. **First Launch**: หากยังไม่เคย Onboarding หรือไม่มี session ให้ redirect ไป `/onboarding`
+3. **Authentication**: หน้า `/login` รองรับ OAuth Google, Apple ID และ Guest Mode ผ่าน `authProvider`
+4. **Shell Navigation**: เข้าสู่ `/dashboard` (Index 0: Dashboard)
+5. **Deep-linking Sub-routes**:
+   - `/dashboard/notifications` → เปิด `NotificationCenterScreen`
+   - `/dashboard/add` → เปิด `AddSubscriptionScreen`
+   - `/dashboard/add/select-package` → เปิด `SelectPackageScreen` (พร้อม preset data)
 
-1. ระหว่างตรวจ session ให้อยู่ที่ `/splash`
-2. ผู้ใช้ใหม่ที่ onboarding ยังไม่เสร็จไป `/onboarding`
-3. onboarding เสร็จแต่ยังไม่ authenticated ไป `/login`
-4. authenticated แล้วไป `/dashboard`
-5. Router ตรวจ `matchedLocation` ก่อน redirect เพื่อป้องกัน redirect loop
+---
 
-`MainNavigationShell` ใช้ `IndexedStack` เพื่อรักษา state/scroll ของทั้ง 4 tabs โดย `currentTabProvider` เป็นเจ้าของ active index ส่วน route ย่อยสำหรับ Add, Detail และ Edit จะเพิ่มเมื่อหน้าของ Person 2/3 พร้อม
+### 7.2 รายการหน้าจอและคอมโพเนนต์ที่พัฒนาเสร็จสมบูรณ์ (Implemented Screens & Components)
 
-### หน้าจอที่ต้องออกแบบเพิ่มจากที่มี:
-
-| หน้า | รายละเอียด |
-|------|------------|
-| **Splash Screen** | โลโก้ + Loading |
-| **Onboarding** | 3-4 หน้าแนะนำฟีเจอร์หลัก |
-| **Login Screen** | ปุ่ม Sign in with Google / Apple |
-| **Add Subscription** | เลือกจาก Preset หรือกรอกเอง |
-| **Select Package** | รายการ preset (Netflix, Spotify, etc.) |
-| **Subscription Detail** | รายละเอียดเต็ม + กราฟ usage |
-| **Edit Subscription** | แก้ไขข้อมูลทั้งหมด |
-| **Profile** | รูปโปรไฟล์, ชื่อ, อีเมล |
-| **Settings** | รายได้, แจ้งเตือน, Biometric, PIN, ภาษา |
-| **Notification Center** | รายการแจ้งเตือนทั้งหมด |
-| **History/Analytics** | กราฟรายจ่ายย้อนหลัง |
-| **Admin Panel (Web)** | จัดการ Preset Packages |
+| # | หน้าจอ / คอมโพเนนต์ | Route / Presentation | Riverpod State Controller | สถานะการพัฒนา |
+|---|--------------------|----------------------|---------------------------|:------------:|
+| 1 | **Splash Screen** | `/splash` | `authProvider` | ✅ Implemented |
+| 2 | **Onboarding Screen** | `/onboarding` | PageController (3 ขั้นตอน) | ✅ Implemented |
+| 3 | **Login Screen** | `/login` | `authProvider` (Google/Apple/Guest) | ✅ Implemented |
+| 4 | **Main Shell & Dashboard Tab** | `/dashboard` (Tab 0) | `subscriptionProvider`, `userIncomeProvider` | ✅ Implemented |
+| 5 | **Subscriptions Tab** | `/dashboard` (Tab 1) | `subscriptionProvider` (Filter, Search, Delete) | ✅ Implemented |
+| 6 | **Savings Tab** | `/dashboard` (Tab 2) | `savingsProvider` (Checklist, Goal) | ✅ Implemented |
+| 7 | **Settings Tab** | `/dashboard` (Tab 3) | `themeModeProvider`, `notificationSettingsProvider` | ✅ Implemented |
+| 8 | **Profile Tab** | `/dashboard` (Tab 4) | `userProfileProvider`, `paymentCardProvider` | ✅ Implemented |
+| 9 | **Add Subscription Screen** | `/dashboard/add` (Push) | `subscriptionProvider`, `PresetPackageCatalog` | ✅ Implemented |
+| 10 | **Select Package Screen** | `/dashboard/add/select-package` (Push) | `PresetPackageCatalog` | ✅ Implemented |
+| 11 | **Notification Center** | `/dashboard/notifications` (Push) | `notificationProvider` | ✅ Implemented |
+| 12 | **Subscription Detail Sheet** | Modal BottomSheet | `subscriptionProvider` | ✅ Implemented |
+| 13 | **Personal Info & Card Sheets** | Modal BottomSheet | `userProfileProvider`, `paymentCardProvider` | ✅ Implemented |
+| 14 | **Security PIN & Confirm Dialogs**| Dialog Modal | `pinVerificationProvider` (6-digit PIN) | ✅ Implemented |
 
 ---
 
@@ -432,79 +458,74 @@ Microservices (แยกออกมา)
 
 ---
 
-## 12. Timeline & Milestones (2 เดือน)
+## 12. Timeline & Milestones (สถานะปัจจุบัน: Frontend Feature-Complete)
 
-### Week 1: Setup & Foundation
-- [ ] Setup Flutter project + Theme + Navigation
-- [ ] Setup NestJS + MongoDB + Firebase Auth
-- [ ] ออกแบบ Database Schema ให้เรียบร้อย
-- [ ] สร้าง UI Kit / Design System (Dark Navy Theme)
+### Week 1: Setup & Foundation (Completed)
+- [x] Setup Flutter project + Dark/Light Theme System + GoRouter
+- [x] ออกแบบ Data Models (`Subscription`, `PaymentCard`, `PresetPackageCatalog`)
+- [x] สร้าง UI Kit / Design System Tokens และ Color Schemes
 
-### Week 2: Auth & Core
-- [ ] OAuth Google/Apple Login
-- [ ] JWT + Secure Storage
-- [ ] Onboarding Flow
-- [ ] Biometric Lock + PIN
-- [ ] Hive Local Storage Setup
+### Week 2: Auth & Navigation Shell (Completed)
+- [x] Google / Apple / Guest Login Flow (`authProvider`)
+- [x] Onboarding Screen 3 สไลด์พร้อม Skip & Progress Bar
+- [x] MainNavigationShell (5-Tab `IndexedStack`)
+- [x] Startup Redirect & Route Protection
 
-### Week 3: Subscription CRUD
-- [ ] Dashboard (refactor จากของเดิม)
-- [ ] Add Subscription (Preset + Custom)
-- [ ] Edit/Delete with PIN verification
-- [ ] Category Filter (refactor)
-- [ ] Saving Simulation (refactor)
-- [ ] Sync ระหว่าง Local ↔ Server
+### Week 3: Subscription Management & Preset Catalog (Completed)
+- [x] Dashboard Tab (KPI Cards, Spending Creep Alert, Renewal Timeline)
+- [x] Subscriptions Tab (Category Chips, Search, Filter)
+- [x] Add Subscription Screen & Select Package Screen (Catalog 10 บริการ)
+- [x] Subscription Detail Sheet (Reminder Frequency, Mark Cancelled)
+- [x] Delete Flow พร้อม Confirmation Dialog และ Security PIN
 
-### Week 4: Notification & Polish MVP
-- [ ] FCM Push Notification
-- [ ] Notification Settings
-- [ ] Profile/Settings Page
-- [ ] Admin Panel (Web) สำหรับจัดการ Packages
-- [ ] Testing & Bug Fix
+### Week 4: Profile, Cards, Security & Settings (Completed)
+- [x] Profile Tab (Personal Info Sheet, Avatar Initials, Card Balance Auto-Sum)
+- [x] Payment Card Auto-Import Sheet (ตรวจจับและนำเข้ารายการอัตโนมัติ)
+- [x] Security PIN Dialogs (Verify PIN, Change PIN 6 หลัก)
+- [x] Settings Tab (Light/Dark Theme Switch, Reminder Toggle, Currency)
+- [x] Notification Center Screen (All / Unread / System Tabs)
 
-### Week 5-6: Phase 2 Features
-- [ ] Usage Pattern Tracking (Android ก่อน, iOS ตามหลัง)
-- [ ] Confidence Score Calculation
-- [ ] Package Comparison
-- [ ] History/Analytics Charts
-- [ ] Multi-language (Thai + English)
+### Week 5-6: Backend API & Data Synchronization (Upcoming Phase)
+- [ ] พัฒนา NestJS REST API (Auth, Subscriptions, Cards, Notifications)
+- [ ] ติดตั้ง MongoDB Atlas และ Database Schemas
+- [ ] Cloud Storage สำหรับรูปโปรไฟล์และใบเสร็จ
+- [ ] เชื่อมต่อ Riverpod Repository กับ Backend API แทน In-Memory/Mock
+- [ ] Cache & Offline-First Strategy (Hive Boxes)
 
-### Week 7-8: DevOps & Final
+### Week 7-8: Advanced Analytics & Production Launch (Upcoming Phase)
+- [ ] FCM Push Notifications (Cron Job Server-side)
+- [ ] AI Spending Creep & Subscription Overlap Analysis
 - [ ] Deploy Backend ขึ้น GCP Cloud Run
-- [ ] CI/CD Pipeline (GitHub Actions / Cloud Build)
-- [ ] Final Testing (Unit + Integration)
-- [ ] Documentation & Presentation
+- [ ] CI/CD Pipeline และ Automated Tests
+- [ ] Production Build & App Store / Play Store Preparation
 
 ---
 
-## 13. สรุปสิ่งที่ต้องออกแบบเพิ่ม (Checklist)
+## 13. สรุปสิ่งที่พัฒนาเสร็จสมบูรณ์และแผนพัฒนาต่อ (Checklist)
 
-### Frontend Screens
-- [ ] Splash / Onboarding (3-4 หน้า)
-- [ ] Login (OAuth buttons)
-- [ ] Add Subscription (Preset selector + Custom form)
-- [ ] Subscription Detail (full info + usage graph)
-- [ ] Edit Subscription
-- [ ] Profile
-- [ ] Settings (Income, Noti, Biometric, PIN, Language)
-- [ ] Notification Center
-- [ ] History/Analytics (charts)
+### Frontend MVP (สถานะ: พัฒนาเสร็จสมบูรณ์ 100%)
+- [x] **Splash & Onboarding**: สไลด์ 3 ขั้นตอน แนะนำฟีเจอร์หลัก
+- [x] **Authentication**: OAuth Buttons (Google, Apple) และ Guest Mode
+- [x] **5-Tab Navigation Shell**: Dashboard, Subscriptions, Savings, Settings, Profile
+- [x] **Dashboard Tab**: KPI Summary Cards, Category Spending, Renewal Timeline
+- [x] **Subscriptions Tab**: รายการสมาชิก, ค้นหา, กรองสถานะ, Pull-to-refresh
+- [x] **Add & Select Package**: Form validation, Preset Packages Catalog (Netflix, Spotify, ฯลฯ)
+- [x] **Subscription Detail Sheet**: ดูข้อมูลละเอียด, แก้ไขแจ้งเตือน, ยกเลิกสมาชิก
+- [x] **Savings Tab**: คำนวณเงินออม, เลือกยกเลิกเพื่อจำลองประหยัดเงิน
+- [x] **Profile & Card Management**: ข้อมูลส่วนตัว, เพิ่มบัตร, Auto-import รายการ, คำนวณยอดคงเหลือ
+- [x] **Security PIN Dialogs**: ยืนยันรหัส PIN 6 หลักก่อนทำรายการลบ/แก้ไข, เปลี่ยนรหัส PIN
+- [x] **Settings Tab**: สลับ Theme Mode (สว่าง/มืด), แจ้งเตือน, สกุลเงิน
+- [x] **Notification Center**: รายการแจ้งเตือน 3 แท็บ (ทั้งหมด, ยังไม่อ่าน, ระบบ)
 
-### Backend APIs
-- [ ] Auth (OAuth + JWT)
-- [ ] User CRUD + Settings
-- [ ] Subscription CRUD + Analytics
-- [ ] Package Management (Admin)
-- [ ] Notification Scheduling
-- [ ] Usage Logs
-
-### Infrastructure
-- [ ] NestJS on GCP Cloud Run
-- [ ] MongoDB Atlas
-- [ ] Firebase (Auth + FCM)
-- [ ] CI/CD Pipeline
+### Backend & Cloud Infrastructure (สิ่งที่ต้องพัฒนาในเฟสถัดไป)
+- [ ] NestJS Backend REST APIs (Auth, Users, Subscriptions, Cards)
+- [ ] Database Schema บน MongoDB Atlas
+- [ ] FCM Push Notification Service สำหรับเตือนรอบบิล
+- [ ] Deployment บน Google Cloud Run & Docker Container
+- [ ] CI/CD Pipeline ผ่าน GitHub Actions
+- [ ] Hive Local Storage Caching สำหรับ Offline Mode เต็มรูปแบบ
 
 ---
 
-*เอกสารฉบับนี้จัดทำขึ้นเพื่อใช้เป็นแนวทางในการพัฒนา Subscription Track สู่ Full-Stack Application*
-*จัดทำเมื่อ: 28 กรกฎาคม 2026*
+*เอกสารฉบับนี้ได้รับการอัปเดตสถานะล่าสุดให้สอดคล้องกับซอร์สโค้ด Frontend MVP ปัจจุบัน*
+*อัปเดตล่าสุด: 12 กันยายน 2026*

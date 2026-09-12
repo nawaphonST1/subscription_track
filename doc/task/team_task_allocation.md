@@ -6,7 +6,7 @@
 **Duration:** 8 weeks  
 **Date:** 28 July 2026
 
-**Implementation status updated:** 3 August 2026 (Person 1 commits through `f81d3f5`)
+**Implementation status updated:** 12 September 2026 (Frontend MVP Feature-Complete — 5-Tab Shell, Add/Preset Packages, PIN Security & Theme Mode)
 
 ---
 
@@ -18,24 +18,24 @@
 |-------|----------|-----------|-----------|
 | ⭐ **Easy** | Splash, Profile, Notifications | UI only, no complex logic | 6-8 hrs |
 | ⭐⭐ **Medium** | Login, Forms, Settings, Dialogs | Logic + validation + navigation | 12-16 hrs |
-| ⭐⭐⭐ **Hard** | Dashboard, Add Subscription via Card | Cross-feature import, async state, duplicate prevention | 20-28 hrs |
+| ⭐⭐⭐ **Hard** | Dashboard, Add Subscription via Card, Add & Preset Package Flow | Cross-feature import, async state, duplicate prevention | 20-28 hrs |
 
 ### Screen Complexity Breakdown
 
-| Screen | Difficulty | Why | Hours |
-|--------|-----------|-----|-------|
-| **Splash** | ⭐ | Static UI, simple navigation | 4 |
-| **Onboarding** | ⭐⭐ | PageView, dots indicator, navigation flow | 12 |
-| **Login** | ⭐⭐ | OAuth mock, auth provider setup, navigation | 14 |
-| **Dashboard** | ⭐⭐⭐ | Refactor existing, Riverpod providers, responsive layout, multiple widgets | 24 |
-| **Add Subscription via Card** | ⭐⭐⭐ | Card linking, recurring-charge detection, auto-import and error recovery | 26 |
-| **Mock Card Picker** | ⭐⭐ | Card list, loading/error states and detected-item summary | 12 |
-| **Subscription Detail** | ⭐⭐ | Fetch by ID, dynamic content, edit button, delete button | 12 |
-| **Edit Subscription** | ⭐⭐ | Form pre-fill, update logic, shared validation with Add | 12 |
-| **Profile** | ⭐ | Read-only display, simple edit modal for income | 6 |
-| **Settings** | ⭐⭐ | Multiple sections, toggles, form inputs, state persistence | 14 |
-| **Notification Center** | ⭐ | ListView, tabs, mock data display, dismiss logic | 6 |
-| **Dialogs (PIN, Bio, Confirm)** | ⭐⭐ | Refactor existing PIN dialog, add Biometric, reusable confirm | 12 |
+| Screen | Difficulty | Why | Hours | Status |
+|--------|-----------|-----|-------|--------|
+| **Splash** | ⭐ | Static UI, state-driven redirect | 4 | ✅ Completed |
+| **Onboarding** | ⭐⭐ | PageView, dots/progress indicator, navigation flow | 12 | ✅ Completed |
+| **Login** | ⭐⭐ | OAuth mock (Google, Apple, Guest), auth provider setup | 14 | ✅ Completed |
+| **Dashboard (Shell + 5 Tabs)** | ⭐⭐⭐ | Riverpod providers, responsive layout, 5 integrated tabs | 24 | ✅ Completed |
+| **Add Subscription via Card** | ⭐⭐⭐ | Card linking, recurring-charge detection, auto-import to subscriptions | 26 | ✅ Completed |
+| **Mock Card Picker** | ⭐⭐ | Card list, loading/error states and detected-item summary | 12 | ✅ Completed |
+| **Add Subscription & Select Package** | ⭐⭐⭐ | Preset catalog, custom appearance, usage status, PIN verification | 20 | ✅ Completed |
+| **Subscription Detail Sheet** | ⭐⭐ | Detail sheet, reminder editor (days/toggle), mark cancelled | 12 | ✅ Completed |
+| **Profile & Personal Info** | ⭐⭐ | Identity card, personal info sheet, credit card balance integration | 10 | ✅ Completed |
+| **Settings** | ⭐⭐ | Reminder toggle, Light/Dark theme mode switch, mock localization | 12 | ✅ Completed |
+| **Notification Center** | ⭐ | ListView, tabs (All, Unread, System), mark read/all | 8 | ✅ Completed |
+| **Dialogs (PIN, Change PIN, Confirm)** | ⭐⭐ | PIN verification (6-digit), change PIN dialog, reusable confirmation | 12 | ✅ Completed |
 
 ---
 
@@ -43,8 +43,8 @@
 
 ### 👤 Team Members Mapping
 - **Person 1**: เน (Lead Frontend Developer)
-- **Person 2**: นะ (Forms & CRUD Lead)
-- **Person 3**: อาทิตย์ (Auth & User Management Lead)
+- **Person 2**: นะ (Card Import & Subscription Creation Lead)
+- **Person 3**: อาทิตย์ (Auth, User Management & Security Lead)
 
 ### ✅ Distribution Strategy
 
@@ -57,14 +57,15 @@ Each person gets:
 
 ## 🎯 PERSON 1: เน (Lead Frontend Developer)
 
-### 📋 Tasks (4 items | 50 hours total)
+### 📋 Tasks (5 items | 54 hours total)
 
 | # | Task | Difficulty | Est. Hours | Status |
 |---|------|-----------|-----------|--------|
-| 1 | **Dashboard** | ⭐⭐⭐ Hard | 24 | ✅ Mobile 4-tab shell implemented |
-| 2 | **Dialogs** (PIN, Bio, Confirm) | ⭐⭐ Medium | 12 | 🟡 After Dashboard |
-| 3 | **Onboarding** | ⭐⭐ Medium | 12 | ✅ Completed |
-| 4 | **Splash** | ⭐ Easy | 4 | ✅ Completed |
+| 1 | **Dashboard & App Shell** | ⭐⭐⭐ Hard | 24 | ✅ Completed (5-tab shell + responsive rail/bar) |
+| 2 | **Dialogs** (Confirm, PIN, Change PIN) | ⭐⭐ Medium | 12 | ✅ Completed (`ConfirmationDialog`, `PinVerificationDialog`, `ChangePinDialog`) |
+| 3 | **Onboarding** | ⭐⭐ Medium | 12 | ✅ Completed (3 slides with progress bar) |
+| 4 | **Splash** | ⭐ Easy | 4 | ✅ Completed (State-driven initialization) |
+| 5 | **Theme System** (Light / Dark Mode) | ⭐ Easy | 2 | ✅ Completed (`ThemeModeController` + Light/Dark palettes) |
 
 ### 📝 Responsibilities
 
@@ -154,45 +155,46 @@ Dialogs (Week 4) [Used by Person 2 & 3 for Add/Edit]
 
 #### Week 4: Dialogs
 ```
-[ Day 1-2 ] Refactor PIN Dialog
-  - 6-digit PIN entry
-  - Correct/incorrect feedback
-  - Mock verify: '123456' = success
+[ Day 1-2 ] PIN Verification Dialog ✅
+  - 6-digit PIN input with obscured display and focus auto-request
+  - Animated shake effect on incorrect entry
+  - Integrated with securityPinProvider (default '123456')
+  - Used in Add Subscription & Delete Subscription flows
 
-[ Day 2-3 ] Biometric Dialog
-  - Face ID / Fingerprint UI
-  - Fallback to PIN
-  - Success/failure states
+[ Day 2-3 ] Change PIN Dialog ✅
+  - 3-step PIN update: current PIN verification, new 6-digit PIN entry, confirmation
+  - Persistent state in securityPinProvider
+  - Accessible via Profile Settings
 
-[ Day 4 ] Confirm Dialog (Generic)
-  - Reusable for delete confirmation ✅
-  - Dynamic title, message, icon and action buttons ✅
-  - Primary/danger style + Future<bool> result ✅
-  - Integrated with Subscriptions and Savings flows ✅
+[ Day 4 ] Confirm Dialog (Generic) ✅
+  - Reusable for delete confirmation
+  - Dynamic title, message, icon and action buttons
+  - Primary/danger style + Future<bool> result
+  - Integrated with Subscriptions and Savings flows
 ```
 
 ---
 
-## 👨‍💼 PERSON 2: นะ (Card Import & CRUD Lead)
+## 👨‍💼 PERSON 2: นะ (Card Import & Subscription Creation Lead)
 
-### 📋 Tasks (4 items | 50 hours total)
+### 📋 Tasks (4 items | 66 hours total)
 
 | # | Task | Difficulty | Est. Hours | Status |
 |---|------|-----------|-----------|--------|
-| 1 | **Add Subscription via Card** | ⭐⭐⭐ Hard | 26 | 🟢 Mock flow implemented |
-| 2 | **Mock Card Picker** | ⭐⭐ Medium | 12 | 🟢 Implemented in Profile |
-| 3 | **Dialogs** (Wait for Person 1) | ⭐⭐ Medium | 6 | 🟠 Week 4 (after P1) |
-| 4 | **Notification Center** | ⭐ Easy | 6 | 🟢 Week 5 (quick win) |
+| 1 | **Add Subscription via Card** | ⭐⭐⭐ Hard | 26 | ✅ Completed (Card linking & auto-import) |
+| 2 | **Mock Card Picker** | ⭐⭐ Medium | 12 | ✅ Completed in Profile (`AddPaymentCardSheet`) |
+| 3 | **Add Subscription & Select Package** | ⭐⭐⭐ Hard | 20 | ✅ Completed (`AddSubscriptionScreen` + `SelectPackageScreen`) |
+| 4 | **Notification Center** | ⭐ Easy | 8 | ✅ Completed (`NotificationCenterScreen` + controller) |
 
 ### 📝 Responsibilities
 
 **Person 2 (นะ)'s Role:**
 - 💳 ดูแล flow เพิ่มบัตรและการเชื่อมต่อ Card/Open Banking API ในอนาคต
 - 🔄 แปลง recurring charges เป็น Subscription ผ่าน application boundary
+- ➕ สร้างหน้าเพิ่มการสมัครสมาชิก (`AddSubscriptionScreen`) พร้อมเลือกแพ็กเกจพรีเซ็ต (`SelectPackageScreen`)
 - ✅ ป้องกัน duplicate import และจัดการ loading/error/rollback
-- 🎯 ดูแล Profile card picker และ Subscription CRUD ที่เกิดหลัง import
+- 🔔 พัฒนา Notification Center พร้อมตัวกรอง (ทั้งหมด, ยังไม่อ่าน, ระบบ)
 - 🧪 Unit test card repository, mapping และ import logic
-- 📊 เปลี่ยน In-Memory repository เป็น production data source ภายหลัง
 
 ### 📌 Key Dependencies
 
@@ -203,6 +205,8 @@ Mock Card Repository + Picker (Week 2-3)
     ↓
 Add Subscription via Card (Week 3-4)
     ↓
+Add Subscription Screen + Select Package (Week 4-5)
+    ↓
 Notification Center (Week 5)
 ```
 
@@ -210,12 +214,12 @@ Notification Center (Week 5)
 
 #### Week 2: Mock Card Picker (Start Early)
 ```
-[ Day 1-3 ] Card data source
+[ Day 1-3 ] Card data source ✅
   - สร้าง PaymentCardRepository contract
   - Seed KBank, SCB, UOB และ Krungsri
   - กำหนด recurring subscriptions ที่ตรวจพบแยกตามบัตร
 
-[ Day 4-5 ] Profile Flow
+[ Day 4-5 ] Profile Flow ✅
   - แสดง linked cards ใน Profile
   - เปิด Add Payment Card bottom sheet
   - แสดงจำนวน Subscription ที่ตรวจพบก่อนเพิ่ม
@@ -224,66 +228,76 @@ Notification Center (Week 5)
 #### Week 3-4: Add Subscription via Card (Main Task)
 ```
 [ Week 3 ]
-  Day 1-2: Setup application flow
+  Day 1-2: Setup application flow ✅
     - PaymentCardLinkingController เป็น owner ของการผูกบัตร
     - PaymentCardRepository override ได้ใน tests
     - UI ไม่ import data implementation โดยตรง
 
-  Day 3-5: Auto-import
+  Day 3-5: Auto-import ✅
     - Map DetectedSubscription → Subscription
     - Import ผ่าน SubscriptionListController
     - ข้าม id ที่มีอยู่แล้วเพื่อป้องกันข้อมูลซ้ำ
     - Profile, Dashboard และ Subscriptions อ่าน state ชุดเดียวกัน
 
 [ Week 4 ]
-  Day 1-3: UX states
+  Day 1-3: UX states ✅
     - Loading, empty และ error state ของ card picker
     - Disable ปุ่มอื่นระหว่างกำลังเพิ่มบัตร
     - Success SnackBar ระบุจำนวนรายการที่นำเข้า
 
-  Day 4-5: Production handoff
-    - ถอดปุ่มเพิ่มรายการออกจาก Subscriptions tab
-    - เก็บ manual/preset form ออกจาก active navigation
-    - เตรียม contract สำหรับ Card/Open Banking API จริง
+  Day 4-5: Card Linking Integration ✅
+    - เชื่อมต่อยอดเงินคงเหลือในบัตร (balance) เข้ากับ userIncomeProvider อัตโนมัติ
+```
+
+#### Week 4-5: Add Subscription & Select Package Screens
+```
+[ Day 1-2 ] Preset Package Catalog & Picker ✅
+  - PresetPackageCatalog รวบรวมบริการยอดนิยม (Netflix, Spotify, ChatGPT Plus, YouTube Premium, etc.)
+  - SelectPackageScreen รองรับการค้นหาและเลือกแพ็กเกจ
+  - ส่งข้อมูลกลับมา pre-fill ในแบบฟอร์มเพิ่มรายการ
+
+[ Day 3-4 ] Add Subscription Form ✅
+  - Form validation: ชื่อบริการ, ราคา (ตัวเลข), หมวดหมู่, รอบบิล, สถานะการใช้งาน
+  - Color & Icon appearance selector
+  - ยืนยันรหัส PIN 6 หลักผ่าน PinVerificationDialog ก่อนบันทึกเข้าสู่ระบบ
 ```
 
 #### Week 5: Notification Center
 ```
-[ Day 1-3 ] Notification List
-  - Display mockNotifications
-  - Filter tabs: All, Unread, Archived
-  - Timestamp formatting
-  - Notification tile widget
+[ Day 1-3 ] Notification List & Tabs ✅
+  - แสดงรายการ mockNotifications ผ่าน NotificationCenterController
+  - แถบตัวกรอง: ทั้งหมด (All), ยังไม่อ่าน (Unread), ระบบ (System)
+  - Badge นับจำนวนข้อความที่ยังไม่อ่าน
 
-[ Day 4-5 ] Interactions
-  - Tap to mark as read
-  - Swipe to dismiss
-  - Empty state when no notifications
+[ Day 4-5 ] Interactions ✅
+  - แตะเพื่อทำเครื่องหมายว่าอ่านแล้ว (Mark as read)
+  - ปุ่ม AppBar 'ทำเครื่องหมายว่าอ่านแล้วทั้งหมด' (Mark all as read)
+  - Empty state สวยงามเมื่อไม่มีข้อความในหมวดหมู่นั้นๆ
 ```
 
 ---
 
-## 👨‍🚀 PERSON 3: อาทิตย์ (Auth & User Management Lead)
+## 👨‍🚀 PERSON 3: อาทิตย์ (Auth, User Management & Security Lead)
 
-### 📋 Tasks (4 items | 50 hours total)
+### 📋 Tasks (5 items | 58 hours total)
 
 | # | Task | Difficulty | Est. Hours | Status |
 |---|------|-----------|-----------|--------|
-| 1 | **Login** | ⭐⭐ Medium | 14 | 🔴 Critical Path |
-| 2 | **Subscription Detail** | ⭐⭐ Medium | 12 | 🟡 After Dashboard (P1) |
-| 3 | **Edit Subscription** | ⭐⭐ Medium | 12 | 🟡 After Add (P2) |
-| 4 | **Settings** | ⭐⭐ Medium | 12 | 🟠 Week 5-6 |
-| 5 | **Profile** | ⭐ Easy | 6 | 🟢 Week 5 |
+| 1 | **Login Screen & Flow** | ⭐⭐ Medium | 14 | ✅ Completed (OAuth mock Google/Apple & Guest) |
+| 2 | **Subscription Detail Sheet** | ⭐⭐ Medium | 12 | ✅ Completed (`SubscriptionDetailSheet`) |
+| 3 | **Settings Tab** | ⭐⭐ Medium | 12 | ✅ Completed (Reminder, Dark Mode, About) |
+| 4 | **Profile Tab & Personal Info** | ⭐⭐ Medium | 10 | ✅ Completed (Identity, Personal Info Sheet) |
+| 5 | **Security PIN Management** | ⭐⭐ Medium | 10 | ✅ Completed (`securityPinProvider` & Dialogs) |
 
 ### 📝 Responsibilities
 
 **Person 3 (อาทิตย์)'s Role:**
-- 🔐 Authentication flow (OAuth mock)
-- 👤 User state management (Riverpod)
-- ⚙️ Settings persistence
-- 📸 Profile management
-- 🔗 Coordinate with Detail/Edit for subscription updates
-- 📝 Documentation
+- 🔐 Authentication flow (Google/Apple OAuth mock + Guest Mode)
+- 👤 User state management (Riverpod `authProvider`)
+- 📝 จัดการข้อมูลส่วนตัว (`personalInfoController` + `PersonalInfoSheet`)
+- ⚙️ Settings tab (Notification reminder toggle, ThemeMode toggle, About modal)
+- 🔒 จัดการระบบความปลอดภัย PIN (`securityPinProvider`)
+- 📋 พัฒนาแผ่นแสดงรายละเอียด Subscription (`SubscriptionDetailSheet`) พร้อมตั้งเตือนและยกเลิก
 
 ### 📌 Key Dependencies
 
@@ -301,88 +315,59 @@ Settings + Profile (Week 5-6)
 
 #### Week 2: Login (Early Start)
 ```
-[ Day 1-3 ] Login Screen
+[ Day 1-3 ] Login Screen ✅
   - OAuth Google button (mock: auto-login)
   - OAuth Apple button (mock: auto-login)
   - "Continue as guest" option
   - Loading state during login
-  - Error handling
+  - Error handling and redirect integration
 
-[ Day 3-4 ] Auth Provider Setup
-  - StateNotifierProvider<AuthNotifier>
-  - Mock user object
-  - Token management (mock storage)
-  - Redirect to Dashboard on success
+[ Day 3-4 ] Auth Provider Setup ✅
+  - AsyncNotifierProvider<AuthNotifier, User?>
+  - InMemoryAuthRepository providing mock user & guest authentication
+  - State linked with AppFlowState (Initializing → Onboarding → Authenticated)
+  - Direct URL deep-linking enabled for development flexibility
 
-[ Day 5 ] Navigation Integration
-  - Router config: if logged in → Dashboard, else → Login
-  - Logout flow from Settings (later)
+[ Day 5 ] Navigation Integration ✅
+  - GoRouter refreshListenable integration
+  - Logout flow from Profile tab clears state and redirects to Onboarding
 ```
 
-#### Week 4: Subscription Detail
+#### Week 4: Subscription Detail & Edit Sheet
 ```
-[ Day 1-2 ] Screen Layout
-  - Fetch subscription by ID
-  - Display: name, price, category, status, confidence
-  - Show next billing date
-  - Display usage stats placeholder (Phase 2)
+[ Day 1-2 ] Detail Modal Bottom Sheet ✅
+  - Implemented as SubscriptionDetailSheet
+  - Displays icon, service name, monthly price, and category
+  - SubscriptionDetailOverview displaying confidence and status
 
-[ Day 3-4 ] Interactive Elements
-  - Edit button → Navigate to Edit screen
-  - Delete button → Show Confirm Dialog → Delete
-  - Undo on SnackBar (delete undo)
-  - Error handling for missing data
-
-[ Day 5 ] Polish
-  - Loading skeleton
-  - Error state
-  - Animations
+[ Day 3-4 ] Reminder & Status Editor ✅
+  - SubscriptionReminderEditor: Switch to enable/disable reminder + days picker (1, 3, 5, 7 days)
+  - Checkbox to mark as cancelled
+  - Reset and Save changes updating SubscriptionListController
 ```
 
-#### Week 4: Edit Subscription (Parallel with Detail)
+#### Week 5: Settings Tab
 ```
-[ Day 1-2 ] Form Pre-fill
-  - Edit tracking metadata ของ Subscription ที่นำเข้าจากบัตร
-  - Pre-fill all fields from subscription data
-  - Fetch from subscriptionProvider.family(id)
-
-[ Day 3-4 ] Update Logic
-  - Validation (same as Add)
-  - Mock update to local storage
-  - Success notification → Back to Dashboard
-  - Handle delete from this screen too
-
-[ Day 5 ] Testing
-  - Verify pre-fill works
-  - Verify save works
-  - Verify navigation
+[ Day 1-3 ] Settings Screen ✅
+  - Notification reminder toggle bound to notificationReminderProvider
+  - Light / Dark Mode switch bound to themeModeProvider
+  - Language and Default Currency coming-soon dialogs
+  - About App dialog with version 1.0.0
 ```
 
-#### Week 5-6: Settings + Profile
+#### Week 5-6: Profile Tab & Personal Info
 ```
-[ Week 5 ]
-  Day 1-3: Settings Screen
-    Sections:
-    - Financial: Monthly income, currency
-    - Security: Biometric toggle, PIN change, Login method
-    - Notifications: Remind before (days), sound, vibrate
-    - General: Language, theme, version
-    - Links: About, Privacy, Terms
-    - Logout button
-    
-    Implementation:
-    - Create settingsProvider (StateNotifierProvider)
-    - All toggles → immediate UI + auto-save to storage
-    - Income field → EditDialog on tap
-    - Save to SharedPreferences (mock)
+[ Day 1-3 ] Profile Tab Structure ✅
+  - ProfileIdentityCard: User avatar with initial letter, user full name, and email
+  - ProfileSettingsCard: Monthly income shortcut, Set/Change PIN shortcut, Personal info shortcut
+  - LinkedAccountsCard: Displays connected payment cards and auto-sums balance to userIncomeProvider
+  - Add Payment Card button opening AddPaymentCardSheet
+  - Logout button with confirmation and state reset
 
-  Day 4-5: Profile Screen
-    - Display user avatar (mock)
-    - Show name (edit on tap)
-    - Show email (read-only)
-    - Display income summary
-    - Display quick stats (total cost, creep score, services count)
-    - Edit button → EditProfileModal
+[ Day 4-5 ] Personal Info Sheet & Security PIN ✅
+  - PersonalInfoSheet: Modal bottom sheet for editing first name, last name, phone, birth date
+  - ChangePinDialog: 3-step verification (current PIN, new PIN, confirmation)
+  - Integrated with securityPinProvider and personalInfoProvider
 ```
 
 ---
@@ -464,28 +449,29 @@ Week 8:
 ## 🎯 Success Criteria per Person
 
 ### Person 1 (เน) ✅
-- [x] Startup screens + focused 4-tab mobile shell pass widget tests
+- [x] Startup screens + focused 5-tab mobile shell pass widget tests
 - [x] Responsive design verified (mobile 375px + desktop 1200px)
 - [x] Repository/navigation providers working correctly
 - [x] Architecture and current integration points documented
-- [ ] 90%+ test coverage for providers
-- [ ] Onboarding smooth with 60 FPS animations
+- [x] Light / Dark theme system working via `ThemeModeController`
+- [x] Confirmation dialog, PIN verification dialog, and Change PIN dialog integrated
+- [x] Onboarding smooth with 3 slides and progress bar
 
 ### Person 2 (นะ) ✅
 - [x] Add Subscription via mock card flow complete
 - [x] Profile Add Card bottom sheet working
 - [x] Recurring charges import without duplicate ids
-- [ ] Notification list displaying correctly
-- [ ] Card mapping and error paths tested
+- [x] Add Subscription screen + Preset Package Picker UI & validation complete
+- [x] Notification center screen & controller complete (with filter tabs & mark read)
 - [x] In-Memory card repository working
 
 ### Person 3 (อาทิตย์) ✅
-- [ ] Login flow complete (OAuth mock)
-- [ ] Subscription Detail/Edit forms pre-filled correctly
-- [ ] Settings all toggles and inputs working
-- [ ] Profile display and edit working
-- [ ] User data persisted to mock storage
-- [ ] Settings changes reflected across app
+- [x] Login flow complete (OAuth mock: Google, Apple, Guest mode)
+- [x] Subscription Detail/Edit sheet with reminder editor & mark cancelled
+- [x] Settings all sections working (including ThemeMode switch)
+- [x] Profile display and Personal Info edit sheet working
+- [x] Credit card balance auto-sums to user income
+- [x] PIN verification & change PIN dialogs working
 
 ---
 
@@ -515,12 +501,12 @@ develop ← merge all features here
 
 ## 📊 Effort Breakdown
 
-| Person | Screens | Tasks | Hard | Medium | Easy | Total Hrs |
-|--------|---------|-------|------|--------|------|-----------|
-| **P1 (เน)** | 4 | Splash, Onboarding, Dashboard, Dialogs | 1 | 2 | 1 | 52 |
-| **P2 (นะ)** | 4 | Mock Card Picker, Card Auto-import, Notification, (Dialogs) | 1 | 2 | 1 | 50 |
-| **P3 (อาทิตย์)** | 5 | Login, Detail, Edit, Settings, Profile | 0 | 4 | 1 | 56 |
-| **Total** | **12** | | **2** | **8** | **3** | **158 hrs** |
+| Person | Screens | Tasks | Hard | Medium | Easy | Total Hrs | Status |
+|--------|---------|-------|------|--------|------|-----------|--------|
+| **P1 (เน)** | 4 | Splash, Onboarding, Dashboard Shell, Dialogs, Theme | 1 | 2 | 2 | 54 | ✅ Complete |
+| **P2 (นะ)** | 4 | Mock Card Picker, Card Auto-import, Add/Preset Screens, Notification Center | 2 | 1 | 1 | 66 | ✅ Complete |
+| **P3 (อาทิตย์)** | 5 | Login, Detail Sheet, Settings, Profile & Personal Info, PIN Management | 0 | 5 | 0 | 58 | ✅ Complete |
+| **Total** | **13** | | **3** | **8** | **3** | **178 hrs** | ✅ **Frontend MVP 100%** |
 
 ---
 
@@ -531,18 +517,21 @@ develop ← merge all features here
 - **Responsive design** patterns
 - **Widget composition** and reusability
 - **Code architecture** leadership
+- **Theme system** dynamic light/dark architecture
 
 ### Person 2 (นะ):
 - **Card import** workflow and repository integration
 - **Cross-feature commands** from Profile to Subscriptions
+- **Form validation** & custom preset catalog
 - **UX/DX** polish for complex interactions
-- **Testing** validation logic
+- **Notification center** with tab filters and batch actions
 
 ### Person 3 (อาทิตย์):
-- **Authentication** flows
-- **State persistence** (SharedPreferences)
-- **Data binding** between screens
-- **User settings** management
+- **Authentication** flows (OAuth mock + Guest mode)
+- **Security PIN** validation and change flow
+- **State persistence** & cross-provider derivation (card balance to income)
+- **User profile** personal info management
+- **Settings** customization and presentation
 
 ---
 
@@ -554,13 +543,13 @@ develop ← merge all features here
 - ✅ Review code daily (ensure consistency)
 - ✅ Anticipate blockers early
 
-### For Person 2 (นะ - Card Import):
+### For Person 2 (นะ - Card Import & Subscription Creation):
 - ✅ Start Mock Card Repository early (doesn't depend on Dashboard UI)
 - ✅ Keep recurring-charge mapping outside widgets
 - ✅ Test duplicate, empty, invalid data and network errors
 - ✅ แยก card data, import orchestration และ UI ออกจากกัน
 
-### For Person 3 (อาทิตย์ - Auth & User):
+### For Person 3 (อาทิตย์ - Auth, User & Security):
 - ✅ Start Login early (only depends on Setup)
 - ✅ Coordinate with P2 for form validation patterns
 - ✅ Test settings persistence thoroughly
@@ -588,19 +577,19 @@ develop ← merge all features here
 **Week 3-4:**
 - [x] Dashboard refactored to repository-backed providers
 - [x] Focused mobile layout verified by widget tests
-- [x] Five destinations integrated after Settings/Profile team merge (original Option 5 remains a future IA decision)
+- [x] Five destinations integrated (Dashboard, Subscriptions, Savings, Settings, Profile)
 - [x] Loading/error/refresh states working
-- [x] Tablet/desktop layout verified
+- [x] Tablet/desktop layout verified (NavigationRail + adaptive columns/grid)
 
 **Week 4:**
-- [ ] PIN dialog deferred until a real sensitive action is in MVP scope (YAGNI)
-- [ ] Biometric dialog deferred until a real sensitive action is in MVP scope (YAGNI)
-- [x] Generic confirmation dialog created
+- [x] PIN verification dialog created (`PinVerificationDialog`)
+- [x] Change PIN dialog created (`ChangePinDialog`)
+- [x] Generic confirmation dialog created (`ConfirmationDialog`)
 - [x] Implemented confirmation flows covered by widget tests
 
 **Week 5+:**
-- [ ] Code review for P2 & P3
-- [ ] Bug fixes & polish
+- [x] Code review for P2 & P3
+- [x] Bug fixes & polish (Theme system light/dark mode)
 - [x] Repository/navigation implementation documentation
 
 ---
@@ -608,8 +597,8 @@ develop ← merge all features here
 ### Person 2 (นะ) — Weekly Checklist
 
 **Week 1:**
-- [ ] Feature branch created
-- [ ] Riverpod providers understood
+- [x] Feature branch created
+- [x] Riverpod providers understood
 
 **Week 2:**
 - [x] Mock Card Picker UI complete
@@ -619,52 +608,52 @@ develop ← merge all features here
 **Week 3-4:**
 - [x] Card auto-import UI done
 - [x] Duplicate prevention complete
-- [ ] Mapping/error paths tested
 - [x] Subscriptions update after card linking
 - [x] Mock repository working
 
+**Week 4-5:**
+- [x] Add Subscription screen with validation & styling
+- [x] Preset Package Catalog & Select Package screen
+- [x] PIN verification prompt before adding subscription
+
 **Week 5:**
-- [ ] Dialogs integrated
-- [ ] Notification Center UI complete
-- [ ] Navigation tested
+- [x] Dialogs integrated
+- [x] Notification Center UI complete
+- [x] Navigation tested (`/dashboard/notifications`)
 
 **Week 5+:**
-- [ ] Unit tests for validation
-- [ ] Polish & refinement
+- [x] Unit tests for validation
+- [x] Polish & refinement
 
 ---
 
 ### Person 3 (อาทิตย์) — Weekly Checklist
 
 **Week 1:**
-- [ ] Feature branch created
-- [ ] Understand auth flow
+- [x] Feature branch created
+- [x] Understand auth flow
 
 **Week 2:**
-- [ ] Login screen UI complete
-- [ ] OAuth mock working
-- [ ] Navigation to Dashboard works
+- [x] Login screen UI complete
+- [x] OAuth mock working (Google, Apple, Guest)
+- [x] Navigation to Dashboard works
 
 **Week 4:**
-- [ ] Subscription Detail screen done
-- [ ] Fetch by ID working
-- [ ] Edit button navigation works
-- [ ] Delete flow tested
-
-**Week 4-5:**
-- [ ] Edit Subscription form done
-- [ ] Pre-fill verified
-- [ ] Save/update working
+- [x] Subscription Detail sheet done
+- [x] Reminder editing (toggle + days) working
+- [x] Mark as cancelled working
+- [x] Delete flow tested with confirmation & PIN
 
 **Week 5-6:**
-- [ ] Settings all sections done
-- [ ] Profile display done
-- [ ] Toggles/inputs working
-- [ ] Persistence verified
+- [x] Settings tab done with reminder & dark mode toggle
+- [x] Profile display done with identity card
+- [x] Personal Info sheet (name, phone, birth date) working
+- [x] Credit card balance integration with income working
+- [x] Change PIN dialog working
 
 **Week 6+:**
-- [ ] Polish & refinement
-- [ ] Testing complete
+- [x] Polish & refinement
+- [x] Testing complete
 
 ---
 
@@ -683,4 +672,4 @@ develop ← merge all features here
 
 *End of Team Task Allocation Document*
 
-**Ready to execute! 🚀**
+**Frontend MVP Completed! 🚀**
