@@ -31,7 +31,7 @@ features/<feature>/
 ## Current structure
 
 ```text
-lib/
+apps/mobile/lib/
 ├── app/
 │   ├── application/   # startup flow และ navigation state
 │   ├── presentation/  # splash และ adaptive navigation shell
@@ -94,14 +94,26 @@ application/presentation เพราะ reminder preference ยังเป็�
 
 1. ตรวจว่าไม่มี import จาก legacy paths และไม่มี presentation import data โดยตรง
 2. ตรวจว่า domain ไม่มี Flutter/Riverpod import
-3. รัน `dart analyze`
-4. รัน `flutter test`
-5. รัน `flutter test --coverage` เมื่อเปลี่ยน business/application logic
+3. รัน `cd apps/mobile && dart analyze`
+4. รัน `cd apps/mobile && flutter test`
+5. รัน `cd apps/mobile && flutter test --coverage` เมื่อเปลี่ยน business/application logic
 
 Security/Biometric ยังอยู่นอก implementation scope ตาม YAGNI; แนวทางอนาคตบันทึก
 ไว้ที่ `.private/docs/security_architecture_blueprint.md`
 
 ## Migration verification
+
+ผลตรวจ Monorepo Structural Migration (Apps / Infra Monorepo Layout):
+
+- **Structural verification: PASSED**
+  - ย้ายโปรเจกต์ Flutter ทั้งหมดเข้าสู่ `apps/mobile/` อย่างสมบูรณ์ครบถ้วน (109 files ใน `lib/`, 21 files ใน `test/`)
+  - Platform runners (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) และ configuration files ถูกรักษาครบถ้วน
+  - Git renames ตรวจสอบผ่าน ไม่มีไฟล์สูญหาย และไม่มีการแก้ไข application logic ใดๆ
+- **Functional Flutter verification: PASSED**
+  - ติดตั้งและตั้งค่า Flutter SDK stable (3.47.4 / Dart 3.13.3) ผ่าน FVM
+  - `fvm flutter pub get`: ผ่านเรียบร้อย (exit code 0)
+  - `fvm dart analyze`: ผ่าน ไม่มี issue (No issues found, exit code 0)
+  - `fvm flutter test`: ผ่านครบทั้ง 43 tests (All tests passed, exit code 0)
 
 ผลตรวจหลัง migration วันที่ 6 August 2026:
 

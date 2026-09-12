@@ -212,8 +212,8 @@
 | Property | Value |
 |----------|-------|
 | **Purpose** | OAuth Google/Apple Sign-In & Guest Demo Mode |
-| **State** | `AsyncNotifierProvider<AuthNotifier, User?>` (`lib/features/auth/application/auth_provider.dart`) |
-| **Repository** | `InMemoryAuthRepository` (`lib/features/auth/data/in_memory_auth_repository.dart`) |
+| **State** | `AsyncNotifierProvider<AuthNotifier, User?>` (`apps/mobile/lib/features/auth/application/auth_provider.dart`) |
+| **Repository** | `InMemoryAuthRepository` (`apps/mobile/lib/features/auth/data/in_memory_auth_repository.dart`) |
 | **Navigation** | Success/Guest → Redirects to Dashboard; Supports Direct URL Deep-linking for Dev |
 
 **UI Layout:**
@@ -245,7 +245,7 @@
 
 **State Management & Implementation:**
 ```dart
-// lib/features/auth/application/auth_provider.dart
+// apps/mobile/lib/features/auth/application/auth_provider.dart
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return InMemoryAuthRepository();
 });
@@ -890,7 +890,7 @@ final mockSubscriptions = [
 
 ### 3. Preset Package Catalog (Active in Add Subscription Flow)
 
-คลังข้อมูลแพ็กเกจพรีเซ็ต (`lib/features/subscriptions/domain/preset_package_catalog.dart`) ที่ใช้งานจริงในหน้า `SelectPackageScreen`:
+คลังข้อมูลแพ็กเกจพรีเซ็ต (`apps/mobile/lib/features/subscriptions/domain/preset_package_catalog.dart`) ที่ใช้งานจริงในหน้า `SelectPackageScreen`:
 
 ```dart
 class PresetPackageCatalog {
@@ -1020,7 +1020,7 @@ class StorageService {
 ### Current Navigation Structure (GoRouter + Riverpod Integration)
 
 ```dart
-// lib/app/routing/app_router.dart
+// apps/mobile/lib/app/routing/app_router.dart
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
   ref.listen<AppFlowState>(appFlowProvider, (_, __) => refreshNotifier.refresh());
@@ -1105,7 +1105,7 @@ context.go(RouteConstants.onboarding);
 ### Color Palette (Dark & Light Mode Support)
 
 ```dart
-// lib/core/theme/app_colors.dart
+// apps/mobile/lib/core/theme/app_colors.dart
 class AppColors {
   // Primary Brand
   static const Color primary = Color(0xFF6366F1);       // Indigo
@@ -1130,7 +1130,7 @@ class AppColors {
 
 ### Theme Mode Controller
 
-- ควบคุมธีมด้วย `themeModeProvider` (`lib/app/application/theme_mode_controller.dart`)
+- ควบคุมธีมด้วย `themeModeProvider` (`apps/mobile/lib/app/application/theme_mode_controller.dart`)
 - สลับระหว่าง `ThemeMode.light` และ `ThemeMode.dark` ได้ทันทีจาก Switch ใน `SettingsTab`
 - หน้าจอพิเศษแบบ Branded-Dark: `SplashScreen` และ `OnboardingScreen` ถูกออกแบบให้เป็น Dark-Themed ตลอดเวลาเพื่อเอกลักษณ์ของแบรนด์
 

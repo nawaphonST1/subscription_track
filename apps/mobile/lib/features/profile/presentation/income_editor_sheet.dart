@@ -36,14 +36,14 @@ class _IncomeEditorSheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.credit_card_rounded,
                 color: Color(0xFF10B981),
               ),
-              const SizedBox(width: 10),
-              const Expanded(
+              SizedBox(width: 10),
+              Expanded(
                 child: Text(
                   'สรุปรายได้จากบัตรเครดิต',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),

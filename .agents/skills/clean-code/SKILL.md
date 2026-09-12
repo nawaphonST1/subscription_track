@@ -1,96 +1,123 @@
 ---
 name: clean-code
-description: Review, refactor, or implement maintainable Dart and Flutter code with clear responsibilities, dependency boundaries, intentional state ownership, useful naming, testability, and minimal duplication. Use for clean-code reviews, large-file decomposition, feature-first architecture work, Riverpod provider cleanup, dead-code removal, technical-debt reduction, or requests to improve readability without changing behavior.
+description: Review, refactor, or clean up code and architecture across the full-stack repository (Flutter mobile frontend, NestJS backend, PostgreSQL/TypeORM, Redis, BullMQ workers, Docker, Nginx, CI/CD). Use for clean-code reviews, feature/module decomposition, Riverpod state cleanup, NestJS modular monolith boundaries, async job idempotency, dead-code removal, technical debt reduction, and maintainability improvements without altering observable behavior.
 ---
 
-# Clean Code
+# 🧹 Repository-Wide Clean Code & Architecture Review
 
-Improve code structure without trading correctness for aesthetics. Preserve observable
-behavior unless the user explicitly requests a behavior change.
+Improve code structure without trading correctness for aesthetics. Refactoring must preserve observable behavior unless the user explicitly requests behavioral changes.
 
-## Establish scope
+---
 
-1. Determine whether the user asked to review, diagnose, plan, or modify code.
-2. Inspect repository instructions, architecture documents, current imports, consumers,
-   tests, and working-tree state before proposing moves or deletions.
-3. For this repository, read `doc/architecture/feature_first_architecture.md` before
-   changing Flutter architecture or Riverpod state ownership.
-4. Record a baseline with relevant analysis and tests before a broad refactor.
-5. Preserve unrelated user changes and public APIs unless changing them is in scope.
+## 1. Core Philosophy & Request Classification
 
-For review-only requests, report evidence and recommendations without editing files.
+Every interaction MUST strictly distinguish between two modes:
 
-## Review by responsibility
+### Mode A: Review-Only Requests
+- **Actions:** Inspect, identify concrete code evidence, explain architectural tradeoffs, and provide actionable recommendations.
+- **Rule:** **DO NOT edit or modify files.**
 
-Evaluate each unit using these questions:
+### Mode B: Refactoring / Modification Requests
+- **Actions:** Apply the smallest safe structural change that resolves the identified problem while preserving public behavior and contracts.
+- **Rule:** Validate changes thoroughly and report exactly what was altered and why.
 
-- Does it have one coherent reason to change?
-- Does its name reveal domain intent rather than implementation mechanics?
-- Is business state owned in exactly one place?
-- Does it depend inward through an intentional contract?
-- Can it be tested without rendering unrelated UI or constructing infrastructure?
-- Is repeated logic genuinely the same concept, or merely similar-looking code?
-- Does error handling preserve context and provide a recovery path?
-- Do comments explain constraints or decisions instead of narrating syntax?
-- Is dead code, compatibility scaffolding, or speculative abstraction still present?
+---
 
-Treat 200 lines as a review signal, not an automatic failure. Split a file when it mixes
-responsibilities, changes for unrelated reasons, or prevents focused testing. Keep a
-cohesive file intact even when an arbitrary line target would produce artificial fragments.
+## 2. Step 1: Detect Scope & Classification
 
-## Apply refactors safely
+Before taking action, identify the specific domain being reviewed. **NEVER apply platform-specific rules to the wrong stack** (e.g., do not apply Riverpod rules to NestJS, or NestJS rules to Flutter).
 
-Use the smallest structural change that resolves the demonstrated problem:
+| Scope Area | Target Technologies | Applicable Architecture Guidelines |
+|---|---|---|
+| **Frontend** | Flutter, Dart, Riverpod, GoRouter | [📱 Frontend Architecture](./frontend_architecture.md) |
+| **Backend** | NestJS, TypeScript, PostgreSQL, TypeORM | [🖥️ Backend Architecture](./backend_architecture.md) |
+| **Worker / Async** | BullMQ, Redis Queues, Background Tasks | [⚡ Async & Redis Rules](./async_and_redis.md) |
+| **Infrastructure / DevOps** | Docker, Docker Compose, Nginx, CI/CD | [🏗️ Infrastructure Architecture](./infrastructure_architecture.md) |
+| **Shared / Cross-Cutting** | API Contracts, DTOs, Security, Logging | Universal Principles below |
+| **Repository-Wide** | Monolith boundaries, dead code, repo tree | Universal Principles & Domain Guides |
 
-1. Make ownership explicit before moving files.
-2. Consolidate duplicate state before adding new providers or controllers.
-3. Extract domain concepts and pure calculations before extracting cosmetic wrappers.
-4. Prefer dependency injection and narrow interfaces at volatile boundaries.
-5. Keep UI composition declarative; move state transitions and derived calculations to
-   the application layer.
-6. Delete dead code only after verifying routes, imports, references, tests, generated
-   outputs, and framework registration points.
-7. Avoid abstractions with one speculative consumer; follow YAGNI.
-8. Separate pure file moves from behavior changes when commits are requested.
+---
 
-Do not hide complexity behind generic names such as `Manager`, `Helper`, `Utils`, or
-`Common`. Name types after the business responsibility they own.
+## 3. Universal 15-Point Responsibility Review Checklist
 
-## Flutter and Riverpod boundaries
+Evaluate any file, module, or component against this repository-wide checklist:
 
-Follow the repository's feature-first structure:
+1. **Cohesive Reason to Change:** Does this file/module have a single, well-defined reason to change (SRP)?
+2. **Domain-Revealing Naming:** Does the name describe domain intent rather than generic mechanics?
+3. **Single Authoritative State:** Is state owned in exactly one authoritative place (Postgres for durable data, Riverpod/controller for UI)?
+4. **Intentional Dependency Direction:** Do dependencies point inward toward contracts rather than concrete details?
+5. **Isolated Testability:** Can core business logic be tested without spinning up heavy UI, network, or external infrastructure?
+6. **Genuine vs. Coincidental Duplication:** Is repeated code truly the same business concept, or merely similar-looking code that evolves independently?
+7. **Context-Preserving Error Handling:** Does error handling preserve context and provide an actionable recovery path?
+8. **Informative Comments:** Do comments explain "why" (constraints and design decisions) rather than narrating syntax?
+9. **No Dead Code:** Are dead code, obsolete configuration, or speculative abstractions eliminated?
+10. **Stateless & Scalable:** Does the design remain correct when multiple backend API instances run concurrently?
+11. **Durable Source of Truth:** Is durable business state stored in PostgreSQL rather than temporary caches like Redis?
+12. **Idempotent Background Jobs:** Are async worker jobs safe to retry multiple times without causing duplicate side-effects?
+13. **Server-Side Security Enforcement:** Are authentication, user ownership, and authorization strictly enforced on the server?
+14. **Observable Failure Modes:** Are system failures, job errors, and unhandled exceptions observable via structured logs and health probes?
+15. **Justified Abstraction (YAGNI):** Is every abstraction justified by current requirements rather than speculative future use?
+
+---
+
+## 4. The ~200-Line Review Signal & Naming Standards
+
+- **200 lines is a review signal, NOT an automatic failure.**
+  - **DO NOT** split a cohesive file merely to hit an arbitrary line count target.
+  - **DO split** when a file mixes independent responsibilities, couples layout with network state, or impedes unit testing.
+- **Eliminate Generic Junk Drawers:**
+  - Reject vague names like `utils.ts`, `helpers.ts`, `common_service.ts`, `manager.dart`.
+  - Name modules after the specific business responsibility they own (e.g., `SubscriptionBillingCalculator`, `PaymentCardLinkingController`).
+
+---
+
+## 5. Architectural Restraint (Anti-Overengineering Policy)
+
+The clean-code skill actively defends the repository against unnecessary complexity:
+
+- **NO Premature Microservices:** The backend is an intentional **Modular Monolith**. Do not break modules into microservices without an explicit deployment or scaling boundary.
+- **NO Generic Repository Wrappers:** Do not wrap TypeORM or Riverpod with meaningless passthrough layers that provide zero abstraction value.
+- **NO Event Buses for Direct Calls:** Do not use event emitters or message queues for immediate synchronous operations where normal method calls are clearer.
+- **NO Redis as Primary Storage:** Do not use Redis where PostgreSQL with proper indexing is completely sufficient.
+- **NO Speculative Patterns:** Require a concrete, demonstrable problem before introducing design patterns (Factory, Strategy, CQRS).
+
+---
+
+## 6. Execution Workflow (Safe Refactoring Protocol)
 
 ```text
-lib/features/<feature>/
-├── domain/
-├── data/
-├── application/
-└── presentation/
+1. Detect Scope (Frontend, Backend, Worker, Infrastructure)
+   ↓
+2. Read Applicable Architecture Reference File
+   ↓
+3. Establish Baseline Behavior (Inspect tests, routes, consumers)
+   ↓
+4. Identify Responsibility & Boundary Violations
+   ↓
+5. Confirm That Refactoring Is Truly Justified
+   ↓
+6. Apply the Smallest Safe Structural Change
+   ↓
+7. Run Scope-Appropriate Validation Suite
+   ↓
+8. Report Findings:
+   - What structural changes were made
+   - Why they were made (tradeoffs resolved)
+   - Validation performed & remaining risks
 ```
 
-- Keep Flutter and Riverpod imports out of `domain/`.
-- Keep repository implementations and external I/O in `data/`.
-- Keep providers, controllers, orchestration, and derived state in `application/`.
-- Keep screens and feature-specific widgets in `presentation/`.
-- Prevent presentation from importing data implementations directly.
-- Expose narrow application contracts when another feature needs state or commands.
-- Put a widget in `core/widgets/` only when at least two features genuinely use it.
-- Use `application/`, not a top-level `bloc/`, while Riverpod is the state solution.
-- Never edit `.g.dart` or `.freezed.dart` manually; regenerate from source annotations.
+---
 
-## Validate
+## 7. Scope-Appropriate Validation Matrix
 
-Validate in proportion to the change:
+Run the smallest relevant validation suite first, broadening only when changes affect cross-cutting behavior:
 
-1. Format touched Dart files.
-2. Search for stale imports, duplicate providers, forbidden layer dependencies, and
-   references to removed symbols.
-3. Run targeted unit/widget tests while iterating.
-4. Run `dart analyze` and the full `flutter test` suite for architecture-wide changes.
-5. Generate coverage when application or business logic changes materially.
-6. Inspect the final diff for accidental behavior changes, generated noise, secrets,
-   unrelated files, and whitespace errors.
+| Scope | Validation Commands |
+|---|---|
+| **Frontend (Flutter)** | `dart format <file>` → `dart analyze` → `flutter test <path>` → `flutter test` |
+| **Backend (NestJS)** | `npm run lint` → `npm run build` (`tsc --noEmit`) → `npm test` → `npm run test:e2e` |
+| **Worker (BullMQ)** | TypeScript compilation → Worker unit/idempotency tests → Redis connection test |
+| **Infrastructure (Docker/Nginx)** | `docker compose config` → `nginx -t` → Docker build verification → Health endpoint check |
+| **Cross-Cutting** | Run both frontend analysis and backend test suites; inspect git diff for accidental changes |
 
-Do not claim clean code solely because analysis passes or files are short. Report the
-ownership decisions, responsibilities separated, tradeoffs retained, and verification
-results.
+Do not claim clean code solely because analysis passes. Always report the ownership decisions made, responsibilities separated, and verification steps performed.

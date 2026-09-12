@@ -112,11 +112,11 @@ flowchart TD
 
 ---
 
-### 🏛️ โมดูล 1: App Core & Routing (`lib/` & `lib/app/`)
+### 🏛️ โมดูล 1: App Core & Routing (`apps/mobile/lib/` & `apps/mobile/lib/app/`)
 *(ส่วนที่คุณร่วมพัฒนา)*
 
 #### 📄 ไฟล์ในส่วนนี้:
-1. **[`lib/main.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/main.dart)**
+1. **[`apps/mobile/lib/main.dart`](../../apps/mobile/lib/main.dart)**
    * **หน้าที่**: จุดเริ่มต้นของแอปพลิเคชัน ต้องมี `ProviderScope` ครอบ `App()` ไว้เสมอ
    * **โค้ด**:
      ```dart
@@ -125,30 +125,30 @@ flowchart TD
      }
      ```
 
-2. **[`lib/app/application/current_tab_controller.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/app/application/current_tab_controller.dart)**
+2. **[`apps/mobile/lib/app/application/current_tab_controller.dart`](../../apps/mobile/lib/app/application/current_tab_controller.dart)**
    * **หน้าที่**: เก็บ State ของแท็บปัจจุบัน (Index 0 = หน้าแรก, 1 = รายการ, 2 = ประหยัด, 3 = ตั้งค่า, 4 = โปรไฟล์)
    * **การใช้งานใน UI**:
      - `ref.watch(currentTabProvider)` ➔ ใช้เปลี่ยนหน้าใน NavigationShell
      - `ref.read(currentTabProvider.notifier).select(4)` ➔ พาย้ายไปหน้าโปรไฟล์เมื่อกดรูปบน Header
 
-3. **[`lib/app/application/app_flow_provider.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/app/application/app_flow_provider.dart)**
+3. **[`apps/mobile/lib/app/application/app_flow_provider.dart`](../../apps/mobile/lib/app/application/app_flow_provider.dart)**
    * **หน้าที่**: รวมข้อมูลจาก `onboardingProvider` และ `authProvider` เพื่อสรุปว่าแอปอยู่ในสถานะใด (`isInitializing`, `isOnboardingCompleted`, `isAuthenticated`)
 
-4. **[`lib/app/routing/app_router.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/app/routing/app_router.dart)**
+4. **[`apps/mobile/lib/app/routing/app_router.dart`](../../apps/mobile/lib/app/routing/app_router.dart)**
    * **หน้าที่**: กำหนดเส้นทาง URL Path (`/dashboard`, `/login`, `/onboarding`) ด้วย `GoRouter` ร่วมกับ `_RouterRefreshNotifier`
 
-5. **[`lib/app/presentation/main_navigation_shell.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/app/presentation/main_navigation_shell.dart)**
+5. **[`apps/mobile/lib/app/presentation/main_navigation_shell.dart`](../../apps/mobile/lib/app/presentation/main_navigation_shell.dart)**
    * **หน้าที่**: เป็นโครงหน้าจอหลัก (Scaffold + Header + IndexedStack + NavigationBar) ที่สลับหน้าตาม `currentTabProvider`
 
-6. **[`lib/app/presentation/widgets/main_app_header.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/app/presentation/widgets/main_app_header.dart)**
+6. **[`apps/mobile/lib/app/presentation/widgets/main_app_header.dart`](../../apps/mobile/lib/app/presentation/widgets/main_app_header.dart)**
    * **หน้าที่**: แถบด้านบนของแอป อ่านยอดเงินจาก `userIncomeProvider` มาแสดงผล และมีปุ่มรูปโปรไฟล์กดไปหน้าตั้งค่า
 
 ---
 
-### 🛡️ โมดูล 2: ระบบความปลอดภัยส่วนกลาง Security & PIN (`lib/core/`)
+### 🛡️ โมดูล 2: ระบบความปลอดภัยส่วนกลาง Security & PIN (`apps/mobile/lib/core/`)
 
 #### 📄 ไฟล์ในส่วนนี้:
-* **[`lib/core/security/pin_provider.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/core/security/pin_provider.dart)**
+* **[`apps/mobile/lib/core/security/pin_provider.dart`](../../apps/mobile/lib/core/security/pin_provider.dart)**
 
 #### ⚙️ การทำงานของระบบ PIN:
 ```text
@@ -179,33 +179,33 @@ class SecurityPinNotifier extends Notifier<String> {
 
 ---
 
-### 📦 โมดูล 4: ฟีเจอร์จัดการสมัครสมาชิก Subscriptions (`lib/features/subscriptions/`)
+### 📦 โมดูล 4: ฟีเจอร์จัดการสมัครสมาชิก Subscriptions (`apps/mobile/lib/features/subscriptions/`)
 
 โมดูลนี้เป็น **Source of Truth หลัก** สำหรับเก็บรายการค่าบริการสมาร์ทโฟน/สตรีมมิ่งทั้งหมด
 
 #### 📄 ไฟล์หลักใน Application Layer:
-1. **`subscriptionListProvider`** ([`subscription_list_controller.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/features/subscriptions/application/subscription_list_controller.dart))
+1. **`subscriptionListProvider`** ([`subscription_list_controller.dart`](../../apps/mobile/lib/features/subscriptions/application/subscription_list_controller.dart))
    * **ชนิด**: `AsyncNotifierProvider`
    * **หน้าที่**: โหลดข้อมูลจาก Repository และมีเมธอดทำ CRUD:
      - `addSubscription(item)` ➔ เพิ่มรายการ
      - `updateSubscription(item)` ➔ แก้ไขรายการ
      - `deleteSubscription(id)` ➔ ลบรายการ
      - `toggleSelection(id)` ➔ ติ๊กเลือกบริการเพื่อจำลองยกเลิก
-2. **`visibleSubscriptionsProvider`** ([`subscription_filter_controller.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/features/subscriptions/application/subscription_filter_controller.dart))
+2. **`visibleSubscriptionsProvider`** ([`subscription_filter_controller.dart`](../../apps/mobile/lib/features/subscriptions/application/subscription_filter_controller.dart))
    * **ชนิด**: `Provider` (Derived State)
    * **หน้าที่**: กรองรายการ Subscription ที่จะแสดงผลบนหน้าจอตามคำค้นหา (`query`) และหมวดหมู่ที่เลือก (`category`)
-3. **`subscriptionReadModelsProvider`** ([`subscription_read_model.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/features/subscriptions/application/subscription_read_model.dart))
+3. **`subscriptionReadModelsProvider`** ([`subscription_read_model.dart`](../../apps/mobile/lib/features/subscriptions/application/subscription_read_model.dart))
    * **ชนิด**: `Provider` (Public Read Boundary)
    * **หน้าที่**: แปลงข้อมูลเป็น Read Model ให้ Dashboard และ Savings อ่านไปใช้ได้โดยไม่เกิดปัญหา Tight Coupling
 
 ---
 
-### 📊 โมดูล 5: ฟีเจอร์หน้าแรก Dashboard (`lib/features/dashboard/`)
+### 📊 โมดูล 5: ฟีเจอร์หน้าแรก Dashboard (`apps/mobile/lib/features/dashboard/`)
 
 โมดูลนี้ทำหน้าที่นำข้อมูลจาก **Subscriptions** และ **Profile Income** มารวบรวมและคำนวณสถิติสำคัญ
 
 #### 📄 ไฟล์หลักใน Application Layer:
-* **`dashboardSummaryProvider`** ([`dashboard_summary_provider.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/features/dashboard/application/dashboard_summary_provider.dart))
+* **`dashboardSummaryProvider`** ([`dashboard_summary_provider.dart`](../../apps/mobile/lib/features/dashboard/application/dashboard_summary_provider.dart))
 
 #### 🧮 สูตรการคำนวณที่เกิดขึ้นใน Provider:
 ```text
@@ -228,12 +228,12 @@ summaryAsync.when(
 
 ---
 
-### 💰 โมดูล 6: ฟีเจอร์จำลองประหยัดเงิน Savings (`lib/features/savings/`)
+### 💰 โมดูล 6: ฟีเจอร์จำลองประหยัดเงิน Savings (`apps/mobile/lib/features/savings/`)
 
 โมดูลนี้ทำหน้าที่คำนวณยอดเงินที่จะประหยัดได้ต่อปี หากผู้ใช้ยกเลิกรายการที่เลือกไว้
 
 #### 📄 ไฟล์หลักใน Application Layer:
-* **`savingsViewStateProvider`** ([`savings_provider.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/features/savings/application/savings_provider.dart))
+* **`savingsViewStateProvider`** ([`savings_provider.dart`](../../apps/mobile/lib/features/savings/application/savings_provider.dart))
 
 #### 🧮 การคำนวณ ยอดประหยัดเงินรวมต่อปี (`yearlySavings`):
 $$\text{yearlySavings} = \sum (\text{monthlyPrice of selected items}) \times 12$$
@@ -248,10 +248,10 @@ final savingsViewStateProvider = Provider<AsyncValue<SavingsViewState>>((ref) {
 
 ---
 
-### 🚀 โมดูล 10: ฟีเจอร์แนะนำการใช้งาน Onboarding (`lib/features/onboarding/`)
+### 🚀 โมดูล 10: ฟีเจอร์แนะนำการใช้งาน Onboarding (`apps/mobile/lib/features/onboarding/`)
 
 #### 📄 ไฟล์หลักใน Application Layer:
-* **`onboardingProvider`** ([`onboarding_controller.dart`](file:///c:/Work/Project/shareproject/subscription_track/lib/features/onboarding/application/onboarding_controller.dart))
+* **`onboardingProvider`** ([`onboarding_controller.dart`](../../apps/mobile/lib/features/onboarding/application/onboarding_controller.dart))
 
 ```dart
 final onboardingProvider = NotifierProvider<OnboardingController, bool>(

@@ -1,77 +1,97 @@
-# Subscription Tracker (Subscription Creep Dashboard)
+# Subscription Track (Full-Stack Monorepo)
 
-แอปพลิเคชันระบบตรวจจับและประเมินค่าบริการสมาชิกรายเดือน/รายปี (Subscription Tracker) ที่มาพร้อมกับระบบคำนวณ **Subscription Creep Score** เพื่อประเมินความเสี่ยงทางการเงินจากการสมัครบริการซ้ำซ้อนหรือไม่ได้ใช้งาน พัฒนาด้วย **Flutter**
+ระบบตรวจจับและประเมินค่าบริการสมาชิกรายเดือน/รายปี (Subscription Tracker & Analytics System) ที่มาพร้อมกับระบบคำนวณ **Subscription Creep Score** เพื่อประเมินความเสี่ยงทางการเงินจากการสมัครบริการซ้ำซ้อนหรือไม่ได้ใช้งาน
 
----
-
-## คุณสมบัติของโปรเจค (Features)
-- **Dashboard สรุปยอดค่าใช้จ่าย:** สรุปยอดจ่ายออกทั้งหมดต่อเดือนและต่อปีแบบเรียลไทม์
-- **Subscription Creep Score:** ประเมินเปอร์เซ็นต์ค่าบริการเมื่อเทียบกับรายได้หลัก พร้อมบอกระดับความเสี่ยงทางการเงิน (ต่ำ, ปานกลาง, สูง)
-- **ระบบจำลองการประหยัดค่าใช้จ่าย (Savings Simulation):** สามารถทดลองติ๊กเลือกยกเลิกบริการที่ต้องการ เพื่อดูยอดเงินที่จะประหยัดได้ต่อเดือนและต่อปีได้ทันที
-- **การตรวจจับและแจ้งเตือนบริการไม่ได้ใช้งาน:** ไฮไลท์บริการที่ระบุสถานะเป็น "ไม่ได้ใช้งาน (Unused)" เพื่อช่วยตัดสินใจยกเลิกได้ง่ายขึ้น
-- **Responsive Layout:** รองรับหน้าจอทั้งขนาดมือถือ แท็บเล็ต และคอมพิวเตอร์ (หน้าจอกว้าง)
+โครงสร้างโปรเจกต์จัดระเบียบในรูปแบบ **Apps & Infra Monorepo** เพื่อรองรับทั้ง Mobile Client, Backend API, และ Cloud Infrastructure
 
 ---
 
-## สิ่งที่ต้องเตรียมก่อนเริ่มรัน (Prerequisites)
-ก่อนเริ่มติดตั้งและรันโปรเจค กรุณาติดตั้งเครื่องมือต่อไปนี้บนเครื่องคอมพิวเตอร์ของคุณ:
-1. **Flutter SDK:** เวอร์ชัน `3.12.0` หรือสูงกว่า (ตรวจสอบด้วยคำสั่ง `flutter --version`)
-2. **Dart SDK:** ติดตั้งมาพร้อมกับ Flutter
-3. **IDE:** แนะนำให้ใช้ [Visual Studio Code](https://code.visualstudio.com/) หรือ [Android Studio](https://developer.android.com/studio) พร้อมลง Extension/Plugin **Flutter & Dart**
-4. **Emulator หรือเครื่องทดสอบ:** เครื่องมือถือจริง (Android/iOS) หรือเปิดใช้งาน Chrome / Desktop สำหรับการรันแบบ Web/Desktop
+## 🏛️ สถาปัตยกรรมโปรเจกต์ (Repository Architecture)
 
----
-
-## ขั้นตอนการรันโปรเจคครั้งแรก (Getting Started)
-
-ทำตามขั้นตอนด้านล่างนี้ใน Terminal หรือ Command Prompt เพื่อติดตั้งและรันโปรเจค:
-
-### 1. โคลนโปรเจค (Clone Repository)
-หากคุณยังไม่ได้ดาวน์โหลดโค้ด ให้ใช้คำสั่ง Git Clone (หรือข้ามขั้นตอนนี้หากมีโค้ดอยู่แล้ว):
-```bash
-git clone <repository_url>
-cd subscription_track
-```
-
-### 2. ตรวจสอบความพร้อมของระบบ Flutter
-ตรวจสอบว่าเครื่องมือและอุปกรณ์ทดสอบมีความพร้อมหรือไม่:
-```bash
-flutter doctor
-```
-
-### 3. ดาวน์โหลด Dependencies (คำสั่งสำคัญสำหรับการรันครั้งแรก)
-ติดตั้งแพ็คเกจต่างๆ ที่จำเป็นต้องใช้ในโปรเจคตามที่กำหนดในไฟล์ `pubspec.yaml`:
-```bash
-flutter pub get
-```
-
-### 4. รันแอปพลิเคชัน (Run Project)
-เลือกอุปกรณ์เป้าหมายที่ต้องการรัน แล้วใช้คำสั่งนี้เพื่อเริ่มใช้งานในโหมดดีบั๊ก (Debug Mode):
-```bash
-flutter run
-```
-*หากมีอุปกรณ์เปิดอยู่หลายชิ้น ระบบจะให้คุณเลือกอุปกรณ์โดยพิมพ์หมายเลข หรือสามารถระบุด้วยคำสั่งเจาะจง เช่น `flutter run -d chrome`*
-
----
-
-## โครงสร้างโฟลเดอร์ของโปรเจค (Project Structure)
-รายละเอียดโฟลเดอร์และไฟล์ที่สำคัญในส่วนพัฒนาโปรเจค (`lib/`):
 ```text
-lib/
-├── main.dart                 # จุดเริ่มต้นของแอปพลิเคชัน (Entry Point) และการตั้งค่า Theme หลัก
-├── models/
-│   └── subscription.dart     # โครงสร้างข้อมูล (Data Model) ของ Subscription
-├── screens/
-│   └── dashboard_screen.dart # หน้าจอหลักและส่วนการประมวลผล Logic ของแดชบอร์ด
-└── widgets/
-    ├── kpi_card.dart         # การ์ดแสดงผลสถิติหลัก (ยอดรวม, Creep Score, สรุปแจ้งเตือน)
-    ├── subscription_tile.dart # รายการของแต่ละ Subscription พร้อมสวิตช์และสถานะ
-    └── saving_simulation_card.dart # บล็อกคำนวณและจำลองการยกเลิกเพื่อประหยัดเงิน
+subscription_track/
+├── apps/
+│   ├── mobile/          # แอปพลิเคชันมือถือ (Flutter, Riverpod, Feature-First Architecture)
+│   └── api/             # ระบบ Backend API (NestJS Modular Monolith - Phase 2)
+├── infra/               # การตั้งค่า Infrastructure & DevOps (Docker, Nginx, PostgreSQL, Redis)
+│   ├── nginx/
+│   ├── postgres/
+│   ├── redis/
+│   └── monitoring/
+├── scripts/             # สคริปต์อัตโนมัติสำหรับการพัฒนาและทดสอบระดับ Repository
+├── doc/                 # เอกสารข้อกำหนดระบบ สถาปัตยกรรม และการจัดสรรงาน
+│   ├── architecture/
+│   ├── frontend/
+│   ├── backend/
+│   ├── devops/
+│   ├── task/
+│   └── Subscription_Track_PRD.md
+├── .agents/             # Antigravity AI Agent Skills & Repository Knowledge
+├── .github/             # GitHub Actions CI/CD Workflows
+└── .gitignore           # กฎการละเว้นไฟล์ระดับ Full-Stack Monorepo
 ```
 
 ---
 
-## 🛠️ เครื่องมือที่ใช้พัฒนา (Built With)
-- **Framework:** [Flutter](https://flutter.dev/) (Dart)
-- **State Management:** Stateful Widget (เพื่อความง่ายและรวดเร็วในหน้าตัวอย่างเดโมเดี่ยว)
-- **UI Design:** Google Material Design 3 (Dark Theme)
+## 📱 Mobile Application (`apps/mobile/`)
+
+แอปพลิเคชันมือถือพัฒนาด้วย **Flutter** พร้อมระบบจัดการสถานะ **Riverpod** โดยใช้สถาปัตยกรรม **Feature-First Clean Architecture**
+
+### ฟีเจอร์หลัก (Features):
+- **Dashboard สรุปยอดค่าใช้จ่าย:** สรุปยอดจ่ายออกทั้งหมดต่อเดือนและต่อปีแบบเรียลไทม์
+- **Subscription Creep Score:** ประเมินเปอร์เซ็นต์ค่าบริการเมื่อเทียบกับรายได้ พร้อมบอกระดับความเสี่ยงทางการเงิน
+- **ระบบจำลองการประหยัดค่าใช้จ่าย (Savings Simulation):** ติ๊กเลือกบริการเพื่อคำนวณยอดเงินที่จะประหยัดได้ต่อเดือนและต่อปี
+- **Add & Preset Packages:** เพิ่มรายการและเลือกแพ็กเกจพรีเซ็ตยอดนิยมในไทยกว่า 10 บริการ
+- **Linked Accounts & Auto-Import:** จำลองการผูกบัตรธนาคาร ตรวจจับบิลเรียกเก็บซ้ำ และซิงก์ยอดคงเหลือสะท้อนรายได้
+- **Security PIN:** ระบบรักษาความปลอดภัย PIN 6 หลัก พร้อมระบบยืนยันก่อนทำรายการแก้ไข/ลบ
+- **Responsive Layout:** รองรับหน้าจอทั้งมือถือ แท็บเล็ต และคอมพิวเตอร์ (Adaptive Shell)
+
+### การติดตั้งและรัน Mobile Application:
+เข้าสู่ไดเรกทอรี `apps/mobile/`:
+
+```bash
+cd apps/mobile
+```
+
+1. **ตรวจสอบความพร้อมของระบบ Flutter:**
+   ```bash
+   flutter doctor
+   ```
+
+2. **ดาวน์โหลด Dependencies:**
+   ```bash
+   flutter pub get
+   ```
+
+3. **รัน Unit & Widget Tests:**
+   ```bash
+   flutter test
+   ```
+
+4. **รันแอปพลิเคชัน (Debug Mode):**
+   ```bash
+   flutter run
+   ```
+
+---
+
+## 🖥️ Backend API (`apps/api/`)
+
+*สถานะ: วางขอบเขตโครงสร้างพร้อมสำหรับการพัฒนาใน Phase 2 (NestJS Modular Monolith, PostgreSQL, TypeORM, Redis, BullMQ)*
+ดูรายละเอียดเพิ่มเติมได้ที่ [doc/Subscription_Track_PRD.md](doc/Subscription_Track_PRD.md)
+
+---
+
+## 🏗️ Infrastructure & Deployment (`infra/`)
+
+*สถานะ: วางโครงสร้างสำหรับ Nginx Reverse Proxy, PostgreSQL, Redis Cache/Queue และ Production Containers*
+
+---
+
+## 📚 เอกสารอ้างอิงที่สำคัญ (Documentation)
+
+* **[Product Requirement Document (PRD)](doc/Subscription_Track_PRD.md)**
+* **[Frontend Living Screen Specifications](doc/frontend/subscription_track_frontend_screens.md)**
+* **[Feature-First Clean Architecture](doc/architecture/feature_first_architecture.md)**
+* **[Riverpod State Management Guide](doc/architecture/riverpod_architecture_guide.md)**
+* **[Team Task Allocation & Schedule](doc/task/team_task_allocation.md)**
