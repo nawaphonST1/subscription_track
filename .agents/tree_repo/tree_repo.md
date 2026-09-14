@@ -1,6 +1,6 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-12 23:11:29
+> **📅 วันที่อัปเดต:** 2026-09-14 10:52:04
 > **👤 อัปเดตโดย:** Nekokun2004
 > **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
@@ -69,6 +69,10 @@
 │   │       └── SKILL.md                                # Skill instructions and operational workflow
 │   └── tree_repo
 │       └── tree_repo.md                                # Repository tree overview guide with file annotations
+├── .codex                                              # Codex repository-local configuration boundary
+├── .github
+│   └── workflows                                       # GitHub Actions CI/CD workflows boundary
+│       └── .gitkeep                                    # Keep directory tracked in git
 ├── apps                                                # Full-stack application packages directory
 │   ├── api                                             # NestJS backend application boundary
 │   │   └── .gitkeep                                    # Keep directory tracked in git
@@ -296,7 +300,9 @@
 │   │   ├── riverpod_architecture_guide.md              # Comprehensive Riverpod Architecture & State Management Guide
 │   │   └── riverpod_providers_reference.md             # Riverpod Providers Quick Reference & Cheat Sheet
 │   ├── backend
-│   │   └── .gitkeep                                    # Keep directory tracked in git
+│   │   ├── .gitkeep                                    # Keep directory tracked in git
+│   │   ├── backend_architecture_v1.md                  # Canonical Backend Architecture v1: modules, runtimes, data and async boundaries
+│   │   └── domain_model_v1.md                          # Domain Model v1: entities, value objects, lifecycles, invariants and ERD decisions
 │   ├── devops
 │   │   └── .gitkeep                                    # Keep directory tracked in git
 │   ├── frontend
@@ -304,9 +310,6 @@
 │   ├── task
 │   │   └── team_task_allocation.md                     # Developer Task Allocation, Work Breakdown & Schedule
 │   └── Subscription_Track_PRD.md                       # Product Requirement Document (PRD)
-├── .github
-│   └── workflows                                       # GitHub Actions CI/CD workflows boundary
-│       └── .gitkeep                                    # Keep directory tracked in git
 ├── infra                                               # Infrastructure configuration boundary
 │   ├── monitoring                                      # Monitoring infrastructure boundary
 │   │   └── .gitkeep                                    # Keep directory tracked in git
@@ -322,7 +325,7 @@
 ├── README.md                                           # Full-stack monorepo project overview & getting started
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-127 directories, 184 files
+128 directories, 186 files
 ```
 
 ---
@@ -335,6 +338,6 @@
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
 | `apps/api/` | ขอบเขตระบบ Backend API สำหรับ NestJS Modular Monolith (ปัจจุบันเป็นโฟลเดอร์ boundary) |
-| `doc/` | เอกสารข้อกำหนดของระบบ (PRD, สถาปัตยกรรม Feature-First/Riverpod, แผนจัดสรรงาน) |
+| `doc/` | เอกสารข้อกำหนดของระบบ (PRD, Backend Architecture v1, สถาปัตยกรรม Feature-First/Riverpod และแผนจัดสรรงาน) |
 | `infra/` | ขอบเขตการตั้งค่าระบบ Infrastructure (Nginx, PostgreSQL, Redis, Monitoring) (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |
