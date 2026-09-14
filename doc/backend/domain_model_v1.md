@@ -87,6 +87,7 @@ flowchart TB
     Pin["PinCredential<br/>protected-action credential"]
     Device["DeviceRegistration<br/>push destination"]
     Sub["Subscription<br/>user-owned tracked agreement"]
+    Schedule["BillingSchedule<br/>embedded recurrence semantics"]
     Notification["Notification<br/>durable user-visible message"]
     Package["Package<br/>stable catalog identity"]
     Version["PackageVersion<br/>versioned catalog facts"]
@@ -96,10 +97,10 @@ flowchart TB
     User --> Pin
     User --> Device
     User --> Sub
+    Sub --> Schedule
     User --> Notification
     Package --> Version
     Version -. "optional origin/context" .-> Sub
-    Package -. "optional catalog identity" .-> Sub
 ```
 
 Core direction:
@@ -111,6 +112,7 @@ User
 ├── PinCredential
 ├── DeviceRegistration
 ├── Subscription
+│   └── BillingSchedule (embedded/value concept)
 └── Notification
 
 Package
@@ -134,11 +136,12 @@ Package
 | UserProfile | Value Object / embedded concept | `users` | As part of User | Name/contact/account-facing information |
 | UserPreferences | Value Object / embedded concept | `users` | As part of User | Global defaults เช่น currency/language/reminder default |
 | Money | Value Object | owning feature | As part of owner | Amount + currency semantics |
-| BillingCycle | Value Object | `subscriptions` / `packages` | As part of owner | Cadence without independent identity |
+| BillingCycle | Value Object | `subscriptions` / `packages` | As part of owner | Recurrence interval semantics; nested in BillingSchedule for Subscription |
+| BillingSchedule | Value Object / embedded concept | `subscriptions` | As part of Subscription | BillingCycle + stable calendar anchor + timezone context + persisted next occurrence |
 | ReminderSettings | Value Object | `subscriptions` / `users` | As part of owner | Global default และ per-subscription override |
 | CancellationSchedule | Embedded concept | `subscriptions` | As part of Subscription | Status/effective time; ไม่เป็น Entity ใน v1 |
 | UsageLevel | Enum/value attribute | `subscriptions` | As part of Subscription | User-declared current usage label |
-| NotificationDelivery | Deferred supporting concept | `notifications` | Not in core v1 | Separate entity only when per-channel/per-target audit is required |
+| NotificationDelivery | Deferred supporting concept | `notifications` | Not in core v1 | **DEFERRED WITH KNOWN LIMITATION**; required if durable per-target/per-channel delivery state is needed |
 | PackageChange | Transient application/domain signal | `packages` | No separate record | Durable facts alreadyอยู่ใน PackageVersion |
 | DashboardSummary | Derived Read Model | `dashboard` | No | Computed from durable inputs; Redis cache optional |
 | UpcomingBillingSummary | Derived Read Model | `dashboard` | No | Projection from eligible subscriptions |
@@ -241,9 +244,9 @@ Concept ที่ Subscription ถือครอง:
 
 - owner User หนึ่งราย
 - subscription-specific service/display identity
-- commercial snapshot เช่น Money และ billing configuration
-- optional Package และ originating PackageVersion context
-- persisted next billing occurrence
+- required commercial snapshot เช่น Money และ billing configuration
+- optional originating PackageVersion สำหรับ catalog origin; Package หาได้ผ่าน PackageVersion
+- required BillingSchedule ซึ่งรวม stable anchor และ persisted next billing occurrence
 - lifecycle status
 - reminder override/settings
 - scheduled cancellation effective time เมื่อมี
@@ -257,33 +260,69 @@ Concept ที่ Subscription ถือครอง:
 
 ```text
 Preset-origin Subscription
-├── optional Package reference
-├── optional originating PackageVersion
+├── originating PackageVersion       # present
 └── required subscription-specific commercial snapshot
 
 Custom Subscription
-├── no Package reference
-├── no PackageVersion reference
+├── originating PackageVersion = null
 └── required subscription-specific commercial snapshot
 ```
 
-Custom subscription ไม่ต้องสร้าง fake Package การเลือก preset เป็นวิธีเริ่มต้นข้อมูล ไม่ใช่ type ที่เปลี่ยน identity/lifecycle ของ Subscription
+Custom subscription ไม่ต้องสร้าง fake Package การเลือก preset เป็นวิธีเริ่มต้นข้อมูล ไม่ใช่ type ที่เปลี่ยน identity/lifecycle ของ Subscription ไม่มี current business case ที่ Subscription ต้องรู้ Package แต่ไม่มี originating PackageVersion จึงไม่เก็บ direct Package reference บน Subscription
 
-### 7.3 Money และ BillingCycle
+### 7.3 Money, BillingCycle และ BillingSchedule
 
 `Money` เป็น Value Object ที่รักษาความหมาย amount + currency สำหรับ subscription price, package price, income/budget และ derived output Amount ต้องไม่ติดลบ; exact precision/type เป็นเรื่อง ERD
 
-`BillingCycle` เป็น Value Object ไม่ใช่ Entity เพราะไม่มี independent identity/lifecycle โดย v1 แนะนำ concept แบบ positive interval + supported unit:
+`BillingCycle` เป็น Value Object ที่อธิบาย recurrence interval เช่น positive interval count + supported unit โดยไม่มี independent identity/lifecycle:
 
 - current UI รองรับ monthly และ yearly
 - quarterly จาก mock/legacy requirement สามารถแทนเป็น interval สามเดือนโดยไม่เพิ่ม lifecycle state
-- custom cadence/unit เพิ่มเมื่อมี product requirement ไม่ต้องสร้าง `BillingCycle` table
+- custom cadence/unit เพิ่มเมื่อมี product requirement
 
-BillingCycle ใช้คำนวณ next billing date, annualized cost และ reminder date ด้วยกฎเดียวกันฝั่ง Backend
+สำหรับ Subscription, `BillingCycle` เป็นส่วนย่อยของ `BillingSchedule` ไม่ใช่ Entity/table แยก ส่วน PackageVersion อาจใช้ BillingCycle อธิบาย catalog cadence โดยไม่ถือ schedule ของผู้ใช้
 
-### 7.4 Next Billing Date
+`BillingSchedule` เป็น Value Object/embedded concept ที่ Subscription เป็นเจ้าของ:
 
-**v1 decision:** `nextBillingDate` เป็น durable state บน Subscription ที่คำนวณ/validate จาก persisted billing anchor/cycle เมื่อสร้าง เปลี่ยนรอบ หรือ advance รอบบิล ไม่ derive ใหม่ทุก request
+```text
+BillingSchedule
+├── BillingCycle
+│   ├── intervalCount
+│   └── intervalUnit
+├── Stable Calendar Anchor
+│   ├── anchorDay
+│   └── anchorMonth?       # relevant for yearly/calendar-based recurrence
+├── Billing Timezone / Calendar Context
+└── Persisted Next Billing Occurrence
+```
+
+ชื่อข้างต้นเป็น conceptual semantics ไม่ใช่ physical column names `BillingSchedule` และ billing anchor ไม่มี independent identity/lifecycle จึงไม่เป็น Entity และไม่ต้องมี table แยก
+
+### 7.4 Stable Billing Anchor และ Next Billing Date
+
+**v1 decision:** BillingSchedule ต้องเก็บทั้ง **stable calendar anchor** ซึ่งแทน recurrence intent และ `nextBillingDate` ซึ่งเป็น persisted next occurrence ทั้งสองมีหน้าที่ต่างกัน:
+
+```text
+nextBillingDate != recurrence anchor
+```
+
+- anchor คงวัน/เดือนตาม intent เดิมตลอด recurrence
+- nextBillingDate คือ occurrence ถัดไปที่ scheduler/dashboard query ได้โดยไม่คำนวณใหม่ทุก request
+- เมื่อสร้าง เปลี่ยนรอบ หรือ advance รอบบิล Backend ต้องคำนวณ/validate next occurrence จาก BillingCycle + stable anchor + timezone/calendar context
+
+Month-end policy ของ v1: หาก target month ไม่มี anchor day ให้ใช้วันสุดท้ายที่ valid ของเดือนนั้น **เฉพาะ occurrence นั้น** โดยไม่เปลี่ยน anchor ถาวร
+
+```text
+interval = 1 month, anchor day = 31
+
+2026-01-31
+2026-02-28
+2026-03-31
+2026-04-30
+2026-05-31
+```
+
+กฎเดียวกันใช้กับ multi-month cadence เช่น interval สามเดือน + anchor day 31 สำหรับ yearly recurrence ต้องรักษาทั้ง anchor month และ anchor day ตัวอย่าง Feb 29 ใช้ Feb 28 ในปี non-leap แล้วกลับเป็น Feb 29 เมื่อ leap yearมาถึง Exact date algorithm เป็นงาน Phase 1/domain service implementation แต่ semantics นี้เป็นข้อกำหนดของ domain
 
 เหตุผล:
 
@@ -292,7 +331,7 @@ BillingCycle ใช้คำนวณ next billing date, annualized cost แล�
 - ลดความกำกวมของ month-end/leap-year และป้องกัน client clock เป็น authority
 - Dashboard/reminder อ่าน occurrence เดียวกัน
 
-Combination นี้จึงเป็น **persisted next occurrence + deterministic backend calculation rule** ไม่ใช่การเก็บค่าซ้ำที่ไร้ owner เมื่อ billing cycle เปลี่ยน ต้องคำนวณ next occurrence ใหม่ภายใน use case เดียวกัน
+Combination นี้จึงเป็น **stable recurrence intent + persisted next occurrence + deterministic backend calculation rule** ไม่ใช่การเก็บค่าซ้ำที่ไร้ owner เมื่อ billing cycle, anchor หรือ timezone context เปลี่ยน ต้องคำนวณ next occurrence ใหม่ภายใน use case เดียวกัน
 
 ### 7.5 Reminder Preference
 
@@ -310,10 +349,20 @@ Effective ReminderSettings       # derived
 
 - global default ใช้เมื่อ Subscription ไม่มี override
 - per-subscription override สามารถ disable หรือกำหนด lead time เฉพาะรายการ
-- effective reminder date derive จาก `nextBillingDate` และ effective settings
+- effective reminder date derive จาก `BillingSchedule.nextBillingDate` + effective settings + billing timezone
 - reminder occurrence/Notification ที่สร้างแล้วเป็น durable state แต่ schedule calculation ไม่ใช่ Entity
 
 Exact allowed lead days ไม่ล็อกไว้ที่ 1/3/7 หรือ 3/7 ตาม UI mock; validation policyกำหนดภายหลัง
+
+```text
+stable billing anchor
+        ↓ calculate in billing timezone
+persist BillingSchedule.nextBillingDate
+        ↓ apply effective reminder lead time
+scheduler discovers the due execution instant
+```
+
+Billing recurrence มี calendar meaning ใน billing timezone ส่วน notification execution เป็น instant ที่ derive จาก calendar occurrence นั้น Subscription ที่ `CANCELLED` ไม่มีสิทธิ์สร้าง future reminder
 
 ### 7.6 UsageLevel, Confidence และ Savings Selection
 
@@ -415,30 +464,44 @@ Subscription
 
 ```text
 Subscription
-├── optional Package
 ├── optional originating PackageVersion
 └── required subscription-specific commercial snapshot
 ```
 
-**ข้อดี:** รักษาราคา/ชื่อ/รอบบิลที่ผู้ใช้ติดตาม, รองรับ custom price, หา package-change impact ได้, รองรับ future plan switching
+Package หาได้ผ่าน `originating PackageVersion → Package` จึงไม่ต้องมี direct Package reference ซ้ำบน Subscription
 
-**ข้อเสีย:** ต้องมีกฎชัดว่า snapshot กับ catalog ไม่ auto-sync และต้องรักษาความสอดคล้องของ optional references
+**ข้อดี:** รักษาราคา/ชื่อ/รอบบิลที่ผู้ใช้ติดตาม, รองรับ custom price, มี catalog-origin path เดียว, หา package-change impact ได้ และรองรับ future plan switching
+
+**ข้อเสีย:** ต้องมีกฎชัดว่า snapshot กับ catalog ไม่ auto-sync และ query ที่เริ่มจาก Package ต้องผ่าน PackageVersion
 
 **Recommended v1 decision: Option C — Hybrid Model**
 
 กฎ:
 
 - Subscription snapshot เป็น authoritative commercial meaning ของรายการผู้ใช้
-- Package/PackageVersion เป็น origin/context ไม่ใช่ live price pointer
+- originating PackageVersion เป็น historical catalog origin/context ไม่ใช่ live price pointer
+- Subscription ไม่อ้าง Package โดยตรง; Package resolve ได้จาก PackageVersion จึงไม่มีสอง relationship ที่อาจขัดกัน
 - package version ใหม่ไม่แก้ subscription snapshot อัตโนมัติ
 - ระบบอาจแจ้งความต่างและให้ผู้ใช้ยืนยันการปรับรายการ/plan switch
-- custom subscription มี snapshot ครบโดยไม่มี package references
+- custom subscription มี snapshot ครบและ `originating PackageVersion = null`
 - full history ของ user-edited subscription price ยังไม่เพิ่ม Entity ใน v1; หาก historical spending charts ต้อง reconstruct exact past periods ให้พิจารณา `SubscriptionRevision` ใน future design
+
+ตัวอย่าง historical meaning:
+
+```text
+PackageVersion v3 price = 199 THB
+Subscription originated from v3
+User tracks own snapshot = 179 THB
+```
+
+Subscription ยังคงมี commercial snapshot 179 THB พร้อม origin context เป็น v3 และการ publish v4 ภายหลังต้องไม่ rewrite snapshot นี้
 
 ### 9.4 Package Change Signal
 
 ```text
-New durable PackageVersion
+Package
+        ↓ PackageVersion(s)
+Subscriptions originating from those versions
         ↓ compare affected subscriptions
 Transient application/domain signal
         ↓ BullMQ execution job
@@ -479,11 +542,32 @@ Provider message ID = delivery integration detail
 | Separate NotificationDelivery | รองรับหลาย channel/target, audit และ partial outcomes | เพิ่ม Entity/state machine และ consistency cost |
 | Queue/log only | ง่ายที่สุด | ไม่พอสำหรับ durable idempotency/user-visible linkage |
 
-**v1 recommendation:** ยังไม่สร้าง `NotificationDelivery` Entity ใช้ durable Notification เป็น idempotency/user-visible anchor และเก็บเพียง coarse dispatch metadata ที่จำเป็นบน Notification; BullMQ/structured logs ดู execution attempts และ DeviceRegistration ดู invalid token lifecycle
+**v1 decision: DEFERRED WITH KNOWN LIMITATION.** ยังไม่สร้าง `NotificationDelivery` Entity ใช้ durable Notification เป็น idempotency/user-visible anchor และเก็บเพียง coarse dispatch metadata ที่จำเป็นบน Notification; BullMQ/structured logs ดู execution attempts และ DeviceRegistration ดู invalid token lifecycle
+
+```text
+Notification
+      ↓
+BullMQ
+      ↓
+Worker
+      ↓
+one or more DeviceRegistration targets
+```
+
+ความหมายของแต่ละ concept ต้องไม่ปะปนกัน:
+
+```text
+Notification         = durable user-visible application state
+DeviceRegistration   = durable push destination association
+BullMQ Job            = retryable infrastructure execution state
+NotificationDelivery = future durable per-target/per-channel delivery state
+```
+
+v1 รับประกันเพียง **at-least-once / best-effort ที่ provider/device-dispatch level** และไม่มี durable audit แยกต่อ device/channel ดังนั้นการ retry job อาจ dispatch ซ้ำบาง target ได้หลัง partial success แม้ durable Notification occurrence จะถูก deduplicate แล้ว BullMQ job state, queue retention และ structured logs ไม่เทียบเท่า durable delivery state
 
 สถานะอย่าง pending, sent, failed หรือ invalid-token เป็น candidate ของ delivery execution ไม่ใช่ read/unread lifecycle ของ Notification และ Domain Model v1 ยังไม่ล็อกว่าจะ persist รายละเอียดเหล่านี้ระดับ channel/device อย่างไร
 
-หาก Phase 7 ยืนยัน multi-channel fallback, per-device audit หรือ retry after partial fan-out ที่ต้องแม่นยำ ให้ promote `NotificationDelivery` เป็น Supporting Entity ก่อน implement ไม่ใช้ queue stateเป็น business audit แทน
+หาก partial success across devices, per-device retry, per-channel audit, delivery receipt หรือ precise exactly-once-like delivery accounting กลายเป็น requirement ต้อง promote `NotificationDelivery` เป็น Supporting Entity **ก่อน Phase 7 implementation** และห้ามใช้ queue state เป็น business delivery audit แทน
 
 ### 10.3 DeviceRegistration
 
@@ -511,7 +595,10 @@ Exact database unique constraint และ token storage protection เป็น
 ### 10.4 Billing Reminder Occurrence
 
 ```text
-Eligible Subscription + nextBillingDate + effective ReminderSettings
+Eligible Subscription
+        + BillingSchedule.nextBillingDate
+        + effective ReminderSettings
+        + billing timezone
         ↓ discovery
 Deterministic reminder occurrence meaning
         ↓ create/reuse Notification
@@ -594,7 +681,7 @@ Frontend จำลอง KBank/SCB/UOB/Krungsri, balance และ recurring cha
 | --- | --- | --- | --- |
 | `users` | User, profile, account preferences, income/budget value | auth context at application boundary | own provider token/PIN/session logic |
 | `auth` | AuthIdentity, RefreshSession, PinCredential | user account association contract | own User profile business rules |
-| `subscriptions` | Subscription, BillingCycle, Reminder override, cancellation lifecycle | Package/version lookup contract | mutate PackageVersion หรือ dispatch notification directly |
+| `subscriptions` | Subscription, BillingSchedule/BillingCycle, Reminder override, cancellation lifecycle | PackageVersion lookup contract | mutate PackageVersion หรือ dispatch notification directly |
 | `packages` | Package, PackageVersion, version publishing/change detection | notification orchestration contract after durable change | mutate user Subscription snapshot automatically |
 | `notifications` | Notification, DeviceRegistration, reminder discovery/dispatch orchestration | subscription/package/user read contracts | modify subscription lifecycle internals |
 | `dashboard` | Derived read-model assembly/cache policy | user/subscription/package read contracts | own or mutate source entities |
@@ -628,7 +715,6 @@ erDiagram
     USER ||--o{ NOTIFICATION : receives
 
     PACKAGE ||--o{ PACKAGE_VERSION : versions
-    PACKAGE o|--o{ SUBSCRIPTION : provides_optional_context
     PACKAGE_VERSION o|--o{ SUBSCRIPTION : optionally_originates
 
     SUBSCRIPTION o|--o{ NOTIFICATION : may_be_context_for
@@ -639,7 +725,7 @@ Notes:
 
 - registered User รองรับหลาย AuthIdentity; guest persistence ยัง open
 - PinCredential มีได้อย่างมากหนึ่ง active credential concept ต่อ User ใน v1
-- Package/PackageVersion references บน Subscription เป็น optional เพื่อรองรับ custom subscriptions
+- Subscription มี optional originating PackageVersion เพียง catalog-origin path เดียว; Package resolve ผ่าน PackageVersion และ custom subscription ไม่มี origin นี้
 - Notification related-resource relationships เป็น conceptual optional context ไม่ใช่ข้อสรุปว่าจะใช้ polymorphic column หรือ FK แบบใด
 
 ### 14.2 Entity Lifecycle Summary
@@ -680,15 +766,17 @@ Notes:
 | --- | --- |
 | Subscription ต้องเป็นของ User เดียวเสมอ | Database-enforceable relationship |
 | Money amount ต้องไม่ติดลบ; create UI อาจกำหนดมากกว่า zero | Value/domain validation + database candidate |
-| custom Subscription valid ได้โดยไม่มี Package/PackageVersion | Domain rule + nullable optional relationship |
+| custom Subscription valid ได้โดยไม่มี originating PackageVersion | Domain rule + nullable optional relationship |
 | Subscription ทุกตัวต้องมี commercial snapshot ที่ครบโดยไม่พึ่ง live catalog | Domain/application rule |
-| originating PackageVersion ถ้ามีต้องอยู่ใต้ Package context ที่สอดคล้องกัน | Application rule; ERD constraintเมื่อเหมาะสม |
+| originating PackageVersion ถ้ามีเป็น catalog-origin path เดียวและระบุ Package ผ่าน version นั้น | Relationship + module/domain rule |
 | package update ห้ามเปลี่ยน Subscription snapshot อัตโนมัติ | Module/domain rule |
 | lifecycle transition ต้องอยู่ใน minimal state diagram | Subscription application/domain rule |
 | `CANCELLATION_SCHEDULED` ต้องมี future effective time; state อื่นไม่ควรมี active schedule | Domain/application rule; database candidateบางส่วน |
 | `CANCELLED` ไม่สร้าง future billing reminders | Reminder application rule |
 | ผู้ใช้ห้ามอ่าน/แก้ Subscription ของผู้อื่น | Server-side authorization + owner-scoped query |
-| next billing occurrence และ billing cycle ต้องสอดคล้องหลัง mutation | Subscription use case transaction |
+| BillingSchedule ต้องมี BillingCycle, stable anchor, timezone context และ persisted next occurrence ที่สอดคล้องกันหลัง mutation | Subscription use case transaction |
+| short month ใช้ last valid day เฉพาะ occurrence และห้ามเปลี่ยน stable anchor | Subscription domain calculation rule |
+| yearly Feb 29 anchor ใช้ Feb 28 ใน non-leap year แล้วกลับ Feb 29 ใน leap year | Subscription domain calculation rule |
 
 ### 15.3 Package
 
@@ -709,6 +797,7 @@ Notes:
 | Notification ต้องเป็นของ User เดียว | Database-enforceable relationship |
 | reminder occurrence เดียวต้องไม่สร้าง Notification ซ้ำ | Application idempotency + database uniqueness candidateเมื่อ key ถูกกำหนด |
 | Worker retry ต้อง re-check current Subscription eligibility | Worker/application rule |
+| v1 ไม่รับประกัน durable per-device/per-channel delivery audit หรือ exactly-once-like dispatch accounting | Explicit scope limitation; add NotificationDelivery before Phase 7 if required |
 | Notification read/dismiss ห้ามแก้ resource ของ User อื่น | Server-side authorization |
 
 ## 16. Historical Data Semantics
@@ -716,7 +805,7 @@ Notes:
 สิ่งที่ต้องรักษา:
 
 - **Package price/name/features change:** สร้าง PackageVersion ใหม่และเก็บ version เก่า ไม่ rewrite catalog history
-- **Subscription commercial meaning:** hybrid snapshot ทำให้ค่าที่ผู้ใช้ติดตามไม่เปลี่ยนย้อนหลังเมื่อ catalog เปลี่ยน
+- **Subscription commercial meaning:** originating PackageVersion เก็บ historical catalog origin ส่วน hybrid snapshot เป็น authoritative tracked value จึงไม่เปลี่ยนย้อนหลังเมื่อ catalog เปลี่ยนหรือเมื่อ user tracking value ต่างจาก catalog
 - **Subscription cancellation:** ใช้ lifecycle state/effective time ไม่ลบ recordเพียงเพื่อสื่อ “cancelled”
 - **Notification history:** Notification เป็น durable inbox/occurrence แม้ BullMQ job ถูก remove หรือ log rotate
 - **Package deactivation:** ห้ามทำให้ Subscription/Notification เดิมอธิบายไม่ได้
@@ -741,11 +830,13 @@ Architecture v1 ไม่รับประกัน full historical spending re
 ## 18. Time Semantics
 
 - Backend เป็น authority ของ durable billing/reminder/cancellation calculation ไม่เชื่อ mobile local clock เพียงอย่างเดียว
-- แยก **calendar billing date** ออกจาก **execution instant** เชิงแนวคิด; exact database type เป็นงาน ERD
-- Subscription ต้องมี timezone/calendar context ที่ชัดพอสำหรับ next billing occurrence โดยไม่ hardcode Thailand ตลอดระบบ
-- user/project อาจใช้ Asia/Bangkok เป็น initial/default context แต่ persisted rule ต้องรองรับ user/provider timezone ที่ต่างกันเมื่อ requirement เกิด
-- month-end, leap year และ invalid calendar day ต้องมีกฎ deterministic เดียวใน subscription domain
-- reminder due time derive จาก persisted next billing occurrence + effective reminder settings + timezone policy
+- Billing recurrence เป็น **calendar-based** ใน BillingSchedule timezone ส่วน scheduler/notification execution เป็น **instant-based** ที่ derive จาก calendar occurrence
+- แยก calendar billing date ออกจาก execution instant เชิงแนวคิด; exact database type เป็นงาน ERD
+- BillingSchedule ต้องมี explicit timezone/calendar context ที่ชัดพอสำหรับคำนวณ next occurrence แบบ deterministic โดยไม่ hardcode Thailand ตลอดระบบ
+- `Asia/Bangkok` อาจเป็น initial/default timezone แต่ไม่ใช่ permanent domain constraint
+- `nextBillingDate` เป็น persisted next occurrence ไม่ใช่ stable anchor; short month หรือ non-leap year ห้ามทำให้ anchor drift
+- month-end policy ใช้ last valid day เฉพาะ occurrence และ leap-year policy รักษา Feb 29 anchor ตาม section 7.4
+- reminder due instant derive จาก BillingSchedule.nextBillingDate + effective reminder settings + billing timezone
 - cancellation effective time และ PackageVersion effective period ต้องเปรียบเทียบด้วย backend-controlled time semantics
 - Notification creation time คือเวลาที่ durable record ถูกสร้าง; dispatch attempt/sent time ไม่ควรถูกสับสนกับ provider delivery/receipt
 - clock injection/test control ควรใช้เมื่อ implement time-sensitive rules แต่ไม่กำหนด abstraction/code ในเอกสารนี้
@@ -795,6 +886,7 @@ UserProfile
 UserPreferences
 Money
 BillingCycle
+BillingSchedule
 ReminderSettings
 CancellationSchedule concept
 UsageLevel
@@ -840,28 +932,31 @@ PAUSED / EXPIRED lifecycle states
 
 | # | Decision | Chosen v1 direction / OPEN | Reason | ERD impact |
 | ---: | --- | --- | --- | --- |
-| 1 | Package/PackageVersion/Subscription snapshot | **CHOSEN — Hybrid** | รักษา user price/history พร้อม catalog context | Subscription มี optional Package/originating PackageVersion relationships และ required own snapshot concepts |
-| 2 | Custom subscription modeling | **CHOSEN — Same Subscription Entity** | lifecycle/rules เดียวกัน; ไม่สร้าง fake Package | Package relationships optional; snapshot requiredเสมอ |
+| 1 | PackageVersion origin + Subscription snapshot | **CHOSEN — Hybrid, one origin path** | Package derive ผ่าน PackageVersion ได้; direct Package reference ซ้ำทำให้ origin ขัดกันได้ | Subscription มี optional originating PackageVersion เพียง relation เดียวและมี required own commercial snapshot |
+| 2 | Custom subscription modeling | **CHOSEN — Same Subscription Entity** | lifecycle/rules เดียวกัน; ไม่สร้าง fake Package | originating PackageVersion optional; snapshot requiredเสมอ |
 | 3 | AuthIdentity multiplicity | **CHOSEN — User 1:N** | รองรับ future identity linking โดยแยก provider subject จาก profile | AuthIdentity เป็น supporting relation; provider identity ต้อง uniqueเชิงธุรกิจ |
 | 4 | PinCredential separation | **CHOSEN — Separate 0..1 supporting Entity** | credential/lockout lifecycle และ security accessต่างจาก profile | แยก relationจาก User; ห้าม plaintext |
 | 5 | RefreshSession durability | **CHOSEN — Durable User 1:N Entity** | rotation, revocation, multi-device และ compromise handling | แยก session relation; raw tokenไม่เก็บ plaintext |
 | 6 | DeviceRegistration ownership/uniqueness | **CHOSEN — User 1:N; token active ownerเดียว** | หลาย device ต่อ user แต่ tokenไม่ควร activeข้าม users | Separate relation พร้อม uniqueness/lifecycle semanticsที่ ERDแปลงต่อ |
-| 7 | Notification delivery persistence | **CHOSEN — No separate NotificationDelivery in core v1** | ลด state-machine cost; FCM-first scopeยังไม่ต้อง per-target audit | Notification มี minimal dispatch summary; no delivery table เว้น Phase 7 requirementเปลี่ยน |
+| 7 | Notification delivery persistence | **DEFERRED WITH KNOWN LIMITATION** | v1 ยอมรับ at-least-once/best-effort dispatch และไม่มี durable per-target/channel audit | ไม่มี NotificationDelivery ใน ERD v1; ถ้า Phase 7 ต้องรองรับ partial success, per-device retry/audit, receipt หรือ exactly-once-like accounting ต้องเพิ่มก่อน implementation |
 | 8 | Scheduled cancellation | **CHOSEN — Embedded on Subscription** | ไม่มี independent history/lifecycle requirement | Status + effective-time concept; no CancellationSchedule table |
 | 9 | Reminder preference ownership | **CHOSEN — Global default + optional per-subscription override** | สอดคล้องทั้ง settings และ detail UI | User preferences และ Subscription ต่างเก็บ owned value concepts; effective setting derived |
-| 10 | nextBillingDate semantics | **CHOSEN — Persisted next occurrence + backend calculation** | efficient scheduler และ deterministic calendar behavior | Subscription ต้อง represent next occurrence และ calculation inputs; ไม่ deriveทุก request |
+| 10 | nextBillingDate semantics | **CHOSEN — Persisted next occurrence + backend calculation** | efficient scheduler และ deterministic calendar behavior | BillingSchedule ต้อง represent next occurrence; ไม่ deriveทุก requestและไม่ใช้แทน anchor |
+| 11 | Stable billing schedule | **CHOSEN — BillingCycle + stable calendar anchor + timezone + persisted next occurrence** | รักษา recurrence intent; short month/leap year ต้องไม่ทำให้ anchor drift | Subscription ต้อง physically represent interval, stable anchor, timezone/calendar context และ next occurrence โดยไม่สร้าง BillingSchedule table |
 
 Additional ERD directives:
 
 - `UsageLevel` เป็น attribute/value; `CANCELLED` อยู่ lifecycle status คนละแกน
 - Savings selection/summary และ DashboardSummary ไม่มี table
-- PackageVersion historyต้อง preserve; Package deactivationไม่ cascade destroy history
+- PackageVersion historyต้อง preserve; Subscription ไม่มี direct Package relationship และ Package deactivationไม่ cascade destroy history
 - Notification กับ BullMQ job ต้องไม่มี business-entity relationshipที่ทำให้ queueเป็น Source of Truth
 - PaymentCard/LinkedAccount ไม่อยู่ ERD v1 เว้น scope change อย่างเป็นทางการ
 
 ## 22. Open Questions Before or During ERD v1
 
-คำถามเหล่านี้ไม่เปลี่ยน core entity set และไม่ block การเริ่ม ERD แต่ต้องบันทึก/resolve ตามจุดที่ระบุ:
+### 22.1 Open แต่ไม่ Block การเริ่ม ERD
+
+คำถามเหล่านี้ไม่เปลี่ยน core entity set และ ERD เริ่มได้โดยบันทึก assumption ที่เลือก:
 
 | Open question | Why open | Resolve by |
 | --- | --- | --- |
@@ -869,38 +964,54 @@ Additional ERD directives:
 | Exact User deletion/anonymization/retention | ยังไม่มี legal/product retention policy | ก่อนกำหนด destructive FK actions/production deletion flow |
 | “Delete subscription” hard delete, archive หรือ retention window | UI มี delete แต่ historical/notification linkageต้องไม่เสีย | ERD v1 review หรือ Subscription API designก่อน implementation |
 | Notification dismiss/clear retention duration | Current UI clear/dismiss แต่ backend durable history requirementไม่มี duration | Notification designก่อน Phase 7 |
-| Multi-channel/per-device delivery audit | Email fallback/priority policyยัง open | Notification design; ถ้าต้อง audit ให้เพิ่ม NotificationDeliveryก่อน implementation |
 | Full historical spending reconstruction | PRD กล่าวถึง future history/analytics แต่ไม่มี exact period semantics | Analytics designก่อนเพิ่ม SubscriptionRevision |
-| Exact billing timezone/month-end policy | ต้องเทียบ product locale/provider behavior | Subscription domain/API standardsก่อน coding date calculator |
 | Final UsageLevel vocabulary และ whether user-editable | Current formมี frequent/moderate/unused แต่ automated usageยัง future | API Contract v1 หรือ future analytics design |
 | Income vs budget naming/meaning | Frontend conflates editable incomeกับ card balance | Product/API Contract ก่อน expose authoritative field |
+
+### 22.2 Assumptions ที่ ERD v1 ต้องระบุ
+
+Domain semantics ถูกกำหนดแล้ว แต่ physical design ต้องเลือกและบันทึก assumption สำหรับ:
+
+- physical timestamp/date types โดยยังรักษาความต่างระหว่าง calendar date กับ execution instant
+- FK deletion behavior ให้สอดคล้องกับ retention และ historical meaning
+- exact enum/check representation โดยไม่เพิ่ม speculative lifecycle states
+- physical columns สำหรับ BillingCycle และ stable anchor รวมถึง anchor month/day ที่จำเป็น
+- physical representation ของ timezone/calendar context และ persisted next billing occurrence
+
+### 22.3 Deferred ก่อน Phase 7 หาก Requirement ต้องการ
+
+`NotificationDelivery` เป็น **DEFERRED WITH KNOWN LIMITATION** หาก notification design ต้องรองรับ partial success across devices, per-device retry, per-channel audit, delivery receipt หรือ exactly-once-like accounting ต้องเพิ่ม durable per-target/per-channel delivery model ก่อน Phase 7 implementation การไม่มี Entity นี้ไม่ block ERD v1 แต่ต้องไม่ถูกตีความว่า BullMQ ให้ delivery audit ดังกล่าวแล้ว
 
 ## 23. Clean-Code Domain Review Record
 
 ตรวจ Domain Model v1 ด้วย repository-wide `$clean-code` แล้ว:
 
-1. Entity ทุกตัวมี identity/lifecycle/owner ชัด; Money, BillingCycle, settings และ cancellation scheduleไม่ถูกยกเป็น Entityโดยไม่มีเหตุผล
+1. Entity ทุกตัวมี identity/lifecycle/owner ชัด; Money, BillingCycle, BillingSchedule, settings และ cancellation scheduleไม่ถูกยกเป็น Entityโดยไม่มีเหตุผล
 2. ไม่ copy frontend `isSelected`, `DashboardSummary`, `SavingsViewState`, mock confidence หรือ duplicate card modelsเป็น durable entities
 3. User ไม่เป็น God Object: AuthIdentity, RefreshSession, PinCredential และ DeviceRegistrationแยกตาม security/operational lifecycle
 4. Subscription ยังเป็น central business entity แต่ Package history, notification execution และ dashboard aggregationอยู่กับ owner modules
-5. Custom subscriptionอยู่ใน modelเดียวโดยไม่สร้าง fake Package/subtype
-6. Hybrid snapshotป้องกัน catalog updateทำลาย user historical meaning
-7. Notificationแยกจาก BullMQ job; queue/logไม่เป็น user-visible history
-8. derived values/cacheแยกจาก durable inputs
-9. lifecycleมีเพียง ACTIVE, CANCELLATION_SCHEDULED, CANCELLED; PAUSED/EXPIREDถูก defer
-10. module interactionsผ่าน public contractsและไม่อนุญาต cross-module persistence access
-11. ไม่มี speculative Aggregate Root framework, event table, CQRS, repository wrapper หรือ Entityต่อทุก attribute
-12. Entity setและ decisions tableเพียงพอให้เริ่ม ERDโดยไม่ redesign core model
+5. Subscription มี catalog-origin path เดียวผ่าน optional originating PackageVersion; Package resolve ต่อจาก version ได้
+6. Custom subscriptionอยู่ใน modelเดียวโดยไม่สร้าง fake Package/subtype และมี origin เป็น null ได้
+7. Hybrid snapshotป้องกัน catalog updateทำลาย user historical meaning
+8. BillingSchedule รักษา stable calendar intent แยกจาก nextBillingDate; short month/multi-month/yearly leap behaviorไม่ทำให้ anchor drift
+9. Reminder calculation ใช้ BillingSchedule.nextBillingDate, effective settings และ billing timezone
+10. Notificationแยกจาก BullMQ job/DeviceRegistration และระบุชัดว่า v1 ไม่มี durable per-target delivery audit
+11. derived values/cacheแยกจาก durable inputs
+12. lifecycleมีเพียง ACTIVE, CANCELLATION_SCHEDULED, CANCELLED; PAUSED/EXPIREDถูก defer
+13. module interactionsผ่าน public contractsและไม่อนุญาต cross-module persistence access
+14. ไม่มี speculative BillingSchedule/BillingAnchor/NotificationDelivery table, Aggregate Root framework, event table, CQRS หรือ repository wrapper
+15. Entity setและ decisions tableเพียงพอให้เริ่ม physical ERD โดยยังต้องบันทึก physical assumptions
 
 ประเด็นที่พบและแก้ระหว่าง review:
 
 - แยก `CANCELLED` ออกจาก frontend `usageStatus` เพื่อไม่ผสม lifecycle กับ usage classification
 - ตัด `isSelected` ออกจาก Subscription เพราะเป็น Savings UI scenario state
 - แยก editable income/budget ออกจาก mock card balance
-- เลือก Hybrid snapshotแทน live PackageVersion pointer
+- ลด catalog-origin relationship จาก Package + PackageVersion เหลือ optional originating PackageVersion เพียง path เดียว และยังคง Hybrid snapshot
 - เลือก embedded cancellation และ reminder settingsแทน Entity/tableใหม่
-- defer NotificationDelivery แต่ระบุ triggerที่ต้องเพิ่มเพื่อไม่ปิดทาง reliability requirement
-- ระบุ nextBillingDateเป็น persisted occurrenceเพื่อให้ scheduler/queryมี ownerชัด
+- เพิ่ม BillingSchedule เป็น embedded/value semantics พร้อม stable anchor, timezone และ month-end/leap-year rule โดยไม่สร้าง Entity
+- ระบุ nextBillingDateเป็น persisted occurrenceที่ไม่ใช่ recurrence anchor
+- จัด NotificationDelivery เป็น **DEFERRED WITH KNOWN LIMITATION** และระบุว่า BullMQ retry stateไม่ใช่ durable per-device/per-channel audit
 
 ## 24. Explicit Non-Goals
 
@@ -922,8 +1033,13 @@ Domain Model v1 ไม่กำหนด:
 
 ## 25. Next Step and ERD Readiness
 
-**ERD readiness: READY FOR ERD V1**
+**ERD readiness: READY TO START ERD V1**
 
-Core Entity set, optional relationships, snapshot strategy, lifecycles, ownership และ ten required carry-forward decisionsถูกกำหนดแล้ว Open questionsที่เหลือสามารถทำเป็น explicit ERD assumptions/notesโดยไม่ re-decide business modelหลัก
+สถานะนี้หมายถึงเริ่ม physical design ได้ ไม่ได้หมายความว่า ERD ถูก freeze แล้ว Core Entity set, catalog-origin relationship, snapshot strategy, BillingSchedule semantics, lifecycles และ ownership ถูกกำหนดพอสำหรับเริ่มงาน ส่วน ERD v1 ยังต้อง resolve หรือบันทึก assumptions เรื่อง Guest persistence, retention/anonymization, Subscription archive/delete, notification retention, physical time/timezone representation, FK deletion behavior, UsageLevel และ income/budget รวมถึงรับทราบ deferred NotificationDelivery
+
+```text
+READY TO START ERD V1
+!= ERD design is already frozen
+```
 
 ขั้นถัดไปคือ **Phase 0.2B — Physical/Relational ERD v1** เท่านั้น เอกสารนี้ยังไม่เริ่มออกแบบ table, column, SQL type, index หรือ foreign-key action

@@ -1,6 +1,6 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-14 10:52:04
+> **📅 วันที่อัปเดต:** 2026-09-14 12:52:43
 > **👤 อัปเดตโดย:** Nekokun2004
 > **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
@@ -145,57 +145,57 @@
 │       │   │   │   ├── application
 │       │   │   │   │   └── notification_center_controller.dart # Notification center state controller
 │       │   │   │   ├── data
-│       │   │   │   │   └── mock_notification_data.dart
+│       │   │   │   │   └── mock_notification_data.dart # In-memory Notification Center fixture data
 │       │   │   │   ├── domain
-│       │   │   │   │   ├── app_notification.dart
+│       │   │   │   │   ├── app_notification.dart      # Frontend notification read model
 │       │   │   │   │   ├── app_notification.freezed.dart # Freezed generated model code
 │       │   │   │   │   └── app_notification.g.dart     # JSON serializable / Riverpod generated code
 │       │   │   │   └── presentation
 │       │   │   │       ├── widgets
-│       │   │   │       │   ├── notification_filter_bar.dart
-│       │   │   │       │   └── notification_list.dart
-│       │   │   │       ├── notification_center_screen.dart
+│       │   │   │       │   ├── notification_filter_bar.dart # Notification category/unread filter controls
+│       │   │   │       │   └── notification_list.dart # Notification Center list and empty-state renderer
+│       │   │   │       ├── notification_center_screen.dart # Notification Center screen and tabs
 │       │   │   │       └── notification_ui_extensions.dart # UI helper extensions for notification display
 │       │   │   ├── onboarding
 │       │   │   │   ├── application
 │       │   │   │   │   └── onboarding_controller.dart  # Onboarding progression & completion controller
 │       │   │   │   └── presentation
 │       │   │   │       ├── visuals
-│       │   │   │       │   ├── renewal_alert_visual.dart
-│       │   │   │       │   ├── subscription_stack_visual.dart
-│       │   │   │       │   └── unused_alert_visual.dart
-│       │   │   │       ├── onboarding_controls.dart
-│       │   │   │       ├── onboarding_data.dart
-│       │   │   │       ├── onboarding_page.dart
-│       │   │   │       ├── onboarding_progress_bar.dart
-│       │   │   │       └── onboarding_screen.dart
+│       │   │   │       │   ├── renewal_alert_visual.dart # Onboarding illustration for upcoming renewals
+│       │   │   │       │   ├── subscription_stack_visual.dart # Onboarding subscription overview illustration
+│       │   │   │       │   └── unused_alert_visual.dart # Onboarding unused-subscription illustration
+│       │   │   │       ├── onboarding_controls.dart   # Next/skip/get-started onboarding controls
+│       │   │   │       ├── onboarding_data.dart       # Onboarding page content definitions
+│       │   │   │       ├── onboarding_page.dart       # Reusable onboarding page layout
+│       │   │   │       ├── onboarding_progress_bar.dart # Current onboarding-page progress indicator
+│       │   │   │       └── onboarding_screen.dart     # Onboarding PageView flow screen
 │       │   │   ├── profile
 │       │   │   │   ├── application
 │       │   │   │   │   ├── payment_card_linking_controller.dart # Bank card linking controller with duplicate billing detector
 │       │   │   │   │   ├── personal_info_controller.dart # User personal details and profile form controller
 │       │   │   │   │   └── user_income_controller.dart # User income calculation controller derived from card balances
 │       │   │   │   ├── data
-│       │   │   │   │   └── in_memory_payment_card_repository.dart
+│       │   │   │   │   └── in_memory_payment_card_repository.dart # Mock linked-card and recurring-charge repository
 │       │   │   │   ├── domain
-│       │   │   │   │   ├── payment_card.dart
-│       │   │   │   │   └── payment_card_repository.dart
+│       │   │   │   │   ├── payment_card.dart          # Frontend mock payment-card and detected-charge models
+│       │   │   │   │   └── payment_card_repository.dart # Payment-card simulation repository contract
 │       │   │   │   └── presentation
 │       │   │   │       ├── widgets
-│       │   │   │       │   ├── linked_accounts_card.dart
-│       │   │   │       │   ├── personal_info_sheet.dart
-│       │   │   │       │   ├── profile_identity_card.dart
-│       │   │   │       │   └── profile_settings_card.dart
-│       │   │   │       ├── add_payment_card_sheet.dart
-│       │   │   │       ├── income_editor_sheet.dart
-│       │   │   │       ├── payment_card_ui_extensions.dart
+│       │   │   │       │   ├── linked_accounts_card.dart # Profile summary of simulated linked payment cards
+│       │   │   │       │   ├── personal_info_sheet.dart # Editable personal-profile bottom sheet
+│       │   │   │       │   ├── profile_identity_card.dart # User avatar, identity and account summary card
+│       │   │   │       │   └── profile_settings_card.dart # Profile shortcuts for income, PIN and personal data
+│       │   │   │       ├── add_payment_card_sheet.dart # Mock card-linking and recurring-charge import sheet
+│       │   │   │       ├── income_editor_sheet.dart   # Monthly reference income editor sheet
+│       │   │   │       ├── payment_card_ui_extensions.dart # Presentation formatting for mock payment cards
 │       │   │   │       └── profile_tab.dart            # User profile, income and settings hub tab
 │       │   │   ├── savings
 │       │   │   │   ├── application
 │       │   │   │   │   └── savings_provider.dart       # Savings simulator provider calculating retained capital
 │       │   │   │   └── presentation
 │       │   │   │       ├── widgets
-│       │   │   │       │   ├── savings_checklist.dart
-│       │   │   │       │   └── savings_summary.dart
+│       │   │   │       │   ├── savings_checklist.dart # Selectable subscription list for savings simulation
+│       │   │   │       │   └── savings_summary.dart   # Derived monthly/yearly savings result card
 │       │   │   │       └── savings_tab.dart            # Interactive savings simulator tab with toggleable subscriptions
 │       │   │   ├── settings
 │       │   │   │   ├── application
@@ -212,31 +212,31 @@
 │       │   │       │   └── in_memory_subscription_repository.dart # InMemory subscription persistence repository
 │       │   │       ├── domain
 │       │   │       │   ├── preset_package_catalog.dart # Preset catalog of popular Thai & international subscriptions
-│       │   │       │   ├── preset_package.dart
+│       │   │       │   ├── preset_package.dart        # Frontend preset-package selection model
 │       │   │       │   ├── subscription.dart           # Subscription domain entity with Creep Risk scoring
 │       │   │       │   ├── subscription.freezed.dart   # Freezed generated model code
 │       │   │       │   ├── subscription.g.dart         # JSON serializable / Riverpod generated code
 │       │   │       │   └── subscription_repository.dart # Subscription repository contract interface
 │       │   │       └── presentation
 │       │   │           ├── widgets
-│       │   │           │   ├── preset_package_grid.dart
-│       │   │           │   ├── preset_picker_card.dart
-│       │   │           │   ├── preset_search_field.dart
+│       │   │           │   ├── preset_package_grid.dart # Searchable preset-package result grid
+│       │   │           │   ├── preset_picker_card.dart # Entry card opening the preset-package picker
+│       │   │           │   ├── preset_search_field.dart # Preset package search input
 │       │   │           │   ├── subscription_appearance_selector.dart # Color and brand icon selector for subscription
-│       │   │           │   ├── subscription_collection.dart
-│       │   │           │   ├── subscription_detail_header.dart
-│       │   │           │   ├── subscription_detail_overview.dart
-│       │   │           │   ├── subscription_detail_sheet.dart
-│       │   │           │   ├── subscription_empty_state.dart
-│       │   │           │   ├── subscription_filter_bar.dart
-│       │   │           │   ├── subscription_general_fields.dart
-│       │   │           │   ├── subscription_list_tile.dart
-│       │   │           │   ├── subscription_reminder_editor.dart
-│       │   │           │   └── usage_status_selector.dart
+│       │   │           │   ├── subscription_collection.dart # Subscription list/grid responsive collection
+│       │   │           │   ├── subscription_detail_header.dart # Service identity header for detail sheet
+│       │   │           │   ├── subscription_detail_overview.dart # Price, billing and usage detail summary
+│       │   │           │   ├── subscription_detail_sheet.dart # Edit, reminder and cancellation bottom sheet
+│       │   │           │   ├── subscription_empty_state.dart # Empty/search-no-result subscription state
+│       │   │           │   ├── subscription_filter_bar.dart # Search and status filters for subscriptions
+│       │   │           │   ├── subscription_general_fields.dart # Name, price and billing-cycle form fields
+│       │   │           │   ├── subscription_list_tile.dart # Subscription summary list item
+│       │   │           │   ├── subscription_reminder_editor.dart # Per-subscription reminder override controls
+│       │   │           │   └── usage_status_selector.dart # Frequent/moderate/unused selector
 │       │   │           ├── add_subscription_screen.dart # Add custom subscription form screen
 │       │   │           ├── select_package_screen.dart  # Select popular subscription package screen
 │       │   │           ├── subscriptions_tab.dart      # Main subscriptions management tab with list & search
-│       │   │           └── subscription_ui_extensions.dart
+│       │   │           └── subscription_ui_extensions.dart # Subscription display labels, colors and formatting
 │       │   └── main.dart                               # App entrypoint running ProviderScope + App
 │       ├── test                                        # Automated tests directory
 │       │   ├── app
@@ -289,17 +289,21 @@
 │       │           └── presentation
 │       │               └── subscription_theme_test.dart # Subscription widget theme integration tests
 │       ├── analysis_options.yaml                       # Linter rules and static analysis configuration
-│       ├── .fvmrc
+│       ├── .fvmrc                                     # Flutter SDK version selection for FVM
 │       ├── .gitignore                                  # Monorepo git ignore rules
 │       ├── .metadata                                   # Flutter project metadata
-│       ├── pubspec.lock
-│       └── pubspec.yaml
+│       ├── pubspec.lock                                # Locked Flutter/Dart dependency graph
+│       └── pubspec.yaml                                # Flutter package metadata, dependencies and assets
 ├── doc                                                 # Cross-project documentation directory
 │   ├── architecture
 │   │   ├── feature_first_architecture.md               # Feature-First Clean Architecture Specification
 │   │   ├── riverpod_architecture_guide.md              # Comprehensive Riverpod Architecture & State Management Guide
 │   │   └── riverpod_providers_reference.md             # Riverpod Providers Quick Reference & Cheat Sheet
 │   ├── backend
+│   │   ├── api                                        # Canonical public REST API standards and contract conventions
+│   │   │   └── api_standards.md                      # API Standards v1: HTTP, JSON, errors, auth, pagination and serialization
+│   │   ├── database                                   # Canonical PostgreSQL relational database design documents
+│   │   │   └── erd_v1.md                              # Physical ERD v1: tables, columns, constraints, indexes and persistence assumptions
 │   │   ├── .gitkeep                                    # Keep directory tracked in git
 │   │   ├── backend_architecture_v1.md                  # Canonical Backend Architecture v1: modules, runtimes, data and async boundaries
 │   │   └── domain_model_v1.md                          # Domain Model v1: entities, value objects, lifecycles, invariants and ERD decisions
@@ -325,7 +329,7 @@
 ├── README.md                                           # Full-stack monorepo project overview & getting started
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-128 directories, 186 files
+130 directories, 188 files
 ```
 
 ---
@@ -338,6 +342,6 @@
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
 | `apps/api/` | ขอบเขตระบบ Backend API สำหรับ NestJS Modular Monolith (ปัจจุบันเป็นโฟลเดอร์ boundary) |
-| `doc/` | เอกสารข้อกำหนดของระบบ (PRD, Backend Architecture v1, สถาปัตยกรรม Feature-First/Riverpod และแผนจัดสรรงาน) |
+| `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards, สถาปัตยกรรม Frontend และแผนงาน) |
 | `infra/` | ขอบเขตการตั้งค่าระบบ Infrastructure (Nginx, PostgreSQL, Redis, Monitoring) (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |
