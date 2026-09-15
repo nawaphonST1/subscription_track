@@ -103,14 +103,25 @@ fvm flutter test
 
 #### 6. สั่งรันแอปพลิเคชัน (Launch Web / Desktop / Device):
 
-**รันผ่าน Local Web Server (แนะนำบน Linux):**
+> [!TIP]
+> **การพัฒนาแบบ Full-Stack (แยก Terminal):**
+> Frontend (Flutter) ทำงานบนเครื่อง Host โดยตรงเพื่อให้เข้าถึงหน้าจอ, GPU, และรับคำสั่ง Interactive Hot Reload ได้ ส่วน Backend (`api`, `postgres`) ทำงานผ่าน Docker Compose **โปรดเปิดแยก Terminal เสมอ** (Terminal 1 สำหรับ Docker Compose, Terminal 2 สำหรับ Flutter)
+
+**วิธีที่ 1: รันผ่านสคริปต์อัตโนมัติ (แนะนำบน Linux):**
 ```bash
+bash ./.private/setup/run_web.sh
+```
+
+**วิธีที่ 2: รันผ่าน FVM CLI โดยตรง:**
+```bash
+cd apps/mobile
 fvm flutter run -d web-server --web-port 8080
 ```
 เปิดเบราว์เซอร์ไปที่: **[http://localhost:8080](http://localhost:8080)**
 
 **หรือรันผ่าน Chrome โดยตรง:**
 ```bash
+cd apps/mobile
 fvm flutter run -d chrome
 ```
 
@@ -137,16 +148,53 @@ pnpm start:dev
 
 เมื่อ API ทำงานบนเครื่อง developer โดยตรง ให้ใช้ `DB_HOST=localhost` ตามค่าใน `.env.example`; BE-004 จะกำหนด service DNS เช่น `DB_HOST=postgres` เฉพาะเมื่อ API และ PostgreSQL ทำงานใน Docker Compose network เดียวกัน
 
+### ตรวจสอบคุณภาพ Backend
+
+หลังติดตั้ง dependencies ให้ใช้คำสั่งเดียวต่อไปนี้จาก `apps/api/`:
+
+```bash
+pnpm verify
+```
+
+`pnpm verify` รันสองกลุ่มตามลำดับ:
+
+- `pnpm check`: build, test, lint และ format check
+- `pnpm check:security`: production และ full dependency audits
+
+การแยก security audit ออกจาก quality checks ช่วยให้แยกปัญหา code ออกจากปัญหา registry/network หรือ vulnerability database ได้ชัดเจนขึ้น
+
 ### Docker development environment
 
 Compose เปิดใช้เฉพาะ NestJS API และ PostgreSQL 17 ในระยะนี้ โดย API ใช้ hot reload จาก source mount และเข้าถึง PostgreSQL ผ่าน service DNS `postgres`:
+
+> [!NOTE]
+> **Docker Compose ดูแลเฉพาะ Backend & Database เท่านั้น:**
+> `docker-compose.yml` ไม่ได้รวม Flutter ไว้ด้วย เนื่องจาก Flutter ต้องการการเข้าถึง GPU, Window Manager หรือ Web Server บน Host โดยตรง
+> ดังนั้น ในการพัฒนาให้เปิด **2 Terminals ควบคู่กัน**:
+> - **Terminal 1:** รัน Docker Compose สำหรับ Backend & Database
+> - **Terminal 2:** รัน Flutter สำหรับ Mobile / Web Client (ดูหัวข้อ [การติดตั้งและรัน Mobile Application](#-การติดตั้งและรัน-mobile-application-ด้วย-fvm-แนะนำ))
+
+#### ตารางสรุปพอร์ตและบริการขณะรัน Development:
+
+| บริการ (Service) | พอร์ต / URL | ประเภท | รันด้วยคำสั่ง |
+|---|---|---|---|
+| **Flutter Web** | [http://localhost:8080](http://localhost:8080) | Frontend Client | Host Terminal: `bash ./.private/setup/run_web.sh` |
+| **NestJS API** | [http://localhost:3000](http://localhost:3000) | Backend HTTP | Docker Compose: `docker compose up` |
+| **Swagger UI** | [http://localhost:3000/docs](http://localhost:3000/docs) | API Docs | รวมอยู่ใน API Container |
+| **OpenAPI JSON** | [http://localhost:3000/docs-json](http://localhost:3000/docs-json) | OpenAPI Spec | รวมอยู่ใน API Container |
+| **PostgreSQL 17** | `localhost:5432` | Database | Docker Compose: `postgres` service |
 
 ```bash
 cp apps/api/.env.example apps/api/.env
 docker compose --env-file apps/api/.env up --build
 ```
 
-API รับการเชื่อมต่อที่ `http://localhost:10080` ส่วน PostgreSQL เปิดพอร์ต `5432` สำหรับเครื่องมือบน host; เนื่องจากยังไม่มี Controller การเรียก `/` แล้วได้ `404` ถือว่าปกติและยืนยันว่า API process รับเครือข่ายได้
+API รับการเชื่อมต่อที่ `http://localhost:3000` ส่วน PostgreSQL เปิดพอร์ต `5432` สำหรับเครื่องมือบน host; เนื่องจากยังไม่มี Controller การเรียก `/` แล้วได้ `404` ถือว่าปกติและยืนยันว่า API process รับเครือข่ายได้
+
+สำหรับเอกสาร API Documentation (Swagger / OpenAPI):
+- **Swagger UI:** [http://localhost:3000/docs](http://localhost:3000/docs)
+- **OpenAPI JSON:** [http://localhost:3000/docs-json](http://localhost:3000/docs-json)
+*(Swagger UI จะเปิดใช้งานเฉพาะในสภาพแวดล้อม `development` และ `test` โดยจะถูกปิดการทำงานเป็นค่าเริ่มต้นในโหมด `production`)*
 
 หยุด services โดยเก็บข้อมูล PostgreSQL ใน named volume:
 

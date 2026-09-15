@@ -1,6 +1,6 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-15 23:04:48
+> **📅 วันที่อัปเดต:** 2026-09-16 00:43:39
 > **👤 อัปเดตโดย:** Nekokun2004
 > **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web|node_modules|dist|coverage|.env|.env.*|*.log|.pnpm-store|.DS_Store|.idea|.vscode" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
@@ -81,9 +81,12 @@
 │   │   │   │   ├── database.config.ts                  # Typed PostgreSQL connection contract without a database client
 │   │   │   │   ├── env.validation.spec.ts              # Unit tests for fail-fast environment parsing rules
 │   │   │   │   └── env.validation.ts                   # Zod environment schema and redacted validation errors
+│   │   │   ├── swagger                                 # Swagger UI and OpenAPI documentation configuration
+│   │   │   │   ├── swagger.config.spec.ts              # Unit tests for Swagger document generation and environment gating
+│   │   │   │   └── swagger.config.ts                   # Swagger/OpenAPI setup and Bearer auth configuration
 │   │   │   ├── app.module.spec.ts                      # Root module compilation test with explicit test environment
 │   │   │   ├── app.module.ts                           # Global ConfigModule composition root
-│   │   │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration
+│   │   │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration and Swagger setup
 │   │   │   └── worker.ts                               # Future separate Worker runtime boundary
 │   │   ├── .dockerignore                               # Restricts API image context from secrets, dependencies and generated artifacts
 │   │   ├── .nvmrc                                      # Pinned Node.js development runtime
@@ -352,7 +355,7 @@
 ├── docker-compose.yml                                  # Development API and PostgreSQL 17 orchestration with future services disabled
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-132 directories, 209 files
+132 directories, 211 files
 ```
 
 ---
@@ -364,7 +367,7 @@
 | `.agents/` | รวบรวมคำสั่งการทำงานของระบบ Agent (Skills, Prompts, Cheat Sheets และ `tree_repo`) |
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
-| `apps/api/` | NestJS Modular Monolith พร้อม typed configuration และ multi-stage Docker targets; ยังไม่มี TypeORM, Redis, BullMQ หรือ feature implementation |
+| `apps/api/` | NestJS Modular Monolith พร้อม typed configuration, Swagger documentation และ multi-stage Docker targets; ยังไม่มี TypeORM, Redis, BullMQ หรือ feature implementation |
 | `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards/Contract/OpenAPI, สถาปัตยกรรม Frontend และแผนงาน) |
 | `infra/` | ขอบเขตการตั้งค่า Infrastructure ระยะถัดไป; BE-004 orchestration ปัจจุบันอยู่ที่ root Compose และยังไม่สร้าง Nginx/Redis implementation |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |

@@ -13,7 +13,7 @@ services:
       DB_USER: ${DB_USER:?DB_USER is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
-      - "10080:8080"
+      - "3000:8080"
     volumes:
       - ./apps/api/src:/app/src
     init: true
@@ -47,12 +47,12 @@ services:
   #   command: ["node", "dist/worker.js"]
 
   # Nginx remains disabled until its reviewed configuration exists. When it is
-  # enabled, it will publish 10080:8080 and the API `ports` mapping will be
+  # enabled, it will publish 3000:8080 and the API `ports` mapping will be
   # removed so API traffic stays on the Compose network.
   # nginx:
   #   image: nginx:<pinned-version>
   #   ports:
-  #     - "10080:8080"
+  #     - "3000:8080"
 
 volumes:
   postgres_data:
