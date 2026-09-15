@@ -137,6 +137,25 @@ pnpm start:dev
 
 เมื่อ API ทำงานบนเครื่อง developer โดยตรง ให้ใช้ `DB_HOST=localhost` ตามค่าใน `.env.example`; BE-004 จะกำหนด service DNS เช่น `DB_HOST=postgres` เฉพาะเมื่อ API และ PostgreSQL ทำงานใน Docker Compose network เดียวกัน
 
+### Docker development environment
+
+Compose เปิดใช้เฉพาะ NestJS API และ PostgreSQL 17 ในระยะนี้ โดย API ใช้ hot reload จาก source mount และเข้าถึง PostgreSQL ผ่าน service DNS `postgres`:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+docker compose --env-file apps/api/.env up --build
+```
+
+API รับการเชื่อมต่อที่ `http://localhost:10080` ส่วน PostgreSQL เปิดพอร์ต `5432` สำหรับเครื่องมือบน host; เนื่องจากยังไม่มี Controller การเรียก `/` แล้วได้ `404` ถือว่าปกติและยืนยันว่า API process รับเครือข่ายได้
+
+หยุด services โดยเก็บข้อมูล PostgreSQL ใน named volume:
+
+```bash
+docker compose --env-file apps/api/.env down
+```
+
+ใช้ `docker compose --env-file apps/api/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx ยังเป็น commented future drafts และไม่ได้เปิดใช้งานใน BE-004
+
 ---
 
 ## 🏗️ Infrastructure & Deployment (`infra/`)
