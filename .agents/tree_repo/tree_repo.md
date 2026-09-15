@@ -1,6 +1,6 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-14 12:52:43
+> **📅 วันที่อัปเดต:** 2026-09-15 14:37:13
 > **👤 อัปเดตโดย:** Nekokun2004
 > **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
@@ -301,7 +301,9 @@
 │   │   └── riverpod_providers_reference.md             # Riverpod Providers Quick Reference & Cheat Sheet
 │   ├── backend
 │   │   ├── api                                        # Canonical public REST API standards and contract conventions
-│   │   │   └── api_standards.md                      # API Standards v1: HTTP, JSON, errors, auth, pagination and serialization
+│   │   │   ├── api_contract_v1.md                     # Human-readable API v1 endpoint, DTO, ownership and error contract
+│   │   │   ├── api_standards.md                      # API Standards v1: HTTP, JSON, errors, auth, pagination and serialization
+│   │   │   └── openapi_v1.yaml                       # Machine-readable OpenAPI 3.0 contract matching API Contract v1
 │   │   ├── database                                   # Canonical PostgreSQL relational database design documents
 │   │   │   └── erd_v1.md                              # Physical ERD v1: tables, columns, constraints, indexes and persistence assumptions
 │   │   ├── .gitkeep                                    # Keep directory tracked in git
@@ -329,7 +331,7 @@
 ├── README.md                                           # Full-stack monorepo project overview & getting started
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-130 directories, 188 files
+130 directories, 190 files
 ```
 
 ---
@@ -342,6 +344,6 @@
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
 | `apps/api/` | ขอบเขตระบบ Backend API สำหรับ NestJS Modular Monolith (ปัจจุบันเป็นโฟลเดอร์ boundary) |
-| `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards, สถาปัตยกรรม Frontend และแผนงาน) |
+| `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards/Contract/OpenAPI, สถาปัตยกรรม Frontend และแผนงาน) |
 | `infra/` | ขอบเขตการตั้งค่าระบบ Infrastructure (Nginx, PostgreSQL, Redis, Monitoring) (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |
