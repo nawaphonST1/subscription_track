@@ -118,10 +118,24 @@ fvm flutter run -d chrome
 
 ## 🖥️ Backend API (`apps/api/`)
 
-- **สถานะ:** วางขอบเขตโครงสร้างสถาปัตยกรรมพร้อมสำหรับการพัฒนาใน **Phase 2**
-- **สถาปัตยกรรม:** **NestJS Modular Monolith**
-- **เทคโนโลยีหลัก:** TypeScript, PostgreSQL, TypeORM, Redis (Cache & Session), BullMQ (Background Jobs & Reminder Dispatcher)
+- **สถานะ:** Scaffold ตั้งต้น NestJS Modular Monolith เรียบร้อยแล้ว (พร้อมสำหรับ Phase 1 Foundation & Configuration)
+- **สถาปัตยกรรม:** **NestJS Modular Monolith** (`src/main.ts` สำหรับ HTTP API และ `src/worker.ts` สำหรับ Worker boundary)
+- **เทคโนโลยีหลัก:** TypeScript, NestJS 12, PostgreSQL 17, TypeORM, Redis, BullMQ
 - ดูรายละเอียดข้อกำหนดระบบ Backend ได้ที่ [doc/Subscription_Track_PRD.md](doc/Subscription_Track_PRD.md)
+
+### คำสั่งสำหรับติดตั้งและทดสอบ (`apps/api/`):
+
+ต้องใช้ Node.js 24.15 ขึ้นไป (แนะนำ 24.18 ตาม `apps/api/.nvmrc`) และ pnpm ที่ Corepack จัดการ
+
+```bash
+cd apps/api
+corepack enable
+cp .env.example .env
+pnpm install
+pnpm start:dev
+```
+
+เมื่อ API ทำงานบนเครื่อง developer โดยตรง ให้ใช้ `DB_HOST=localhost` ตามค่าใน `.env.example`; BE-004 จะกำหนด service DNS เช่น `DB_HOST=postgres` เฉพาะเมื่อ API และ PostgreSQL ทำงานใน Docker Compose network เดียวกัน
 
 ---
 

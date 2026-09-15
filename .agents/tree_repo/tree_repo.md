@@ -1,6 +1,6 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-15 14:37:13
+> **📅 วันที่อัปเดต:** 2026-09-15 18:44:15
 > **👤 อัปเดตโดย:** Nekokun2004
 > **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
@@ -75,7 +75,26 @@
 │       └── .gitkeep                                    # Keep directory tracked in git
 ├── apps                                                # Full-stack application packages directory
 │   ├── api                                             # NestJS backend application boundary
-│   │   └── .gitkeep                                    # Keep directory tracked in git
+│   │   ├── src                                         # NestJS source and configuration boundary
+│   │   │   ├── config                                  # Typed, validated application and database environment settings
+│   │   │   │   ├── app.config.ts                       # Typed app runtime namespace (environment, host and port)
+│   │   │   │   ├── database.config.ts                  # Typed PostgreSQL connection contract without a database client
+│   │   │   │   ├── env.validation.spec.ts              # Unit tests for fail-fast environment parsing rules
+│   │   │   │   └── env.validation.ts                   # Zod environment schema and redacted validation errors
+│   │   │   ├── app.module.spec.ts                      # Root module compilation test with explicit test environment
+│   │   │   ├── app.module.ts                           # Global ConfigModule composition root
+│   │   │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration
+│   │   │   └── worker.ts                               # Future separate Worker runtime boundary
+│   │   ├── .env.example                                # Safe local environment configuration template
+│   │   ├── .nvmrc                                      # Pinned Node.js development runtime
+│   │   ├── .prettierrc                                 # API TypeScript formatting policy
+│   │   ├── eslint.config.mjs                            # ESLint flat configuration for TypeScript source
+│   │   ├── nest-cli.json                               # NestJS CLI build configuration
+│   │   ├── package.json                                # API dependencies, scripts, Node and pnpm requirements
+│   │   ├── pnpm-lock.yaml                              # Reproducible pnpm dependency graph
+│   │   ├── pnpm-workspace.yaml                         # Local pnpm allow-list for reviewed native build scripts
+│   │   ├── tsconfig.build.json                         # NestJS production TypeScript build configuration
+│   │   └── tsconfig.json                               # Strict TypeScript compiler and incremental build policy
 │   └── mobile                                          # Mobile application (Flutter & Riverpod)
 │       ├── lib                                         # Flutter application source code
 │       │   ├── app
@@ -331,7 +350,7 @@
 ├── README.md                                           # Full-stack monorepo project overview & getting started
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-130 directories, 190 files
+132 directories, 208 files
 ```
 
 ---
@@ -343,7 +362,7 @@
 | `.agents/` | รวบรวมคำสั่งการทำงานของระบบ Agent (Skills, Prompts, Cheat Sheets และ `tree_repo`) |
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
-| `apps/api/` | ขอบเขตระบบ Backend API สำหรับ NestJS Modular Monolith (ปัจจุบันเป็นโฟลเดอร์ boundary) |
+| `apps/api/` | NestJS Modular Monolith scaffold พร้อม typed, fail-fast environment configuration; ยังไม่มี database/infrastructure feature implementation |
 | `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards/Contract/OpenAPI, สถาปัตยกรรม Frontend และแผนงาน) |
 | `infra/` | ขอบเขตการตั้งค่าระบบ Infrastructure (Nginx, PostgreSQL, Redis, Monitoring) (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |
