@@ -1,0 +1,58 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+      target: development
+    environment:
+      NODE_ENV: development
+      APP_HOST: 0.0.0.0
+      PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?DB_NAME is required}
+      DB_USER: ${DB_USER:?DB_USER is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "10080:8080"
+    volumes:
+      - ./apps/api/src:/app/src
+    init: true
+
+  postgres:
+    image: postgres:17-trixie
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USER:?DB_USER is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis remains disabled until ADD-ASYNC-01 introduces its configuration
+  # contract and client dependencies.
+  # redis:
+  #   image: redis:<pinned-version>
+
+  # The worker remains disabled until BullMQ worker bootstrap is implemented.
+  # worker:
+  #   build:
+  #     context: ./apps/api
+  #     target: runtime
+  #   command: ["node", "dist/worker.js"]
+
+  # Nginx remains disabled until its reviewed configuration exists. When it is
+  # enabled, it will publish 10080:8080 and the API `ports` mapping will be
+  # removed so API traffic stays on the Compose network.
+  # nginx:
+  #   image: nginx:<pinned-version>
+  #   ports:
+  #     - "10080:8080"
+
+volumes:
+  postgres_data:

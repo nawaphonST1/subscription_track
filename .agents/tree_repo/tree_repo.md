@@ -1,8 +1,8 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-15 18:44:15
+> **📅 วันที่อัปเดต:** 2026-09-15 23:04:48
 > **👤 อัปเดตโดย:** Nekokun2004
-> **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web" --gitignore --dirsfirst`
+> **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web|node_modules|dist|coverage|.env|.env.*|*.log|.pnpm-store|.DS_Store|.idea|.vscode" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
 
 ---
@@ -85,9 +85,10 @@
 │   │   │   ├── app.module.ts                           # Global ConfigModule composition root
 │   │   │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration
 │   │   │   └── worker.ts                               # Future separate Worker runtime boundary
-│   │   ├── .env.example                                # Safe local environment configuration template
+│   │   ├── .dockerignore                               # Restricts API image context from secrets, dependencies and generated artifacts
 │   │   ├── .nvmrc                                      # Pinned Node.js development runtime
 │   │   ├── .prettierrc                                 # API TypeScript formatting policy
+│   │   ├── Dockerfile                                  # Multi-stage Node 24 image for development, quality gates and non-root runtime
 │   │   ├── eslint.config.mjs                            # ESLint flat configuration for TypeScript source
 │   │   ├── nest-cli.json                               # NestJS CLI build configuration
 │   │   ├── package.json                                # API dependencies, scripts, Node and pnpm requirements
@@ -348,9 +349,10 @@
 │   └── .gitkeep                                        # Keep directory tracked in git
 ├── .gitignore                                          # Monorepo git ignore rules
 ├── README.md                                           # Full-stack monorepo project overview & getting started
+├── docker-compose.yml                                  # Development API and PostgreSQL 17 orchestration with future services disabled
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-132 directories, 208 files
+132 directories, 209 files
 ```
 
 ---
@@ -362,7 +364,7 @@
 | `.agents/` | รวบรวมคำสั่งการทำงานของระบบ Agent (Skills, Prompts, Cheat Sheets และ `tree_repo`) |
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
-| `apps/api/` | NestJS Modular Monolith scaffold พร้อม typed, fail-fast environment configuration; ยังไม่มี database/infrastructure feature implementation |
+| `apps/api/` | NestJS Modular Monolith พร้อม typed configuration และ multi-stage Docker targets; ยังไม่มี TypeORM, Redis, BullMQ หรือ feature implementation |
 | `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards/Contract/OpenAPI, สถาปัตยกรรม Frontend และแผนงาน) |
-| `infra/` | ขอบเขตการตั้งค่าระบบ Infrastructure (Nginx, PostgreSQL, Redis, Monitoring) (ปัจจุบันเป็นโฟลเดอร์ boundary) |
+| `infra/` | ขอบเขตการตั้งค่า Infrastructure ระยะถัดไป; BE-004 orchestration ปัจจุบันอยู่ที่ root Compose และยังไม่สร้าง Nginx/Redis implementation |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |
