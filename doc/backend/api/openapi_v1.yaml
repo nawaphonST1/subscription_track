@@ -1,0 +1,1958 @@
+openapi: 3.0.3
+info:
+  title: Subscription Track API
+  version: 1.0.0
+  description: |
+    Public REST API contract for Subscription Track Phase 0.4.
+    PostgreSQL is the durable source of truth; Redis and BullMQ are internal infrastructure.
+    Provider/device delivery is best-effort/at-least-once and has no durable per-target audit in v1.
+servers:
+  - url: /api/v1
+    description: Versioned business API base path
+tags:
+  - name: Auth
+  - name: Users
+  - name: Subscriptions
+  - name: Packages
+  - name: Dashboard
+  - name: Notifications
+  - name: Device Registrations
+  - name: Health
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/google:
+    post:
+      tags: [Auth]
+      operationId: exchangeGoogleIdentity
+      summary: Exchange a Google identity token for an application session
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderExchangeRequest'
+      responses:
+        '200':
+          description: Existing user authenticated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionEnvelope'
+        '201':
+          description: New application user and session created
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/apple:
+    post:
+      tags: [Auth]
+      operationId: exchangeAppleIdentity
+      summary: Exchange an Apple identity token for an application session
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderExchangeRequest'
+      responses:
+        '200':
+          description: Existing user authenticated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionEnvelope'
+        '201':
+          description: New application user and session created
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshApplicationSession
+      summary: Rotate a refresh session and issue new application tokens
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Session rotated
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutApplicationSession
+      summary: Revoke one refresh session
+      description: Repeating logout for the same already-revoked session converges to 204.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Session revoked or already revoked
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/pin-verifications:
+    post:
+      tags: [Auth]
+      operationId: verifySecurityPin
+      summary: Create a short-lived purpose-bound PIN verification proof
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinVerificationRequest'
+      responses:
+        '201':
+          description: Verification proof created
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PinVerificationEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: Get the authenticated user's profile and preferences
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current user
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    patch:
+      tags: [Users]
+      operationId: updateCurrentUser
+      summary: Partially update the authenticated user's profile and preferences
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Updated current user
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /users/me/pin:
+    put:
+      tags: [Users]
+      operationId: configureCurrentUserPin
+      summary: Configure or change the authenticated user's PIN
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/PinVerification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurePinRequest'
+      responses:
+        '204':
+          description: PIN configured or changed
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /subscriptions:
+    get:
+      tags: [Subscriptions]
+      operationId: listSubscriptions
+      summary: List subscriptions owned by the authenticated user
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: status
+          in: query
+          description: Repeat to filter by multiple statuses.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/SubscriptionStatus'
+        - name: usageLevel
+          in: query
+          description: Repeat to filter by multiple usage levels.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/UsageLevel'
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 1
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: -createdAt
+            enum: [createdAt, -createdAt, nextBillingDate, -nextBillingDate, serviceName, -serviceName]
+      responses:
+        '200':
+          description: Cursor-paginated subscriptions
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionCollectionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      tags: [Subscriptions]
+      operationId: createSubscription
+      summary: Create a custom or preset-origin subscription
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/PinVerification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '201':
+          description: Subscription created
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Location:
+              description: Canonical URL of the created subscription
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /subscriptions/{subscriptionId}:
+    parameters:
+      - $ref: '#/components/parameters/SubscriptionId'
+    get:
+      tags: [Subscriptions]
+      operationId: getSubscription
+      summary: Get one subscription owned by the authenticated user
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Subscription
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    patch:
+      tags: [Subscriptions]
+      operationId: updateSubscription
+      summary: Update writable subscription snapshot, schedule, reminder, or usage fields
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/PinVerification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionRequest'
+      responses:
+        '200':
+          description: Updated subscription
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /subscriptions/{subscriptionId}/cancellation:
+    parameters:
+      - $ref: '#/components/parameters/SubscriptionId'
+    post:
+      tags: [Subscriptions]
+      operationId: cancelSubscription
+      summary: Cancel a subscription now or schedule cancellation
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/PinVerification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancellationRequest'
+      responses:
+        '200':
+          description: Subscription after cancellation transition
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      tags: [Subscriptions]
+      operationId: revokeSubscriptionCancellation
+      summary: Revoke a pending subscription cancellation
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/PinVerification'
+      responses:
+        '200':
+          description: Subscription restored to ACTIVE
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /packages:
+    get:
+      tags: [Packages]
+      operationId: listPackages
+      summary: List active preset packages with their current effective version
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 1
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: canonicalCode
+            enum: [canonicalCode, -canonicalCode]
+      responses:
+        '200':
+          description: Cursor-paginated active package catalog
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageCollectionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /packages/{packageId}:
+    get:
+      tags: [Packages]
+      operationId: getPackage
+      summary: Get one package and its current effective version
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/PackageId'
+      responses:
+        '200':
+          description: Package catalog resource
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboardSummary
+      summary: Get the authenticated user's derived dashboard summary
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Dashboard summary
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: List notifications owned by the authenticated user
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [ALL, UNREAD, READ]
+            default: ALL
+        - name: type
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/NotificationType'
+        - name: includeDismissed
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Cursor-paginated notification inbox
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationCollectionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /notifications/{notificationId}/read:
+    parameters:
+      - $ref: '#/components/parameters/NotificationId'
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Mark one notification as read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Updated notification
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Notifications]
+      operationId: markNotificationUnread
+      summary: Mark one notification as unread
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Updated notification
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /notifications/{notificationId}/dismiss:
+    post:
+      tags: [Notifications]
+      operationId: dismissNotification
+      summary: Dismiss one notification from the active inbox
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: Updated notification
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark the current user's matching active notifications as read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkNotificationFilter'
+      responses:
+        '200':
+          description: Number of rows changed
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkMutationEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /notifications/dismiss-all:
+    post:
+      tags: [Notifications]
+      operationId: dismissAllNotifications
+      summary: Dismiss the current user's matching active notifications
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkNotificationFilter'
+      responses:
+        '200':
+          description: Number of rows changed
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkMutationEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /device-registrations:
+    post:
+      tags: [Device Registrations]
+      operationId: registerDevice
+      summary: Idempotently register or transfer a push destination to CurrentUser
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      responses:
+        '200':
+          description: Existing active registration returned
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegistrationEnvelope'
+        '201':
+          description: Registration created or transferred
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Location:
+              description: Canonical URL of the registration
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegistrationEnvelope'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /device-registrations/{deviceRegistrationId}:
+    delete:
+      tags: [Device Registrations]
+      operationId: revokeDeviceRegistration
+      summary: Revoke an owned push destination
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/DeviceRegistrationId'
+      responses:
+        '204':
+          description: Registration revoked
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /health/live:
+    get:
+      tags: [Health]
+      operationId: getLiveness
+      summary: Report whether the API process is alive
+      security: []
+      servers:
+        - url: /
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Process is alive
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEnvelope'
+
+  /health/ready:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Report whether the API is ready for meaningful traffic
+      security: []
+      servers:
+        - url: /
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Required capabilities are ready
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEnvelope'
+        '503':
+          description: Required capabilities are not ready
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEnvelope'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  headers:
+    RequestId:
+      description: Canonical request correlation identifier
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._-]+$'
+
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Optional bounded correlation identifier; the server may replace an invalid value.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._-]+$'
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Opaque client-generated key scoped to CurrentUser, method, and route.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    PinVerification:
+      name: X-PIN-Verification
+      in: header
+      required: false
+      description: Conditional short-lived purpose-bound proof when the account policy requires PIN step-up.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque cursor bound to the endpoint, user scope, filters, and sort.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+    SubscriptionId:
+      name: subscriptionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PackageId:
+      name: packageId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DeviceRegistrationId:
+      name: deviceRegistrationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    MalformedRequest:
+      description: Malformed JSON or request syntax
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthorized:
+      description: Missing, invalid, or expired authentication credential
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: Authenticated but forbidden, including missing or invalid PIN step-up
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Resource absent or concealed because it is not owned by CurrentUser
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: Current state, uniqueness, or idempotency conflict
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationError:
+      description: Parsed request failed field or semantic validation
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: Request or security attempt rate exceeded
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+        Retry-After:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    BadGateway:
+      description: Required synchronous identity provider failed
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    InternalError:
+      description: Unexpected sanitized application failure
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ServiceUnavailable:
+      description: Required application capability is temporarily unavailable
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      description: Opaque resource identifier
+    Instant:
+      type: string
+      format: date-time
+      description: RFC 3339 instant; output is normalized to UTC.
+    CalendarDate:
+      type: string
+      format: date
+      description: Calendar date in YYYY-MM-DD form; not an instant.
+    Money:
+      type: object
+      additionalProperties: false
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          pattern: '^\d{1,15}(\.\d{1,4})?$'
+          example: '199.0000'
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: THB
+    Pagination:
+      type: object
+      additionalProperties: false
+      required: [nextCursor, hasMore]
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+    ErrorDetail:
+      type: object
+      additionalProperties: true
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+        message:
+          type: string
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message, details, requestId]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Request validation failed
+        details:
+          nullable: true
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+        requestId:
+          type: string
+          example: 01K50M7M9H3JQ6A2E8B4C1D0FG
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+
+    ProviderExchangeRequest:
+      type: object
+      additionalProperties: false
+      required: [identityToken]
+      properties:
+        identityToken:
+          type: string
+          minLength: 1
+          maxLength: 8192
+          writeOnly: true
+        clientLabel:
+          type: string
+          minLength: 1
+          maxLength: 120
+          nullable: true
+    RefreshTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+          maxLength: 8192
+          writeOnly: true
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required: [accessToken, refreshToken, tokenType, accessTokenExpiresAt, refreshTokenExpiresAt, user]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        accessTokenExpiresAt:
+          $ref: '#/components/schemas/Instant'
+        refreshTokenExpiresAt:
+          $ref: '#/components/schemas/Instant'
+        user:
+          $ref: '#/components/schemas/User'
+    AuthSessionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthSession'
+    PinPurpose:
+      type: string
+      enum: [SUBSCRIPTION_WRITE, SUBSCRIPTION_CANCEL, PIN_CHANGE]
+    PinVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [pin, purpose]
+      properties:
+        pin:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+          description: PIN policy is server-configured; the contract does not permanently require six digits.
+        purpose:
+          $ref: '#/components/schemas/PinPurpose'
+    PinVerification:
+      type: object
+      additionalProperties: false
+      required: [verificationToken, expiresAt]
+      properties:
+        verificationToken:
+          type: string
+        expiresAt:
+          $ref: '#/components/schemas/Instant'
+    PinVerificationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PinVerification'
+
+    ReminderDefaults:
+      type: object
+      additionalProperties: false
+      required: [enabled, daysBefore]
+      properties:
+        enabled:
+          type: boolean
+        daysBefore:
+          type: integer
+          minimum: 0
+          maximum: 366
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, monthlyReference, defaultCurrency, defaultTimezone, locale, reminderDefaults, pinConfigured, accountStatus, createdAt, updatedAt]
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          readOnly: true
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        monthlyReference:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          nullable: true
+        defaultCurrency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        defaultTimezone:
+          type: string
+          example: Asia/Bangkok
+        locale:
+          type: string
+          example: th-TH
+        reminderDefaults:
+          $ref: '#/components/schemas/ReminderDefaults'
+        pinConfigured:
+          type: boolean
+          readOnly: true
+        accountStatus:
+          type: string
+          enum: [ACTIVE, DEACTIVATED]
+          readOnly: true
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          readOnly: true
+        updatedAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          readOnly: true
+    UserEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          nullable: true
+        monthlyReference:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          nullable: true
+        defaultCurrency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        defaultTimezone:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Asia/Bangkok
+        locale:
+          type: string
+          minLength: 2
+          maxLength: 35
+        reminderDefaults:
+          $ref: '#/components/schemas/ReminderDefaults'
+    ConfigurePinRequest:
+      type: object
+      additionalProperties: false
+      required: [newPin]
+      properties:
+        currentPin:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+        newPin:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+
+    SubscriptionStatus:
+      type: string
+      enum: [ACTIVE, CANCELLATION_SCHEDULED, CANCELLED]
+    UsageLevel:
+      type: string
+      enum: [FREQUENT, MODERATE, UNUSED]
+    BillingIntervalUnit:
+      type: string
+      enum: [MONTH, YEAR]
+    BillingScheduleInput:
+      type: object
+      additionalProperties: false
+      required: [intervalCount, intervalUnit, anchorDay, initialBillingDate, timezone]
+      properties:
+        intervalCount:
+          type: integer
+          minimum: 1
+          maximum: 120
+        intervalUnit:
+          $ref: '#/components/schemas/BillingIntervalUnit'
+        anchorDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Stable recurrence intent; a short-month occurrence does not mutate it.
+        initialBillingDate:
+          $ref: '#/components/schemas/CalendarDate'
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Asia/Bangkok
+    BillingSchedule:
+      type: object
+      additionalProperties: false
+      required: [intervalCount, intervalUnit, anchorMonth, anchorDay, timezone, nextBillingDate]
+      properties:
+        intervalCount:
+          type: integer
+        intervalUnit:
+          $ref: '#/components/schemas/BillingIntervalUnit'
+        anchorMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          readOnly: true
+        anchorDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+        timezone:
+          type: string
+        nextBillingDate:
+          allOf:
+            - $ref: '#/components/schemas/CalendarDate'
+          readOnly: true
+    ReminderMode:
+      type: string
+      enum: [INHERIT, ENABLED, DISABLED]
+    ReminderInput:
+      oneOf:
+        - $ref: '#/components/schemas/ReminderInheritInput'
+        - $ref: '#/components/schemas/ReminderEnabledInput'
+        - $ref: '#/components/schemas/ReminderDisabledInput'
+      discriminator:
+        propertyName: mode
+    ReminderInheritInput:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [INHERIT]
+    ReminderEnabledInput:
+      type: object
+      additionalProperties: false
+      required: [mode, daysBefore]
+      properties:
+        mode:
+          type: string
+          enum: [ENABLED]
+        daysBefore:
+          type: integer
+          minimum: 0
+          maximum: 366
+    ReminderDisabledInput:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [DISABLED]
+    Reminder:
+      type: object
+      additionalProperties: false
+      required: [mode, daysBefore, effectiveEnabled, effectiveDaysBefore]
+      properties:
+        mode:
+          $ref: '#/components/schemas/ReminderMode'
+        daysBefore:
+          type: integer
+          nullable: true
+          minimum: 0
+        effectiveEnabled:
+          type: boolean
+          readOnly: true
+        effectiveDaysBefore:
+          type: integer
+          nullable: true
+          minimum: 0
+          readOnly: true
+    Cancellation:
+      type: object
+      additionalProperties: false
+      required: [effectiveAt, cancelledAt]
+      properties:
+        effectiveAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          nullable: true
+        cancelledAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          nullable: true
+    Subscription:
+      type: object
+      additionalProperties: false
+      required: [id, originatingPackageVersionId, serviceName, price, categoryCode, iconKey, displayColorHex, billingSchedule, reminder, status, cancellation, usageLevel, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        originatingPackageVersionId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+          readOnly: true
+        serviceName:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        categoryCode:
+          type: string
+          nullable: true
+        iconKey:
+          type: string
+          nullable: true
+        displayColorHex:
+          type: string
+          nullable: true
+          pattern: '^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$'
+        billingSchedule:
+          $ref: '#/components/schemas/BillingSchedule'
+        reminder:
+          $ref: '#/components/schemas/Reminder'
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        cancellation:
+          allOf:
+            - $ref: '#/components/schemas/Cancellation'
+          nullable: true
+        usageLevel:
+          allOf:
+            - $ref: '#/components/schemas/UsageLevel'
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Instant'
+        updatedAt:
+          $ref: '#/components/schemas/Instant'
+    CreateSubscriptionRequest:
+      type: object
+      additionalProperties: false
+      required: [serviceName, price, billingSchedule, reminder]
+      properties:
+        originatingPackageVersionId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        serviceName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        price:
+          $ref: '#/components/schemas/Money'
+        categoryCode:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+        iconKey:
+          type: string
+          minLength: 1
+          maxLength: 200
+          nullable: true
+        displayColorHex:
+          type: string
+          nullable: true
+          pattern: '^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$'
+        billingSchedule:
+          $ref: '#/components/schemas/BillingScheduleInput'
+        reminder:
+          $ref: '#/components/schemas/ReminderInput'
+        usageLevel:
+          allOf:
+            - $ref: '#/components/schemas/UsageLevel'
+          nullable: true
+    UpdateSubscriptionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        serviceName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        price:
+          $ref: '#/components/schemas/Money'
+        categoryCode:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+        iconKey:
+          type: string
+          minLength: 1
+          maxLength: 200
+          nullable: true
+        displayColorHex:
+          type: string
+          nullable: true
+          pattern: '^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$'
+        billingSchedule:
+          $ref: '#/components/schemas/BillingScheduleInput'
+        reminder:
+          $ref: '#/components/schemas/ReminderInput'
+        usageLevel:
+          allOf:
+            - $ref: '#/components/schemas/UsageLevel'
+          nullable: true
+    CancellationRequest:
+      oneOf:
+        - $ref: '#/components/schemas/ImmediateCancellationRequest'
+        - $ref: '#/components/schemas/ScheduledCancellationRequest'
+      discriminator:
+        propertyName: mode
+    ImmediateCancellationRequest:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [IMMEDIATE]
+    ScheduledCancellationRequest:
+      type: object
+      additionalProperties: false
+      required: [mode, effectiveAt]
+      properties:
+        mode:
+          type: string
+          enum: [SCHEDULED]
+        effectiveAt:
+          $ref: '#/components/schemas/Instant'
+    SubscriptionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Subscription'
+    SubscriptionCollectionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    BillingInterval:
+      type: object
+      additionalProperties: false
+      required: [count, unit]
+      properties:
+        count:
+          type: integer
+          minimum: 1
+        unit:
+          $ref: '#/components/schemas/BillingIntervalUnit'
+    PackageVersion:
+      type: object
+      additionalProperties: false
+      required: [id, versionNumber, displayName, price, billingInterval, categoryCode, effectiveFrom]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        versionNumber:
+          type: integer
+          minimum: 1
+        displayName:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        billingInterval:
+          $ref: '#/components/schemas/BillingInterval'
+        categoryCode:
+          type: string
+          nullable: true
+        effectiveFrom:
+          $ref: '#/components/schemas/Instant'
+    Package:
+      type: object
+      additionalProperties: false
+      required: [id, canonicalCode, isActive, iconKey, defaultColorHex, currentVersion]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        canonicalCode:
+          type: string
+        isActive:
+          type: boolean
+        iconKey:
+          type: string
+          nullable: true
+        defaultColorHex:
+          type: string
+          nullable: true
+          pattern: '^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$'
+        currentVersion:
+          allOf:
+            - $ref: '#/components/schemas/PackageVersion'
+          nullable: true
+          description: Current effective version; null if no version is effective yet.
+    PackageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Package'
+    PackageCollectionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Package'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    UpcomingRenewal:
+      type: object
+      additionalProperties: false
+      required: [subscriptionId, serviceName, price, nextBillingDate]
+      properties:
+        subscriptionId:
+          $ref: '#/components/schemas/Uuid'
+        serviceName:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        nextBillingDate:
+          $ref: '#/components/schemas/CalendarDate'
+    DashboardSummary:
+      type: object
+      additionalProperties: false
+      required: [monthlyTotals, annualizedTotals, activeSubscriptionCount, unusedSubscriptionCount, unusedMonthlySavingsTotals, creepScore, upcomingRenewals]
+      properties:
+        monthlyTotals:
+          type: array
+          description: Monthly totals grouped by currency; currencies are never implicitly converted.
+          items:
+            $ref: '#/components/schemas/Money'
+        annualizedTotals:
+          type: array
+          description: Annualized totals grouped by currency.
+          items:
+            $ref: '#/components/schemas/Money'
+        activeSubscriptionCount:
+          type: integer
+          minimum: 0
+        unusedSubscriptionCount:
+          type: integer
+          minimum: 0
+        unusedMonthlySavingsTotals:
+          type: array
+          description: Potential monthly savings grouped by currency.
+          items:
+            $ref: '#/components/schemas/Money'
+        creepScore:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          description: Derived percentage; null when the monthly reference is absent or no same-currency total is comparable.
+        upcomingRenewals:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpcomingRenewal'
+    DashboardSummaryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DashboardSummary'
+
+    NotificationType:
+      type: string
+      enum: [BILLING_REMINDER, PACKAGE_CHANGE, UNUSED_SUBSCRIPTION, SYSTEM]
+    Notification:
+      type: object
+      additionalProperties: false
+      required: [id, type, title, body, subscriptionId, packageVersionId, readAt, dismissedAt, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+        body:
+          type: string
+        subscriptionId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        packageVersionId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        readAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          nullable: true
+        dismissedAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Instant'
+    NotificationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Notification'
+    NotificationCollectionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    BulkNotificationFilter:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/NotificationType'
+    BulkMutationResult:
+      type: object
+      additionalProperties: false
+      required: [updatedCount]
+      properties:
+        updatedCount:
+          type: integer
+          minimum: 0
+    BulkMutationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/BulkMutationResult'
+
+    DevicePlatform:
+      type: string
+      enum: [ANDROID, IOS]
+    DeviceRegistrationStatus:
+      type: string
+      enum: [ACTIVE, REVOKED, INVALID]
+    RegisterDeviceRequest:
+      type: object
+      additionalProperties: false
+      required: [pushToken, platform]
+      properties:
+        pushToken:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          writeOnly: true
+        platform:
+          $ref: '#/components/schemas/DevicePlatform'
+    DeviceRegistration:
+      type: object
+      additionalProperties: false
+      required: [id, platform, status, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        platform:
+          $ref: '#/components/schemas/DevicePlatform'
+        status:
+          $ref: '#/components/schemas/DeviceRegistrationStatus'
+        createdAt:
+          $ref: '#/components/schemas/Instant'
+        updatedAt:
+          $ref: '#/components/schemas/Instant'
+    DeviceRegistrationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DeviceRegistration'
+
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, READY, NOT_READY]
+    HealthEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/HealthStatus'
