@@ -18,9 +18,28 @@ export type EnvironmentVariables = z.output<typeof environmentSchema>;
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): EnvironmentVariables {
+  if (environment.DATABASE_URL && typeof environment.DATABASE_URL === 'string') {
+    try {
+      const parsedUrl = new URL(environment.DATABASE_URL);
+      environment.DB_HOST = environment.DB_HOST || parsedUrl.hostname;
+      environment.DB_PORT = environment.DB_PORT || parsedUrl.port || 5432;
+      environment.DB_NAME =
+        environment.DB_NAME || parsedUrl.pathname.replace(/^\//, '');
+      environment.DB_USER =
+        environment.DB_USER || decodeURIComponent(parsedUrl.username);
+      environment.DB_PASSWORD =
+        environment.DB_PASSWORD || decodeURIComponent(parsedUrl.password);
+    } catch {
+      // let schema handle error
+    }
+  }
+
   const result = environmentSchema.safeParse(environment);
 
   if (result.success) {
+    if (!process.env.DATABASE_URL) {
+      process.env.DATABASE_URL = `postgresql://${result.data.DB_USER}:${result.data.DB_PASSWORD}@${result.data.DB_HOST}:${result.data.DB_PORT}/${result.data.DB_NAME}?schema=public`;
+    }
     return result.data;
   }
 

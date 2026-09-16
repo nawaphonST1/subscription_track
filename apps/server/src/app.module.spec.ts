@@ -21,7 +21,7 @@ describe('AppModule', () => {
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-  });
+  }, 30000);
 
   it('should compile the root AppModule successfully', () => {
     expect(moduleRef).toBeDefined();

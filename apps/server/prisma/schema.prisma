@@ -1,0 +1,190 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum CardType {
+  DEBIT
+  CREDIT
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+  WEEKLY
+}
+
+enum UsageStatus {
+  FREQUENT
+  OCCASIONAL
+  UNUSED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAUSED
+}
+
+enum NotificationType {
+  RENEWAL_ALERT
+  UNUSED_SUBSCRIPTION_WARNING
+  SECURITY_ALERT
+}
+
+model User {
+  id                String                 @id @default(uuid())
+  email             String                 @unique
+  password_hash     String
+  name              String?
+  monthly_income    Decimal                @default(0) @db.Decimal(12, 2)
+  security_pin_hash String
+  created_at        DateTime               @default(now())
+  updated_at        DateTime               @updatedAt
+
+  payment_cards     PaymentCard[]
+  subscriptions     UserSubscription[]
+  cancellation_logs SavingsCancellationLog[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model PaymentCard {
+  id            String             @id @default(uuid())
+  user_id       String
+  card_nickname String
+  card_brand    String
+  card_type     CardType           @default(DEBIT)
+  last_4_digits String             @db.VarChar(4)
+  bank_name     String
+  balance       Decimal            @default(0) @db.Decimal(14, 2)
+  currency      String             @default("THB") @db.VarChar(3)
+  is_default    Boolean            @default(false)
+  is_active     Boolean            @default(true)
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+
+  user          User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subscriptions UserSubscription[]
+
+  @@index([user_id])
+  @@index([user_id, is_active])
+  @@map("payment_cards")
+}
+
+model SubscriptionPreset {
+  id            String             @id @default(uuid())
+  name          String             @unique
+  category      String
+  default_price Decimal            @db.Decimal(10, 2)
+  billing_cycle BillingCycle       @default(MONTHLY)
+  brand_color   String
+  icon_url      String?
+  description   String?
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+
+  subscriptions UserSubscription[]
+
+  @@map("subscription_presets")
+}
+
+model MockBankCard {
+  id            String                      @id @default(uuid())
+  card_nickname String
+  card_brand    String
+  card_type     CardType                    @default(DEBIT)
+  last_4_digits String                      @db.VarChar(4)
+  bank_name     String
+  balance       Decimal                     @default(0) @db.Decimal(14, 2)
+  currency      String                      @default("THB") @db.VarChar(3)
+  created_at    DateTime                    @default(now())
+
+  subscriptions MockBankCardSubscription[]
+
+  @@index([bank_name, last_4_digits])
+  @@map("mock_bank_cards")
+}
+
+model MockBankCardSubscription {
+  id                String       @id @default(uuid())
+  mock_bank_card_id String
+  name              String
+  category          String
+  price             Decimal      @db.Decimal(10, 2)
+  billing_cycle     BillingCycle @default(MONTHLY)
+  brand_color       String?
+
+  mock_bank_card    MockBankCard @relation(fields: [mock_bank_card_id], references: [id], onDelete: Cascade)
+
+  @@index([mock_bank_card_id])
+  @@map("mock_bank_card_subscriptions")
+}
+
+model UserSubscription {
+  id                String              @id @default(uuid())
+  user_id           String
+  payment_card_id   String
+  preset_id         String?
+  name              String
+  category          String
+  price             Decimal             @db.Decimal(10, 2)
+  billing_cycle     BillingCycle        @default(MONTHLY)
+  start_date        DateTime
+  next_renewal_date DateTime
+  usage_status      UsageStatus         @default(FREQUENT)
+  status            SubscriptionStatus  @default(ACTIVE)
+  brand_color       String?
+  notes             String?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  user              User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  payment_card      PaymentCard         @relation(fields: [payment_card_id], references: [id], onDelete: Restrict)
+  preset            SubscriptionPreset? @relation(fields: [preset_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([payment_card_id])
+  @@index([user_id, status])
+  @@index([next_renewal_date])
+  @@map("user_subscriptions")
+}
+
+model SavingsCancellationLog {
+  id                         String   @id @default(uuid())
+  user_id                    String
+  subscription_id            String?
+  subscription_name          String
+  monthly_price              Decimal  @db.Decimal(10, 2)
+  yearly_savings_projection  Decimal  @db.Decimal(10, 2)
+  reason                     String?
+  cancelled_at               DateTime @default(now())
+
+  user                       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([cancelled_at])
+  @@map("savings_cancellation_logs")
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  user_id    String
+  title      String
+  message    String
+  type       NotificationType
+  is_read    Boolean          @default(false)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
+
+  user       User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, is_read])
+  @@index([created_at])
+  @@map("notifications")
+}
