@@ -19,7 +19,7 @@
 subscription_track/
 ├── apps/
 │   ├── mobile/          # แอปพลิเคชันมือถือ (Flutter 3.47.4, Riverpod, Feature-First Architecture)
-│   └── api/             # ขอบเขตระบบ Backend API (NestJS Modular Monolith - Phase 2)
+│   └── server/          # ขอบเขตระบบ Backend (NestJS Modular Monolith)
 │
 ├── infra/               # ขอบเขตการตั้งค่า Infrastructure & DevOps
 │   ├── nginx/           # Nginx Reverse Proxy
@@ -127,30 +127,30 @@ fvm flutter run -d chrome
 
 ---
 
-## 🖥️ Backend API (`apps/api/`)
+## 🖥️ Backend Server (`apps/server/`)
 
 - **สถานะ:** Scaffold ตั้งต้น NestJS Modular Monolith เรียบร้อยแล้ว (พร้อมสำหรับ Phase 1 Foundation & Configuration)
 - **สถาปัตยกรรม:** **NestJS Modular Monolith** (`src/main.ts` สำหรับ HTTP API และ `src/worker.ts` สำหรับ Worker boundary)
 - **เทคโนโลยีหลัก:** TypeScript, NestJS 12, PostgreSQL 17, TypeORM, Redis, BullMQ
 - ดูรายละเอียดข้อกำหนดระบบ Backend ได้ที่ [doc/Subscription_Track_PRD.md](doc/Subscription_Track_PRD.md)
 
-### คำสั่งสำหรับติดตั้งและทดสอบ (`apps/api/`):
+### คำสั่งสำหรับติดตั้งและทดสอบ (`apps/server/`):
 
-ต้องใช้ Node.js 24.15 ขึ้นไป (แนะนำ 24.18 ตาม `apps/api/.nvmrc`) และ pnpm ที่ Corepack จัดการ
+ต้องใช้ Node.js 24.15 ขึ้นไป (แนะนำ 24.21 ตาม `apps/server/.nvmrc`) และ pnpm ที่ Corepack จัดการ
 
 ```bash
-cd apps/api
+cd apps/server
 corepack enable
 cp .env.example .env
 pnpm install
 pnpm start:dev
 ```
 
-เมื่อ API ทำงานบนเครื่อง developer โดยตรง ให้ใช้ `DB_HOST=localhost` ตามค่าใน `.env.example`; BE-004 จะกำหนด service DNS เช่น `DB_HOST=postgres` เฉพาะเมื่อ API และ PostgreSQL ทำงานใน Docker Compose network เดียวกัน
+เมื่อ Server ทำงานบนเครื่อง developer โดยตรง ให้ใช้ `DB_HOST=localhost` ตามค่าใน `.env.example`; BE-004 จะกำหนด service DNS เช่น `DB_HOST=postgres` เฉพาะเมื่อ Server และ PostgreSQL ทำงานใน Docker Compose network เดียวกัน
 
 ### ตรวจสอบคุณภาพ Backend
 
-หลังติดตั้ง dependencies ให้ใช้คำสั่งเดียวต่อไปนี้จาก `apps/api/`:
+หลังติดตั้ง dependencies ให้ใช้คำสั่งเดียวต่อไปนี้จาก `apps/server/`:
 
 ```bash
 pnpm verify
@@ -165,7 +165,7 @@ pnpm verify
 
 ### Docker development environment
 
-Compose เปิดใช้เฉพาะ NestJS API และ PostgreSQL 17 ในระยะนี้ โดย API ใช้ hot reload จาก source mount และเข้าถึง PostgreSQL ผ่าน service DNS `postgres`:
+Compose เปิดใช้เฉพาะ NestJS API และ PostgreSQL 17 ในระยะนี้ โดย Server ใช้ hot reload จาก source mount และเข้าถึง PostgreSQL ผ่าน service DNS `postgres`:
 
 > [!NOTE]
 > **Docker Compose ดูแลเฉพาะ Backend & Database เท่านั้น:**
@@ -185,8 +185,8 @@ Compose เปิดใช้เฉพาะ NestJS API และ PostgreSQL 17 
 | **PostgreSQL 17** | `localhost:5432` | Database | Docker Compose: `postgres` service |
 
 ```bash
-cp apps/api/.env.example apps/api/.env
-docker compose --env-file apps/api/.env up --build
+cp apps/server/.env.example apps/server/.env
+docker compose --env-file apps/server/.env up --build
 ```
 
 API รับการเชื่อมต่อที่ `http://localhost:3000` ส่วน PostgreSQL เปิดพอร์ต `5432` สำหรับเครื่องมือบน host; เนื่องจากยังไม่มี Controller การเรียก `/` แล้วได้ `404` ถือว่าปกติและยืนยันว่า API process รับเครือข่ายได้
@@ -199,10 +199,10 @@ API รับการเชื่อมต่อที่ `http://localhost:300
 หยุด services โดยเก็บข้อมูล PostgreSQL ใน named volume:
 
 ```bash
-docker compose --env-file apps/api/.env down
+docker compose --env-file apps/server/.env down
 ```
 
-ใช้ `docker compose --env-file apps/api/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx ยังเป็น commented future drafts และไม่ได้เปิดใช้งานใน BE-004
+ใช้ `docker compose --env-file apps/server/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx ยังเป็น commented future drafts และไม่ได้เปิดใช้งานใน BE-004
 
 ---
 

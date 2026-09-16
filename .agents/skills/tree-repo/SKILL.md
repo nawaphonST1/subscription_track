@@ -36,7 +36,7 @@ Whenever this skill executes, the Agent MUST overwrite `.agents/tree_repo/tree_r
   - จัดระยะย่อหน้า (column alignment) ให้เครื่องหมาย `#` อยู่ในแนวเดียวกันอย่างสวยงาม เป็นระเบียบและอ่านง่าย
 
 ### 3. Key Directories Overview
-- ตารางสรุปหน้าที่ความรับผิดชอบของโฟลเดอร์หลักในระดับบน (`.agents/`, `.github/`, `apps/mobile/`, `apps/api/`, `doc/`, `infra/`, `scripts/`)
+- ตารางสรุปหน้าที่ความรับผิดชอบของโฟลเดอร์หลักในระดับบน (`.agents/`, `.github/`, `apps/mobile/`, `apps/server/`, `doc/`, `infra/`, `scripts/`)
 
 ---
 

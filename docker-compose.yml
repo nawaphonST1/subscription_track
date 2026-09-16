@@ -1,7 +1,7 @@
 services:
   api:
     build:
-      context: ./apps/api
+      context: ./apps/server
       target: development
     environment:
       NODE_ENV: development
@@ -15,7 +15,7 @@ services:
     ports:
       - "3000:8080"
     volumes:
-      - ./apps/api/src:/app/src
+      - ./apps/server/src:/app/src
     init: true
 
   postgres:
@@ -42,7 +42,7 @@ services:
   # The worker remains disabled until BullMQ worker bootstrap is implemented.
   # worker:
   #   build:
-  #     context: ./apps/api
+  #     context: ./apps/server
   #     target: runtime
   #   command: ["node", "dist/worker.js"]
 
