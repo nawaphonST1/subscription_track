@@ -1,6 +1,6 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-16 00:43:39
+> **📅 วันที่อัปเดต:** 2026-09-16 12:02:41
 > **👤 อัปเดตโดย:** Nekokun2004
 > **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web|node_modules|dist|coverage|.env|.env.*|*.log|.pnpm-store|.DS_Store|.idea|.vscode" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
@@ -74,32 +74,7 @@
 │   └── workflows                                       # GitHub Actions CI/CD workflows boundary
 │       └── .gitkeep                                    # Keep directory tracked in git
 ├── apps                                                # Full-stack application packages directory
-│   ├── api                                             # NestJS backend application boundary
-│   │   ├── src                                         # NestJS source and configuration boundary
-│   │   │   ├── config                                  # Typed, validated application and database environment settings
-│   │   │   │   ├── app.config.ts                       # Typed app runtime namespace (environment, host and port)
-│   │   │   │   ├── database.config.ts                  # Typed PostgreSQL connection contract without a database client
-│   │   │   │   ├── env.validation.spec.ts              # Unit tests for fail-fast environment parsing rules
-│   │   │   │   └── env.validation.ts                   # Zod environment schema and redacted validation errors
-│   │   │   ├── swagger                                 # Swagger UI and OpenAPI documentation configuration
-│   │   │   │   ├── swagger.config.spec.ts              # Unit tests for Swagger document generation and environment gating
-│   │   │   │   └── swagger.config.ts                   # Swagger/OpenAPI setup and Bearer auth configuration
-│   │   │   ├── app.module.spec.ts                      # Root module compilation test with explicit test environment
-│   │   │   ├── app.module.ts                           # Global ConfigModule composition root
-│   │   │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration and Swagger setup
-│   │   │   └── worker.ts                               # Future separate Worker runtime boundary
-│   │   ├── .dockerignore                               # Restricts API image context from secrets, dependencies and generated artifacts
-│   │   ├── .nvmrc                                      # Pinned Node.js development runtime
-│   │   ├── .prettierrc                                 # API TypeScript formatting policy
-│   │   ├── Dockerfile                                  # Multi-stage Node 24 image for development, quality gates and non-root runtime
-│   │   ├── eslint.config.mjs                            # ESLint flat configuration for TypeScript source
-│   │   ├── nest-cli.json                               # NestJS CLI build configuration
-│   │   ├── package.json                                # API dependencies, scripts, Node and pnpm requirements
-│   │   ├── pnpm-lock.yaml                              # Reproducible pnpm dependency graph
-│   │   ├── pnpm-workspace.yaml                         # Local pnpm allow-list for reviewed native build scripts
-│   │   ├── tsconfig.build.json                         # NestJS production TypeScript build configuration
-│   │   └── tsconfig.json                               # Strict TypeScript compiler and incremental build policy
-│   └── mobile                                          # Mobile application (Flutter & Riverpod)
+│   ├── mobile                                          # Mobile application (Flutter & Riverpod)
 │       ├── lib                                         # Flutter application source code
 │       │   ├── app
 │       │   │   ├── application
@@ -317,6 +292,35 @@
 │       ├── .metadata                                   # Flutter project metadata
 │       ├── pubspec.lock                                # Locked Flutter/Dart dependency graph
 │       └── pubspec.yaml                                # Flutter package metadata, dependencies and assets
+│   └── server                                          # NestJS backend application boundary
+│       ├── src                                         # NestJS source and configuration boundary
+│       │   ├── config                                  # Typed, validated application and database environment settings
+│       │   │   ├── app.config.ts                       # Typed app runtime namespace (environment, host and port)
+│       │   │   ├── database.config.ts                  # Typed PostgreSQL connection contract without a database client
+│       │   │   ├── env.validation.spec.ts              # Unit tests for fail-fast environment parsing rules
+│       │   │   └── env.validation.ts                   # Zod environment schema and redacted validation errors
+│       │   ├── swagger                                 # Swagger UI and OpenAPI documentation configuration
+│       │   │   ├── swagger.config.spec.ts              # Unit tests for Swagger document generation and environment gating
+│       │   │   └── swagger.config.ts                   # Swagger/OpenAPI setup and Bearer auth configuration
+│       │   ├── app.controller.spec.ts                  # Unit tests for AppController
+│       │   ├── app.controller.ts                       # Standard NestJS root controller
+│       │   ├── app.module.spec.ts                      # Root module compilation test with explicit test environment
+│       │   ├── app.module.ts                           # Global ConfigModule composition root
+│       │   ├── app.service.ts                          # Standard NestJS root service
+│       │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration and Swagger setup
+│       │   └── worker.ts                               # Future separate Worker runtime boundary
+│       ├── Dockerfile                                  # Multi-stage Node 24 image for development, quality gates and non-root runtime
+│       ├── .dockerignore                               # Restricts server image context from secrets, dependencies and generated artifacts
+│       ├── eslint.config.mjs                           # ESLint flat configuration for TypeScript source
+│       ├── nest-cli.json                               # NestJS CLI build configuration
+│       ├── .nvmrc                                      # Pinned Node.js development runtime
+│       ├── package.json                                # Server dependencies, scripts, Node and pnpm requirements
+│       ├── pnpm-lock.yaml                              # Reproducible pnpm dependency graph
+│       ├── pnpm-workspace.yaml                         # Local pnpm allow-list for reviewed native build scripts
+│       ├── .prettierrc                                 # Server TypeScript formatting policy
+│       ├── README.md                                   # NestJS server documentation
+│       ├── tsconfig.build.json                         # NestJS production TypeScript build configuration
+│       └── tsconfig.json                               # Strict TypeScript compiler and incremental build policy
 ├── doc                                                 # Cross-project documentation directory
 │   ├── architecture
 │   │   ├── feature_first_architecture.md               # Feature-First Clean Architecture Specification
@@ -355,7 +359,7 @@
 ├── docker-compose.yml                                  # Development API and PostgreSQL 17 orchestration with future services disabled
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-132 directories, 211 files
+132 directories, 215 files
 ```
 
 ---
@@ -367,7 +371,7 @@
 | `.agents/` | รวบรวมคำสั่งการทำงานของระบบ Agent (Skills, Prompts, Cheat Sheets และ `tree_repo`) |
 | `.github/` | ขอบเขตเวิร์กโฟลว์ CI/CD บน GitHub Actions (ปัจจุบันเป็นโฟลเดอร์ boundary) |
 | `apps/mobile/` | แอปพลิเคชันมือถือ Flutter (Riverpod, Feature-First Architecture, iOS/Android) |
-| `apps/api/` | NestJS Modular Monolith พร้อม typed configuration, Swagger documentation และ multi-stage Docker targets; ยังไม่มี TypeORM, Redis, BullMQ หรือ feature implementation |
+| `apps/server/` | NestJS Modular Monolith พร้อม typed configuration, Swagger documentation, default controller/service และ multi-stage Docker targets; ยังไม่มี TypeORM, Redis, BullMQ หรือ feature implementation |
 | `doc/` | เอกสารข้อกำหนดและแบบระบบ (PRD, Backend Architecture, Domain Model, PostgreSQL ERD, API Standards/Contract/OpenAPI, สถาปัตยกรรม Frontend และแผนงาน) |
 | `infra/` | ขอบเขตการตั้งค่า Infrastructure ระยะถัดไป; BE-004 orchestration ปัจจุบันอยู่ที่ root Compose และยังไม่สร้าง Nginx/Redis implementation |
 | `scripts/` | ขอบเขตสคริปต์อัตโนมัติระดับ Repository (ปัจจุบันเป็นโฟลเดอร์ boundary) |

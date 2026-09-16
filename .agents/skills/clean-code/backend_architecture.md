@@ -1,15 +1,15 @@
 # 🖥️ Backend Architecture Rules (NestJS, TypeScript & PostgreSQL)
 
-This reference document defines Clean Code and Architecture standards for the backend services in `apps/api/`.
+This reference document defines Clean Code and Architecture standards for the backend services in `apps/server/`.
 
 ---
 
 ## 1. Modular Monolith Architecture
 
-The backend is architected as a **Modular Monolith** using NestJS and TypeScript located in `apps/api/`. It is NOT an arbitrary set of microservices; all modules reside in a unified codebase with clear module boundaries.
+The backend is architected as a **Modular Monolith** using NestJS and TypeScript located in `apps/server/`. It is NOT an arbitrary set of microservices; all modules reside in a unified codebase with clear module boundaries.
 
 ```text
-apps/api/src/
+apps/server/src/
 ├── modules/
 │   ├── auth/            # Authentication, JWT strategy, refresh token rotation
 │   ├── users/           # User identity, profile, security settings

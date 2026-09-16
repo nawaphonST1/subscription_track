@@ -25,10 +25,14 @@ migrate_working_dir/
 # Private & Secrets
 **/.private/
 .agents/skills.json
-*.env
-*.env.local
-*.env.*.local
+.env
+.env.*
+.env *
+**/.env
+**/.env.*
+**/.env *
 !.env.example
+!**/.env.example
 
 # ==========================================
 # Frontend: Flutter & Dart (apps/mobile/)
@@ -60,7 +64,7 @@ migrate_working_dir/
 **/.gradle/
 
 # ==========================================
-# Backend: NestJS & Node.js (apps/api/)
+# Backend: NestJS & Node.js (apps/server/)
 # ==========================================
 **/node_modules/
 **/dist/
