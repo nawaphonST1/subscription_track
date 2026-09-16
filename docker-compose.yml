@@ -9,21 +9,28 @@ services:
       PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:?DB_NAME is required}
-      DB_USER: ${DB_USER:?DB_USER is required}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_NAME: ${DB_NAME:-subtracker_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password123}
+      DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-subtracker_db}?schema=public"
     ports:
-      - "3000:8080"
+      - "8080:8080"
     volumes:
       - ./apps/server/src:/app/src
+      - ./apps/server/prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
     init: true
 
   postgres:
-    image: postgres:17-trixie
+    image: postgres:16-alpine
+    container_name: subtracker_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
-      POSTGRES_USER: ${DB_USER:?DB_USER is required}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_NAME:-subtracker_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password123}
     ports:
       - "5432:5432"
     volumes:

@@ -5,9 +5,9 @@
   "private": true,
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=24.15.0 <25"
+    "node": ">=22.0.0 <25"
   },
-  "packageManager": "pnpm@12.4.2",
+  "packageManager": "pnpm@10.2.1",
   "scripts": {
     "build": "nest build",
     "check": "pnpm build && pnpm test && pnpm lint && pnpm format:check",
@@ -22,14 +22,30 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
-    "verify": "pnpm check && pnpm check:security"
+    "verify": "pnpm check && pnpm check:security",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.3",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.3",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^12.0.3",
     "@nestjs/swagger": "^12.0.1",
+    "@prisma/client": "^6.4.1",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.5"
@@ -39,11 +55,15 @@
     "@nestjs/cli": "^12.0.1",
     "@nestjs/schematics": "^12.0.2",
     "@nestjs/testing": "^12.0.3",
+    "@types/bcrypt": "^5.0.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
     "@types/node": "^24.13.4",
+    "@types/passport-jwt": "^4.0.1",
     "@vitest/coverage-v8": "5.0.1",
     "eslint": "^10.10.0",
     "prettier": "^3.9.6",
+    "prisma": "^6.4.1",
     "source-map-support": "^0.5.21",
     "ts-loader": "^9.6.2",
     "ts-node": "^10.9.2",
