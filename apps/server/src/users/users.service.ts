@@ -7,6 +7,7 @@ import {
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -20,7 +21,9 @@ export class UsersService {
         email: true,
         name: true,
         monthly_income: true,
+        security_pin_hash: true,
         created_at: true,
+        updated_at: true,
         _count: {
           select: {
             payment_cards: { where: { is_active: true } },
@@ -39,10 +42,64 @@ export class UsersService {
       email: user.email,
       name: user.name,
       monthly_income: Number(user.monthly_income),
+      pin_configured: Boolean(user.security_pin_hash),
       active_cards_count: user._count.payment_cards,
       active_subscriptions_count: user._count.subscriptions,
       created_at: user.created_at,
+      updated_at: user.updated_at,
     };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    if (dto.name === undefined && dto.monthly_income === undefined) {
+      throw new BadRequestException(
+        'At least one field (name or monthly_income) must be provided',
+      );
+    }
+
+    const dataToUpdate: { name?: string; monthly_income?: number } = {};
+    if (dto.name !== undefined) {
+      dataToUpdate.name = dto.name.trim();
+    }
+    if (dto.monthly_income !== undefined) {
+      dataToUpdate.monthly_income = dto.monthly_income;
+    }
+
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: dataToUpdate,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          monthly_income: true,
+          security_pin_hash: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        monthly_income: Number(user.monthly_income),
+        pin_configured: Boolean(user.security_pin_hash),
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      };
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
   }
 
   async updateIncome(userId: string, income: number) {

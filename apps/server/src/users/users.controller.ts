@@ -16,6 +16,7 @@ import {
 import { UsersService } from './users.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UpdateIncomeDto } from './dto/update-income.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerifyPinDto } from './dto/verify-pin.dto';
 import { ChangePinDto } from './dto/change-pin.dto';
 
@@ -31,8 +32,41 @@ export class UsersController {
     status: 200,
     description: 'User profile retrieved successfully',
   })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
   async getProfile(@CurrentUser('id') userId: string) {
     return this.usersService.getProfile(userId);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update user profile and/or monthly income' })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation error or no fields provided',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  async updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfile(userId, dto);
   }
 
   @Patch('income')
