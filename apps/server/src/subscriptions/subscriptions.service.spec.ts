@@ -44,10 +44,12 @@ describe('SubscriptionsService', () => {
 
     it('should create subscription and calculate renewal date if not provided', async () => {
       prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
-      prismaMock.userSubscription.create.mockImplementation(({ data }) => ({
-        id: 'sub-new',
-        ...data,
-      }));
+      prismaMock.userSubscription.create.mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'sub-new',
+          ...data,
+        }),
+      );
 
       const result = await service.create('user-1', {
         payment_card_id: 'card-1',

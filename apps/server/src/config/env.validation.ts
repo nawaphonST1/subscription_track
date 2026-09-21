@@ -11,6 +11,15 @@ const environmentSchema = z.object({
   DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),
   DB_USER: z.string().trim().min(1, 'DB_USER is required'),
   DB_PASSWORD: z.string().trim().min(1, 'DB_PASSWORD is required'),
+  // Note: 32 characters is a syntactic length floor, NOT an entropy guarantee.
+  // Production JWT secrets must be generated using a CSPRNG providing at least 256 bits of entropy.
+  JWT_SECRET: z
+    .string()
+    .min(1, 'JWT_SECRET is required')
+    .min(32, 'JWT_SECRET must be at least 32 characters long')
+    .refine((value) => value === value.trim(), {
+      message: 'JWT_SECRET must not have leading or trailing whitespace',
+    }),
 });
 
 export type EnvironmentVariables = z.output<typeof environmentSchema>;
@@ -18,7 +27,10 @@ export type EnvironmentVariables = z.output<typeof environmentSchema>;
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): EnvironmentVariables {
-  if (environment.DATABASE_URL && typeof environment.DATABASE_URL === 'string') {
+  if (
+    environment.DATABASE_URL &&
+    typeof environment.DATABASE_URL === 'string'
+  ) {
     try {
       const parsedUrl = new URL(environment.DATABASE_URL);
       environment.DB_HOST = environment.DB_HOST || parsedUrl.hostname;
