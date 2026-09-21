@@ -112,7 +112,9 @@ describe('UsersService', () => {
         updated_at: updatedAt,
       });
 
-      const result = await service.updateProfile('user-1', { name: 'New Name' });
+      const result = await service.updateProfile('user-1', {
+        name: 'New Name',
+      });
       expect(result).toEqual({
         id: 'user-1',
         email: 'user@example.com',
