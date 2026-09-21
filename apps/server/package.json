@@ -19,7 +19,7 @@
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings 0",
     "format:check": "prettier --check \"{src,test}/**/*.ts\"",
-    "test": "vitest run src test/auth.integration.spec.ts",
+    "test": "vitest run src test/*.integration.spec.ts",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:e2e": "vitest run test/auth.e2e.spec.ts",

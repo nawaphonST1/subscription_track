@@ -41,7 +41,7 @@ export class SubscriptionsService {
 
     const subscriptions = await this.prisma.userSubscription.findMany({
       where,
-      orderBy: { next_renewal_date: 'asc' },
+      orderBy: [{ next_renewal_date: 'asc' }, { id: 'asc' }],
       include: {
         payment_card: {
           select: {
