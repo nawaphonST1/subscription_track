@@ -10,7 +10,7 @@
     "sourceMap": true,
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo",
-    "rootDir": "./src",
+    "rootDir": ".",
     "types": ["node", "vitest/globals"],
     "incremental": true,
     "skipLibCheck": true,
@@ -20,6 +20,6 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist", "prisma"]
 }

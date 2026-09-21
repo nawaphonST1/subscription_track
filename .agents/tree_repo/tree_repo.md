@@ -1,8 +1,8 @@
 # 📦 Repository Tree Overview
 
-> **📅 วันที่อัปเดต:** 2026-09-16 12:02:41
+> **📅 วันที่อัปเดต:** 2026-09-21 23:08:41
 > **👤 อัปเดตโดย:** Nekokun2004
-> **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web|node_modules|dist|coverage|.env|.env.*|*.log|.pnpm-store|.DS_Store|.idea|.vscode" --gitignore --dirsfirst`
+> **💻 คำสั่งที่ใช้:** `tree -a -I ".git|android|ios|linux|macos|windows|web" --gitignore --dirsfirst`
 > **⚠️ หมายเหตุ:** โครงสร้างไฟล์ในเอกสารนี้สร้างขึ้นโดยเคารพกฎการยกเว้นอย่างเคร่งครัด จะไม่อัปเดตไฟล์หรือโฟลเดอร์ที่ถูกระบุไว้ใน `.gitignore` และ `.dockerignore` (หากมี) โดยเด็ดขาด ไม่ว่ากรณีใดๆ ทั้งสิ้น เพื่อป้องกันไม่ให้ Temporary files, Build artifacts, Caches, Secrets หรือไฟล์ Generated ที่ไม่จำเป็นถูกนำเข้ามาบันทึกไว้ในผังโครงการ
 
 ---
@@ -293,12 +293,41 @@
 │       ├── pubspec.lock                                # Locked Flutter/Dart dependency graph
 │       └── pubspec.yaml                                # Flutter package metadata, dependencies and assets
 │   └── server                                          # NestJS backend application boundary
-│       ├── src                                         # NestJS source and configuration boundary
+│       ├── prisma                                      # Prisma schema and development seed data
+│       │   ├── schema.prisma                           # PostgreSQL data model used by PrismaClient
+│       │   └── seed.ts                                 # Development database seed entry point
+│       ├── src                                         # NestJS source, modules, guards and configuration
+│       │   ├── auth                                    # JWT authentication controller, service and strategy
+│       │   │   ├── dto                                 # Login and registration request DTOs
+│       │   │   ├── strategies
+│       │   │   │   ├── jwt.strategy.spec.ts           # Unit coverage for JWT user resolution and projection
+│       │   │   │   └── jwt.strategy.ts                # Passport JWT strategy with User.id lookup
+│       │   │   ├── auth.controller.ts                 # Public registration and login endpoints
+│       │   │   ├── auth.module.ts                     # JWT and Passport module wiring
+│       │   │   └── auth.service.ts                    # Credential verification and JWT issuance
+│       │   ├── common                                  # Cross-cutting authentication and HTTP response concerns
+│       │   │   ├── decorators
+│       │   │   │   ├── current-user.decorator.ts      # Extracts verified request.user in controllers
+│       │   │   │   └── public.decorator.ts            # Opts endpoints out of the global JWT guard
+│       │   │   ├── filters
+│       │   │   │   └── http-exception.filter.ts       # Safe public HTTP error envelope for expected and internal errors
+│       │   │   ├── guards
+│       │   │   │   ├── jwt-auth.guard.spec.ts         # Unit coverage for public-route and default-deny behavior
+│       │   │   │   └── jwt-auth.guard.ts              # Global Passport JWT guard
+│       │   │   └── interceptors
+│       │   │       └── transform.interceptor.ts       # Success response envelope
 │       │   ├── config                                  # Typed, validated application and database environment settings
 │       │   │   ├── app.config.ts                       # Typed app runtime namespace (environment, host and port)
 │       │   │   ├── database.config.ts                  # Typed PostgreSQL connection contract without a database client
 │       │   │   ├── env.validation.spec.ts              # Unit tests for fail-fast environment parsing rules
-│       │   │   └── env.validation.ts                   # Zod environment schema and redacted validation errors
+│       │   │   └── env.validation.ts                   # Zod environment schema with exact JWT secret validation
+│       │   ├── prisma                                  # Nest PrismaClient lifecycle provider
+│       │   ├── users                                   # Authenticated user profile and PIN operations
+│       │   ├── subscriptions                           # User subscription CRUD and lifecycle operations
+│       │   ├── payment-cards                           # Payment card ownership and linking operations
+│       │   ├── savings                                 # Subscription cancellation and savings calculations
+│       │   ├── notifications                           # User notification operations
+│       │   └── creep-score                             # Subscription spending risk calculations
 │       │   ├── swagger                                 # Swagger UI and OpenAPI documentation configuration
 │       │   │   ├── swagger.config.spec.ts              # Unit tests for Swagger document generation and environment gating
 │       │   │   └── swagger.config.ts                   # Swagger/OpenAPI setup and Bearer auth configuration
@@ -309,6 +338,10 @@
 │       │   ├── app.service.ts                          # Standard NestJS root service
 │       │   ├── main.ts                                 # HTTP runtime bootstrap using typed app configuration and Swagger setup
 │       │   └── worker.ts                               # Future separate Worker runtime boundary
+│       ├── test                                        # Application-level HTTP tests using an isolated Prisma double
+│       │   ├── auth.e2e.spec.ts                        # Login-to-profile HTTP flow; not database-backed E2E
+│       │   └── auth.integration.spec.ts                # JWT guard/Passport/HTTP component integration and safe-error regression
+│       ├── .env.example                                # Safe environment-variable template including JWT contract
 │       ├── Dockerfile                                  # Multi-stage Node 24 image for development, quality gates and non-root runtime
 │       ├── .dockerignore                               # Restricts server image context from secrets, dependencies and generated artifacts
 │       ├── eslint.config.mjs                           # ESLint flat configuration for TypeScript source
@@ -320,7 +353,7 @@
 │       ├── .prettierrc                                 # Server TypeScript formatting policy
 │       ├── README.md                                   # NestJS server documentation
 │       ├── tsconfig.build.json                         # NestJS production TypeScript build configuration
-│       └── tsconfig.json                               # Strict TypeScript compiler and incremental build policy
+│       └── tsconfig.json                               # Strict TypeScript compiler policy for source and decorator-bearing tests
 ├── doc                                                 # Cross-project documentation directory
 │   ├── architecture
 │   │   ├── feature_first_architecture.md               # Feature-First Clean Architecture Specification
@@ -359,7 +392,7 @@
 ├── docker-compose.yml                                  # Development API and PostgreSQL 17 orchestration with future services disabled
 └── skills-lock.json                                    # Locked configuration for local agent skills
 
-132 directories, 215 files
+155 directories, 275 files
 ```
 
 ---
