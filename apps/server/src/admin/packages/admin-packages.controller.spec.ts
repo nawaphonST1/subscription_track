@@ -59,6 +59,25 @@ describe('AdminPackagesController (BE-305)', () => {
     expect(controller).toBeDefined();
   });
 
+  describe('POST / (BE-303)', () => {
+    it('should create a package and return response', async () => {
+      service.createPackage.mockResolvedValue(mockPackageResponse);
+
+      const dto = {
+        name: 'Netflix Standard',
+        category: 'Entertainment',
+        default_price: 349.0,
+        brand_color: '#E50914',
+      };
+
+      const result = await controller.create(dto);
+
+      expect(service.createPackage).toHaveBeenCalledWith(dto);
+      expect(result.id).toBe(mockPackageResponse.id);
+      expect(result.name).toBe(mockPackageResponse.name);
+    });
+  });
+
   describe('PATCH :id/disable', () => {
     it('should disable the package and return updated response', async () => {
       const disabledResponse: AdminPackageResponseDto = {

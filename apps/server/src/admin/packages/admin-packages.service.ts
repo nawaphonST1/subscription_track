@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PackagesService } from '../../packages/packages.service';
+import { CreatePackageDto } from '../../packages/dto/create-package.dto';
 import { UpdatePackageStatusDto } from './dto/update-package-status.dto';
 import { AdminPackageResponseDto } from './dto/package-response.dto';
 
@@ -10,20 +12,31 @@ export class AdminPackagesService {
    */
   private readonly disabledPackageIds = new Set<string>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly packagesService: PackagesService,
+  ) {}
 
   // =========================================================================
-  // BE-303: Admin Create Package Placeholder
-  // Reserved for teammate working on BE-303. Plug in implementation here.
+  // BE-303: Admin Create Package Implementation
+  // Connected directly to PackagesService (BE-303)
   // =========================================================================
-  createPackage(dto: unknown): Promise<AdminPackageResponseDto> {
-    return Promise.reject(
-      new Error(
-        `BE-303: createPackage is being implemented in BE-303. Received: ${JSON.stringify(
-          dto,
-        )}`,
-      ),
-    );
+  async createPackage(dto: CreatePackageDto): Promise<AdminPackageResponseDto> {
+    const created = await this.packagesService.create(dto);
+    return {
+      id: created.id,
+      name: created.name,
+      category: created.category,
+      defaultPrice: created.default_price,
+      billingCycle: created.billing_cycle,
+      brandColor: created.brand_color,
+      iconUrl: created.icon_url,
+      description: created.description,
+      isActive: true,
+      deletedAt: null,
+      createdAt: created.created_at,
+      updatedAt: created.updated_at,
+    };
   }
 
   // =========================================================================

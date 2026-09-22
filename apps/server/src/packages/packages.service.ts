@@ -113,6 +113,40 @@ export class PackagesService {
     return this.formatPackage(updated);
   }
 
+  async delete(id: string) {
+    const existing = await this.prisma.subscriptionPreset.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Package with ID ${id} not found`);
+    }
+
+    await this.prisma.subscriptionPreset.delete({
+      where: { id },
+    });
+
+    return {
+      message: 'Package deleted successfully',
+      id,
+    };
+  }
+
+  async disable(id: string) {
+    const existing = await this.prisma.subscriptionPreset.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Package with ID ${id} not found`);
+    }
+
+    return {
+      ...this.formatPackage(existing),
+      isActive: false,
+    };
+  }
+
   private formatPackage(p: {
     id: string;
     name: string;

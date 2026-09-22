@@ -14,6 +14,7 @@ describe('PackagesService', () => {
         findUnique: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
+        delete: vi.fn(),
       },
     };
 
@@ -161,6 +162,48 @@ describe('PackagesService', () => {
       await expect(
         service.update('preset-1', { name: 'Duplicate Name' }),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('delete (BE-305)', () => {
+    it('should delete package when it exists', async () => {
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(mockPreset);
+      prismaMock.subscriptionPreset.delete.mockResolvedValue(mockPreset);
+
+      const result = await service.delete('preset-1');
+      expect(result).toEqual({
+        message: 'Package deleted successfully',
+        id: 'preset-1',
+      });
+      expect(prismaMock.subscriptionPreset.delete).toHaveBeenCalledWith({
+        where: { id: 'preset-1' },
+      });
+    });
+
+    it('should throw NotFoundException when deleting non-existent package', async () => {
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(null);
+
+      await expect(service.delete('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('disable (BE-305)', () => {
+    it('should disable package when it exists', async () => {
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(mockPreset);
+
+      const result = await service.disable('preset-1');
+      expect(result.id).toBe('preset-1');
+      expect(result.isActive).toBe(false);
+    });
+
+    it('should throw NotFoundException when disabling non-existent package', async () => {
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(null);
+
+      await expect(service.disable('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

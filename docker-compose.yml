@@ -13,6 +13,7 @@ services:
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-password123}
       DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-subtracker_db}?schema=public"
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-key-for-subtracker-dev-environment-12345}
     ports:
       - "8080:8080"
     volumes:

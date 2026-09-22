@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import {
@@ -17,6 +18,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AdminPackagesService } from './admin-packages.service';
+import { CreatePackageDto } from '../../packages/dto/create-package.dto';
 import { UpdatePackageStatusDto } from './dto/update-package-status.dto';
 import { DeletePackageQueryDto } from './dto/delete-package-query.dto';
 import { AdminPackageResponseDto } from './dto/package-response.dto';
@@ -28,16 +30,25 @@ export class AdminPackagesController {
   constructor(private readonly adminPackagesService: AdminPackagesService) {}
 
   // =========================================================================
-  // BE-303: Admin Create Package (Reserved for BE-303 teammate)
-  // Uncomment and implement once BE-303 DTO and database schema are ready:
-  //
-  // @Post()
-  // @ApiOperation({ summary: 'Create new package preset (BE-303)' })
-  // @ApiResponse({ status: 201, type: AdminPackageResponseDto })
-  // async create(@Body() createPackageDto: any): Promise<AdminPackageResponseDto> {
-  //   return this.adminPackagesService.createPackage(createPackageDto);
-  // }
+  // BE-303: Admin Create Package (Connected with BE-303)
   // =========================================================================
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Admin create a new preset package (BE-303)',
+    description: 'Creates a new package preset in the catalog.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Package successfully created',
+    type: AdminPackageResponseDto,
+  })
+  @ApiResponse({ status: 409, description: 'Package name already exists' })
+  async create(
+    @Body() dto: CreatePackageDto,
+  ): Promise<AdminPackageResponseDto> {
+    return this.adminPackagesService.createPackage(dto);
+  }
 
   // =========================================================================
   // BE-305: Admin Disable / Delete Package Endpoints
