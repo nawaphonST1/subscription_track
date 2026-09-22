@@ -32,13 +32,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = (resObj.message as string | string[]) || exception.message;
         error = (resObj.error as string) || exception.name;
       }
-    } else if (exception instanceof Error) {
-      this.logger.error(
-        `Unhandled Exception: ${exception.message}`,
-        exception.stack,
-      );
-      message = exception.message;
-      error = exception.name;
+    } else {
+      // Do not expose or log arbitrary exception details: infrastructure errors
+      // can contain credentials, connection information, or implementation data.
+      this.logger.error('Unhandled internal exception');
     }
 
     response.status(status).json({

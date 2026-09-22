@@ -1,20 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 describe('AppModule', () => {
   let moduleRef: TestingModule;
 
   beforeAll(async () => {
-    Object.assign(process.env, {
-      NODE_ENV: 'test',
-      APP_HOST: '127.0.0.1',
-      PORT: '3000',
-      DB_HOST: 'localhost',
-      DB_PORT: '5432',
-      DB_NAME: 'subscription_track_test',
-      DB_USER: 'subscription_track',
-      DB_PASSWORD: 'test-password',
-    });
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('APP_HOST', '127.0.0.1');
+    vi.stubEnv('PORT', '3000');
+    vi.stubEnv('DB_HOST', 'localhost');
+    vi.stubEnv('DB_PORT', '5432');
+    vi.stubEnv('DB_NAME', 'subscription_track_test');
+    vi.stubEnv('DB_USER', 'subscription_track');
+    vi.stubEnv('DB_PASSWORD', 'test-password');
+    vi.stubEnv(
+      'DATABASE_URL',
+      'postgresql://subscription_track:test-password@localhost:5432/subscription_track_test?schema=public',
+    );
+    vi.stubEnv(
+      'JWT_SECRET',
+      'test-only-secret-for-app-module-compilation-32-chars-long',
+    );
 
     const { AppModule } = await import('./app.module');
 
@@ -22,6 +28,10 @@ describe('AppModule', () => {
       imports: [AppModule],
     }).compile();
   }, 30000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
 
   it('should compile the root AppModule successfully', () => {
     expect(moduleRef).toBeDefined();

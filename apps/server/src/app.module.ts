@@ -15,6 +15,8 @@ import { CreepScoreModule } from './creep-score/creep-score.module';
 import { SavingsModule } from './savings/savings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminPackagesModule } from './admin/packages/admin-packages.module';
+import { DeviceRegistrationsModule } from './device-registrations/device-registrations.module';
+import { PackagesModule } from './packages/packages.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -35,6 +37,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     SavingsModule,
     NotificationsModule,
     AdminPackagesModule,
+    DeviceRegistrationsModule,
+    PackagesModule,
   ],
   controllers: [AppController],
   providers: [

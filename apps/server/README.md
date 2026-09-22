@@ -59,6 +59,45 @@ $ pnpm run test:cov
 
 ## Deployment
 
+The committed Prisma migrations are the schema source of truth. Apply them
+before starting the application in a fresh or deployed environment:
+
+```bash
+DATABASE_URL="postgresql://user:password@host:5432/database" pnpm prisma:migrate:deploy
+```
+
+`pnpm prisma:push` is for local prototyping only. It must not be used for
+deployment because it does not apply custom migration SQL, including the
+partial unique index that protects active device-registration tokens.
+
+For an existing database that already matches the pre-BE-401 schema, verify
+that it matches the committed baseline first, then adopt the baseline without
+recreating existing tables and deploy the BE-401 delta:
+
+```bash
+DATABASE_URL="postgresql://user:password@host:5432/database" \
+  pnpm prisma migrate resolve --applied 20260921000000_baseline
+DATABASE_URL="postgresql://user:password@host:5432/database" \
+  pnpm prisma:migrate:deploy
+```
+
+Run the adoption command only after an operator has verified the database
+schema. It updates Prisma's migration history and is not a substitute for
+schema verification.
+
+Real PostgreSQL BE-401 integration tests are opt-in and require a dedicated
+test database whose name ends with `_test`:
+
+```bash
+RUN_DB_INTEGRATION=1 \
+BE401_REAL_DATABASE_URL="postgresql://postgres:postgres@localhost:55432/subscription_track_be401_test" \
+pnpm vitest run test/device-registrations.postgres.integration.spec.ts
+```
+
+Never point `BE401_REAL_DATABASE_URL` at a development, shared, staging, or
+production database. The test refuses production mode and database names that
+do not clearly identify a test database.
+
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
 If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:

@@ -36,6 +36,17 @@ enum NotificationType {
   SECURITY_ALERT
 }
 
+enum DevicePlatform {
+  ANDROID
+  IOS
+}
+
+enum DeviceRegistrationStatus {
+  ACTIVE
+  REVOKED
+  INVALID
+}
+
 model User {
   id                String                 @id @default(uuid())
   email             String                 @unique
@@ -46,10 +57,11 @@ model User {
   created_at        DateTime               @default(now())
   updated_at        DateTime               @updatedAt
 
-  payment_cards     PaymentCard[]
-  subscriptions     UserSubscription[]
-  cancellation_logs SavingsCancellationLog[]
-  notifications     Notification[]
+  payment_cards        PaymentCard[]
+  subscriptions        UserSubscription[]
+  cancellation_logs    SavingsCancellationLog[]
+  notifications        Notification[]
+  device_registrations DeviceRegistration[]
 
   @@map("users")
 }
@@ -187,4 +199,21 @@ model Notification {
   @@index([user_id, is_read])
   @@index([created_at])
   @@map("notifications")
+}
+
+model DeviceRegistration {
+  id             String                   @id @default(uuid())
+  user_id        String
+  push_token     String
+  platform       DevicePlatform
+  status         DeviceRegistrationStatus @default(ACTIVE)
+  deactivated_at DateTime?
+  created_at     DateTime                 @default(now())
+  updated_at     DateTime                 @updatedAt
+
+  user           User                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, status])
+  @@index([push_token])
+  @@map("device_registrations")
 }
