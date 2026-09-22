@@ -18,7 +18,10 @@ export type EnvironmentVariables = z.output<typeof environmentSchema>;
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): EnvironmentVariables {
-  if (environment.DATABASE_URL && typeof environment.DATABASE_URL === 'string') {
+  if (
+    environment.DATABASE_URL &&
+    typeof environment.DATABASE_URL === 'string'
+  ) {
     try {
       const parsedUrl = new URL(environment.DATABASE_URL);
       environment.DB_HOST = environment.DB_HOST || parsedUrl.hostname;

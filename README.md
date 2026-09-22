@@ -221,6 +221,7 @@ docker compose --env-file apps/server/.env down
 
 | เอกสาร | รายละเอียดและขอบเขตเนื้อหา |
 |---|---|
+| 🌐 **[System Overview](SYSTEM_OVERVIEW.md)** | เอกสารภาพรวมสถาปัตยกรรมทั้ง 3 ส่วน (Frontend, Backend, Infra) พร้อมตารางสรุป Tools & Libs สำหรับ AI และ Dev |
 | 📄 **[Product Requirement Document (PRD)](doc/Subscription_Track_PRD.md)** | เอกสารข้อกำหนดผลิตภัณฑ์, User Persona, MVP Feature Matrix, และ Roadmaps |
 | 📱 **[Frontend Screen Specifications](doc/frontend/subscription_track_frontend_screens.md)** | รายละเอียดหน้าจอทั้ง 5 แท็บ, Design Tokens, Color Palette, และ State Mapping |
 | 🏛️ **[Feature-First Architecture Guide](doc/architecture/feature_first_architecture.md)** | สถาปัตยกรรม Feature-First, โครงสร้าง 4 เลเยอร์, และเกณฑ์การตรวจสอบโค้ด |
