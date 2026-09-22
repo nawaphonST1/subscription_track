@@ -26,6 +26,7 @@
     "verify": "pnpm check && pnpm check:security",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "prisma:seed": "prisma db seed"
   },
