@@ -79,6 +79,8 @@ export class SubscriptionsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update subscription details' })
   @ApiResponse({ status: 200, description: 'Subscription updated' })
+  @ApiResponse({ status: 400, description: 'Bad request or invalid payment card' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   async update(
     @CurrentUser('id') userId: string,
@@ -91,6 +93,7 @@ export class SubscriptionsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a subscription' })
   @ApiResponse({ status: 200, description: 'Subscription deleted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   async remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.subscriptionsService.remove(userId, id);
