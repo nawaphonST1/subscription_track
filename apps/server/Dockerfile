@@ -33,7 +33,7 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "pnpm prisma db push && pnpm prisma db seed && pnpm start:dev"]
+CMD ["sh", "-c", "pnpm prisma:migrate:deploy && pnpm prisma:seed && pnpm start:dev"]
 
 FROM deps AS build
 
