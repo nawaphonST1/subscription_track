@@ -12,7 +12,6 @@ import 'package:subscription_track/features/onboarding/presentation/onboarding_s
 import 'package:subscription_track/features/subscriptions/presentation/add_subscription_screen.dart';
 import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
 
-
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
 
@@ -81,21 +80,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteConstants.login,
         builder: (context, state) => const LoginScreen(),
       ),
-      GoRoute(
-        path: RouteConstants.dashboard,
-        builder: (context, state) => const MainNavigationShell(),
+      ShellRoute(
+        builder: (context, state, child) => MainNavigationShell(
+          child: state.uri.path == RouteConstants.dashboard ? null : child,
+        ),
         routes: [
           GoRoute(
-            path: RouteConstants.notifications,
-            builder: (context, state) => const NotificationCenterScreen(),
-          ),
-          GoRoute(
-            path: RouteConstants.addSubscription,
-            builder: (context, state) => const AddSubscriptionScreen(),
+            path: RouteConstants.dashboard,
+            builder: (context, state) => const SizedBox.shrink(),
             routes: [
               GoRoute(
-                path: RouteConstants.selectPackage,
-                builder: (context, state) => const SelectPackageScreen(),
+                path: RouteConstants.notifications,
+                builder: (context, state) => const NotificationCenterScreen(),
+              ),
+              GoRoute(
+                path: RouteConstants.addSubscription,
+                builder: (context, state) => const AddSubscriptionScreen(),
+                routes: [
+                  GoRoute(
+                    path: RouteConstants.selectPackage,
+                    builder: (context, state) => const SelectPackageScreen(),
+                  ),
+                ],
               ),
             ],
           ),

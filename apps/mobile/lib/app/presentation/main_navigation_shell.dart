@@ -13,7 +13,9 @@ import 'package:subscription_track/features/settings/presentation/settings_tab.d
 import 'package:subscription_track/features/subscriptions/presentation/subscriptions_tab.dart';
 
 class MainNavigationShell extends ConsumerWidget {
-  const MainNavigationShell({super.key});
+  const MainNavigationShell({this.child, super.key});
+
+  final Widget? child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,9 +38,12 @@ class MainNavigationShell extends ConsumerWidget {
         final useRail = constraints.maxWidth >= AppBreakpoints.desktop;
         final extendRail =
             constraints.maxWidth >= AppBreakpoints.expandedNavigation;
-        final content = IndexedStack(index: currentTab, children: pages);
+        final content =
+            child ?? IndexedStack(index: currentTab, children: pages);
         return Scaffold(
-          appBar: MainAppHeader(onEditIncome: editIncome),
+          appBar: child == null
+              ? MainAppHeader(onEditIncome: editIncome)
+              : null,
           body: useRail
               ? Row(
                   children: [

@@ -34,15 +34,27 @@ ProviderScope _buildStateDrivenTestApp({
 }
 
 void main() {
-  testWidgets('renders Dashboard tab by default', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('renders Dashboard tab by default', (WidgetTester tester) async {
     await tester.pumpWidget(_buildTestApp(AppFlowState.mockDashboard));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
     expect(find.text('รายจ่ายค่าสมาชิกรวม'), findsOneWidget);
     expect(find.byKey(const Key('main-bottom-navigation')), findsOneWidget);
+  });
+
+  testWidgets('keeps navigation visible on nested dashboard routes', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(_buildTestApp(AppFlowState.mockDashboard));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('notification-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('การแจ้งเตือน'), findsOneWidget);
+    expect(find.byKey(const Key('main-bottom-navigation')), findsOneWidget);
+    expect(find.byKey(const Key('header-profile-button')), findsNothing);
   });
 
   testWidgets('Filter chips update the visible subscription list', (
