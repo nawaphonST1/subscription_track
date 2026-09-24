@@ -106,23 +106,94 @@ subscription_track/
 
 ---
 
-## 🐳 ส่วนที่ 3: Deploy & Infrastructure (`docker-compose.yml` & `infra/`)
+## 🐳 ส่วนที่ 3: Deploy, Infrastructure & DevOps Lifecycle
 
-- **สถาปัตยกรรม Container:** Docker & Docker Compose
-- **Service Configuration ใน [`docker-compose.yml`](docker-compose.yml):**
-  - **`api` Service:** รัน NestJS Server โดยใช้ Multi-stage Build จาก `apps/server/Dockerfile`
-    - Target `development`: รองรับ Source Code Mount สำหรับ Hot-reload
-    - รันคำสั่งอัตโนมัติ: `pnpm prisma db push && pnpm prisma db seed && pnpm start:dev`
-    - เปิดพอร์ตภายนอก: `8080:8080` (เข้าถึง API และ Swagger ที่ `/docs`)
-  - **`postgres` Service:** PostgreSQL 16-alpine
-    - จัดเก็บข้อมูลคงทนผ่าน Docker Named Volume: `postgres_data`
-    - มี Healthcheck: ตรวจสอบความพร้อมผ่านคำสั่ง `pg_isready` ก่อนเปิดให้ `api` เชื่อมต่อ
-- **โฟลเดอร์เตรียมการด้าน Infra (`infra/`):**
-  - `infra/nginx/`: สำหรับตั้งค่า Nginx Reverse Proxy, SSL Termination, และ Port Forwarding
-  - `infra/postgres/`: เตรียมสคริปต์ Database Schema Migration / Initialization
-  - `infra/redis/`: โครงร่างสำหรับ Redis Cache และ Queue Broker สำหรับ BullMQ
-  - `infra/monitoring/`: โครงร่างสำหรับ Prometheus Metrics และ Grafana Dashboards
-- **CI/CD Pipeline:** รองรับ GitHub Actions ผ่านโฟลเดอร์ `.github/workflows/`
+ระบบใช้แนวคิด **Continuous Delivery & End-to-End DevSecOps** ครอบคลุมวงจรชีวิตการส่งมอบซอฟต์แวร์ 8 ขั้นตอนต่อเนื่อง (8 Sequential Phases):
+$$\text{1. Plan} \rightarrow \text{2. Code} \rightarrow \text{3. Build} \rightarrow \text{4. Test} \rightarrow \text{5. Release} \rightarrow \text{6. Deploy} \rightarrow \text{7. Operate} \rightarrow \text{8. Monitor}$$
+
+### 🧭 ผังวงจรชีวิต DevOps & DevSecOps Architecture (8 Phases & Layered Toolchain)
+
+```mermaid
+flowchart LR
+    %% Class Definitions
+    classDef phase fill:#eceff1,stroke:#455a64,stroke-width:2px,color:#263238,font-weight:bold;
+    classDef cicd fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#1a237e,font-weight:bold;
+    classDef mobile fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#01579b;
+    classDef cloud fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef sec fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c,font-weight:bold;
+
+    %% 8 Sequential Phases
+    subgraph Phases["⏱️ 8 SEQUENTIAL DEVOPS PHASES"]
+        P1["1. Plan"]:::phase --> P2["2. Code"]:::phase --> P3["3. Build"]:::phase --> P4["4. Test"]:::phase --> P5["5. Release"]:::phase --> P6["6. Deploy"]:::phase --> P7["7. Operate"]:::phase --> P8["8. Monitor"]:::phase
+    end
+
+    %% CI/CD Orchestration Layer
+    subgraph CI_CD["⚙️ CI/CD ORCHESTRATION LAYER"]
+        Jenkins["🛠️ Jenkins CI/CD Automation Engine<br/>(Continuous coverage across: Build ➔ Test ➔ Release ➔ Deploy)"]:::cicd
+    end
+
+    %% Mobile Delivery Track
+    subgraph MobileTrack["📱 MOBILE DELIVERY TRACK"]
+        direction LR
+        MobBuildTest["Flutter SDK & Native Test<br/>[Build & Test]"]:::mobile
+        Fastlane["Fastlane Pipeline<br/>[Release & Deploy]"]:::mobile
+        AppStores["🏪 Apple App Store & Google Play Store<br/>[Production Distribution]"]:::mobile
+        MobBuildTest --> Fastlane --> AppStores
+    end
+
+    %% Cloud Deployment & Runtime Layer
+    subgraph CloudLayer["☁️ CLOUD DEPLOYMENT & RUNTIME LAYER"]
+        direction LR
+        TestCloud["Vitest, Playwright & Docker Compose<br/>[Test]"]:::cloud
+        GHCR["GHCR (GitHub Container Registry)<br/>[Release]"]:::cloud
+        ArgoCD["ArgoCD GitOps Sync<br/>[Deploy]"]:::cloud
+        K8s["Kubernetes Clusters, Traefik Ingress & Terraform<br/>[Operate]"]:::cloud
+        Monitoring["Prometheus, Grafana, Loki & Sentry<br/>[Monitor]"]:::cloud
+        TestCloud --> GHCR --> ArgoCD --> K8s --> Monitoring
+    end
+
+    %% Cross-Cutting Security Layer
+    subgraph SecurityLayer["🛡️ CROSS-CUTTING DEVSECOPS SECURITY LAYER"]
+        direction LR
+        SecPlan["🛡️ OWASP Threat Dragon<br/>(Threat Modeling) [Plan]"]:::sec
+        SecCode["🛡️ Gitleaks (Secret Detection) [Code]"]:::sec
+        SecSemgrep["🛡️ Semgrep SAST<br/>(Continuous: Code & Build)"]:::sec
+        SecAudit["🛡️ pnpm audit<br/>(Dependency Check) [Build]"]:::sec
+        SecTest["🛡️ OWASP ZAP (DAST) & MobSF (Mobile SAST/DAST) [Test]"]:::sec
+        SecRelease["🛡️ Syft SBOM (Software Bill of Materials) [Release]"]:::sec
+        SecBuildDeploy["🛡️ Trivy (Container & IaC Scan) & Ansible Vault [Build & Deploy]"]:::sec
+        SecWazuh["🛡️ Wazuh Unified SIEM Platform<br/>(Host/K8s Security & Log Analysis: Operate & Monitor)"]:::sec
+    end
+
+    %% Linkages
+    P3 -.-> Jenkins
+    Jenkins -.-> MobBuildTest
+    Jenkins -.-> TestCloud
+    ArgoCD -.-> K8s
+```
+
+### 📋 สรุปความรับผิดชอบของแต่ละ Layer และเครื่องมือ
+1. **CI/CD Orchestration Layer:**
+   - **`Jenkins`**: รับหน้าที่เป็นแกนกลางออร์เคสเตรชันอัตโนมัติต่อเนื่องยาว 4 เฟส ตั้งแต่ **Build ➔ Test ➔ Release ➔ Deploy**
+2. **Mobile Delivery Track:**
+   - **`Flutter SDK & Test`**: คอมไพล์และทดสอบ Unit/Widget Test ในเฟส **Build & Test**
+   - **`Fastlane`**: จัดการเรื่อง Code Signing, Version Bump, Build Artifacts ครอบคลุม **Release & Deploy**
+   - **`App Stores`**: ส่งมอบไฟล์ `.ipa` และ `.aab` เข้าสู่ **Apple App Store & Google Play Store** โดยตรง
+3. **Cloud Deployment & Runtime Layer:**
+   - **`Vitest, Playwright & Docker Compose`** *(Test)*: ทดสอบ Backend Unit/Integration Tests และ E2E Web Tests บนสภาพแวดล้อม Compose
+   - **`GHCR (GitHub Container Registry)`** *(Release)*: จัดเก็บและกำหนดเวอร์ชัน Docker Image แท็ก Production
+   - **`ArgoCD`** *(Deploy)*: ทำ Declarative GitOps ดึง Manifest จาก Git เพื่อ Deploy สู่ Production แบบ Automated Sync
+   - **`Kubernetes Clusters, Traefik & Terraform`** *(Operate)*: คลัสเตอร์รันแอปพลิเคชัน, Traefik ทำหน้าที่เป็น Modern Ingress Controller/Reverse Proxy และจัดการ Cloud Infrastructure ด้วย Terraform
+   - **`Prometheus, Grafana, Loki & Sentry`** *(Monitor)*: สังเกตการณ์ระบบแบบ Full Observability (Metrics: Prometheus/Grafana, Logs: Loki, Application Error Tracking: Sentry)
+4. **Cross-Cutting Security Layer (DevSecOps):**
+   - **`OWASP Threat Dragon`** *(Plan)*: ออกแบบและวิเคราะห์โมเดลภัยคุกคามตั้งแต่ขั้นวางแผน
+   - **`Gitleaks`** *(Code)*: ตรวจจับและป้องกัน Secret/Token/Private Key หลุดเข้า Git Repository
+   - **`Semgrep`** *(Code & Build)*: ทำ Static Application Security Testing (SAST) วิเคราะห์ช่องโหว่ซอร์สโค้ดแบบครอบคลุมต่อเนื่อง
+   - **`pnpm audit`** *(Build)*: สแกนช่องโหว่ของ Dependencies (CVE Audit) ฝั่ง Node.js/Backend
+   - **`OWASP ZAP & MobSF`** *(Test)*: ทำ DAST สแกน Web API Security (ZAP) และตรวจจับความปลอดภัยของ Mobile App Binary (MobSF)
+   - **`Syft SBOM`** *(Release)*: สร้าง Software Bill of Materials (SBOM) ตรวจสอบความโปร่งใสของแพ็กเกจก่อนเผยแพร่
+   - **`Trivy & Ansible Vault`** *(Build & Deploy)*: สแกน Container Image & IaC Misconfigurations (Trivy) ร่วมกับการเข้ารหัสลับค่าคอนฟิก (Ansible Vault)
+   - **`Wazuh`** *(Operate & Monitor)*: แพลตฟอร์มความมั่นคงปลอดภัยแบบรวมศูนย์ (XDR & SIEM) ตรวจจับการบุกรุกของ Host/Container ใน Operate และวิเคราะห์ Log Security ใน Monitor
 
 ---
 
@@ -152,14 +223,26 @@ subscription_track/
 | **API Docs** | `@nestjs/swagger` (^12.0.1) | สร้าง Swagger UI และ OpenAPI 3.0 Documentation อัตโนมัติ |
 | **Testing & Quality** | **Vitest** (5.0.1), `@vitest/coverage-v8`, ESLint, Prettier | รัน Unit Tests ความเร็วสูง และตรวจสอบ Format มาตรฐานโค้ด |
 
-### 🐳 ฝั่ง Deploy & Infrastructure
-| กลุ่ม | เครื่องมือ / ไลบรารี | ประโยชน์และความสำคัญ |
-|---|---|---|
-| **Container Engine** | **Docker**, **Docker Compose** | จำลองและแยกสภาพแวดล้อมการทำงานของเซิร์ฟเวอร์และฐานข้อมูล |
-| **Database Engine** | **PostgreSQL 16-alpine** | ฐานข้อมูลเชิงสัมพันธ์หลัก พร้อม Healthcheck และ Persistent Volume |
-| **Base Images** | `node:24.21.0-trixie-slim`, `postgres:16-alpine` | Base Image ประสิทธิภาพสูงและขนาดกะทัดรัด ปลอดภัยต่อ Production |
-| **Reverse Proxy (Planned)** | **Nginx** | จัดการ Load Balancing, Reverse Proxy, และ SSL |
-| **Job Queue (Planned)** | **Redis**, **BullMQ** | ระบบประมวลผลงานเบื้องหลัง เช่น การคำนวณรอบบิลและการส่งแจ้งเตือน |
+### 🐳 ฝั่ง Deploy, Infrastructure & DevSecOps
+| กลุ่ม / เลเยอร์ | เครื่องมือ / ไลบรารี | เฟสที่ใช้งาน | ประโยชน์และความสำคัญ |
+|---|---|---|---|
+| **CI/CD Orchestration** | **Jenkins** | Build, Test, Release, Deploy | เครื่องมือ Pipeline Orchestrator ควบคุมการสร้าง ทดสอบ และส่งมอบระบบอัตโนมัติ |
+| **Mobile Delivery** | **Flutter SDK & Test** | Build, Test | คอมไพล์และทดสอบโค้ดแอปพลิเคชันมือถือ |
+| **Mobile Delivery** | **Fastlane** | Release, Deploy | จัดการ Code Signing และส่งมอบแอปเข้าสู่ App Store & Play Store |
+| **Testing & Verification** | **Vitest, Playwright, Docker Compose** | Test | ชุดทดสอบ Unit/Integration API และ E2E UI บนสภาพแวดล้อมจำลอง |
+| **Container Registry** | **GHCR** (GitHub Container Registry) | Release | คลังจัดเก็บ Production Docker Images อย่างปลอดภัย |
+| **GitOps Delivery** | **ArgoCD** | Deploy | ตรวจจับการเปลี่ยนแปลงของ Manifest และ Sync ขึ้น K8s อัตโนมัติ |
+| **Cloud Runtime & IaC** | **Kubernetes, Traefik, Terraform** | Operate | คลัสเตอร์จัดการ Container, Ingress Routing และเครื่องมือจัดการ Cloud Infra แบบโค้ด |
+| **Database Engine** | **PostgreSQL 16 Alpine** | Operate | ฐานข้อมูลหลักของระบบ พร้อมระบบสำรองและ Persistent Volume |
+| **Monitoring & Observability** | **Prometheus, Grafana, Loki, Sentry** | Monitor | ระบบมอนิเตอร์ระดับองค์กร (Metrics, Dashboards, Log Aggregation, Error Tracking) |
+| **Threat Modeling** | **OWASP Threat Dragon** | Plan | ออกแบบและประเมินความเสี่ยงภัยคุกคามสถาปัตยกรรมระบบ |
+| **Secret Detection** | **Gitleaks** | Code | สแกนป้องกัน Secret, Token, และ Private Key หลุดสู่ซอร์สโค้ด |
+| **SAST** | **Semgrep** | Code, Build | สแกนช่องโหว่ความปลอดภัยระดับ Source Code เชิงลึกแบบต่อเนื่อง |
+| **Dependency Audit** | **pnpm audit** | Build | ตรวจสอบช่องโหว่ Known Vulnerabilities ของไลบรารีภายนอก |
+| **DAST & Mobile Sec** | **OWASP ZAP & MobSF** | Test | ทดสอบเจาะระบบ Web API แบบ Dynamic และสแกนช่องโหว่ไฟล์ Mobile App |
+| **Software Supply Chain** | **Syft SBOM** | Release | สร้างเอกสารแสดงรายการส่วนประกอบซอฟต์แวร์ทั้งหมด (Software Bill of Materials) |
+| **Image/IaC Scan & Secrets** | **Trivy & Ansible Vault** | Build, Deploy | สแกนช่องโหว่ Docker Image & IaC Code ร่วมกับการเข้ารหัส Sensitive Config |
+| **XDR / SIEM Platform** | **Wazuh** | Operate, Monitor | แพลตฟอร์มตรวจจับและตอบสนองภัยคุกคามระดับ Host/Container และวิเคราะห์ Log |
 
 ---
 
