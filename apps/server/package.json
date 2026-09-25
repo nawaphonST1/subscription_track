@@ -17,6 +17,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:worker": "node dist/worker",
+    "start:worker:dev": "nest start --entryFile worker --watch",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings 0",
     "format:check": "prettier --check \"{src,test}/**/*.ts\"",
     "test": "vitest run src test/*.integration.spec.ts",
@@ -34,6 +36,7 @@
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.4",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.4",
@@ -43,8 +46,10 @@
     "@nestjs/swagger": "^12.0.1",
     "@prisma/client": "^6.4.1",
     "bcryptjs": "^3.0.3",
+    "bullmq": "^5.81.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "firebase-admin": "^13.10.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",

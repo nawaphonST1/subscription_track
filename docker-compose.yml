@@ -42,17 +42,51 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis remains disabled until ADD-ASYNC-01 introduces its configuration
-  # contract and client dependencies.
-  # redis:
-  #   image: redis:<pinned-version>
+  redis:
+    image: redis:7-alpine
+    container_name: subtracker_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  # The worker remains disabled until BullMQ worker bootstrap is implemented.
-  # worker:
-  #   build:
-  #     context: ./apps/server
-  #     target: runtime
-  #   command: ["node", "dist/worker.js"]
+  worker:
+    build:
+      context: ./apps/server
+      target: development
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-subtracker_db}?schema=public"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # 'stub' is for local development/automated tests only: it never
+      # contacts a real push provider. Set PUSH_PROVIDER=fcm with
+      # FCM_SERVICE_ACCOUNT_JSON for real delivery; there is no silent
+      # fallback if PUSH_PROVIDER is unset or fcm credentials are missing.
+      PUSH_PROVIDER: stub
+    # Migration ownership: the `api` service's development-stage image already
+    # runs `pnpm prisma:migrate:deploy` on startup (see apps/server/Dockerfile
+    # `development` target CMD), so the worker does not run it again here to
+    # avoid two long-running services independently owning migration
+    # execution. On a fresh `docker compose up` there is a small local-dev-only
+    # race window where the worker can start querying before `api` finishes
+    # migrating; this is an accepted, documented tradeoff rather than added
+    # orchestration, since `api` has no healthcheck this compose file can wait
+    # on. Restart the worker if it logs schema errors on a first-ever `up`.
+    command: ["pnpm", "start:worker:dev"]
+    volumes:
+      - ./apps/server/src:/app/src
+      - ./apps/server/prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    init: true
 
   # Nginx remains disabled until its reviewed configuration exists. When it is
   # enabled, it will publish 3000:8080 and the API `ports` mapping will be
@@ -64,3 +98,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
