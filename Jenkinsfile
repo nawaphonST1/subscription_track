@@ -25,6 +25,7 @@ pipeline {
     stages {
         stage('Install') {
             steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Installing dependencies in ${env.NODE_ENV} environment..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh 'npm ci'
@@ -34,6 +35,7 @@ pipeline {
 
         stage('Lint') {
             steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Running linter checks for ${env.APP_NAME}..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh 'npm run lint'
@@ -43,6 +45,7 @@ pipeline {
 
         stage('Unit Test') {
             steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Running automated unit tests in ${env.NODE_ENV} mode..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh 'npm test'
@@ -56,7 +59,7 @@ pipeline {
             echo "✅ ${env.APP_NAME} passed on ${env.NODE_ENV}"
         }
         failure {
-            echo "❌ Failed at stage: ${env.STAGE_NAME}"
+            echo "❌ Failed at stage: ${env.CURRENT_STAGE ?: env.STAGE_NAME}"
         }
         always {
             archiveArtifacts artifacts: 'npm-debug.log*', allowEmptyArchive: true
