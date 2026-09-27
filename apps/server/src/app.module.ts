@@ -7,6 +7,7 @@ import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { validateEnvironment } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
+import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { PaymentCardsModule } from './payment-cards/payment-cards.module';
@@ -29,6 +30,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
       validate: validateEnvironment,
     }),
     PrismaModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     PaymentCardsModule,
