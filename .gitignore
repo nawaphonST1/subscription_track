@@ -81,3 +81,4 @@ infra/postgres/data/
 infra/redis/data/
 "jenkins_home.tgz" 
 "jenkins_home.tgz" 
+jenkins_home.tgz 
