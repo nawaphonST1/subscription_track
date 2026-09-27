@@ -1,0 +1,6 @@
+FROM jenkins/inbound-agent:latest
+USER root
+RUN apt-get update && apt-get install -y nodejs npm && \
+    npm install -g pnpm && \
+    rm -rf /var/lib/apt/lists/*
+USER jenkins

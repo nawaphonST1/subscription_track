@@ -79,3 +79,4 @@ lerna-debug.log*
 # ==========================================
 infra/postgres/data/
 infra/redis/data/
+"jenkins_home.tgz" 
