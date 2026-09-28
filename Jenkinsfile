@@ -28,7 +28,7 @@ pipeline {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Installing dependencies in ${env.NODE_ENV} environment..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh 'npm ci'
+                    sh 'npm ci || npm install --no-audit'
                 }
             }
         }
