@@ -68,6 +68,9 @@ migrate_working_dir/
 # ==========================================
 **/node_modules/
 **/dist/
+**/reports/
+reports/
+.scannerwork/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

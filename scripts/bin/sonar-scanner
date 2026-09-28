@@ -1,0 +1,9 @@
+#!/bin/sh
+# SonarQube Scanner shim for CI/CD environments
+if command -v sonar-scanner >/dev/null 2>&1 && [ "$(command -v sonar-scanner)" != "$0" ]; then
+  exec sonar-scanner "$@"
+elif command -v sonar-scanner-npm >/dev/null 2>&1; then
+  exec sonar-scanner-npm "$@"
+else
+  exec npx --yes sonarqube-scanner "$@"
+fi

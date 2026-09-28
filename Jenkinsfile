@@ -8,6 +8,7 @@ pipeline {
     environment {
         APP_NAME = 'taskflow-api'
         NODE_ENV = 'test'
+        PATH = "${WORKSPACE}/scripts/bin:${env.PATH}"
     }
 
     options {
@@ -18,7 +19,7 @@ pipeline {
         // executor slots indefinitely. Without a bounded timeout, stuck jobs exhaust build
         // farm capacity, starve subsequent queued builds across the engineering organization,
         // and drive up unnecessary cloud or server infrastructure costs.
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 15, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
@@ -28,7 +29,7 @@ pipeline {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Installing dependencies in ${env.NODE_ENV} environment..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh 'npm ci'
+                    sh 'npm ci || npm install --no-audit'
                 }
             }
         }
@@ -48,7 +49,27 @@ pipeline {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Running automated unit tests in ${env.NODE_ENV} mode..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh 'npm test'
+                    sh 'npm test -- --coverage --reporters=jest-junit'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
+                echo "==> [${env.APP_NAME}] Running SonarQube static code & coverage analysis..."
+                withSonarQubeEnv('SonarQube') {
+                    sh 'sonar-scanner -Dsonar.projectKey=taskflow-api'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
+                echo "==> [${env.APP_NAME}] Evaluating SonarQube Quality Gate threshold..."
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -62,6 +83,8 @@ pipeline {
             echo "❌ Failed at stage: ${env.CURRENT_STAGE ?: env.STAGE_NAME}"
         }
         always {
+            junit 'reports/junit.xml'
+            publishCoverage adapters: [coberturaAdapter('coverage/cobertura-coverage.xml')]
             archiveArtifacts artifacts: 'npm-debug.log*', allowEmptyArchive: true
         }
     }
