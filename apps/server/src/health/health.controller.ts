@@ -12,4 +12,11 @@ export class HealthController {
   check(): Promise<HealthCheckResult> {
     return this.healthService.check();
   }
+
+  @Public()
+  @Get('ping')
+  ping(): { message: string } {
+    return { message: 'pong' };
+  }
 }
+
