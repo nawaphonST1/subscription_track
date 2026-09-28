@@ -60,7 +60,13 @@ pipeline {
                 echo "==> [${env.APP_NAME}] Running SonarQube static code & coverage analysis..."
                 sh 'chmod +x scripts/bin/sonar-scanner || true'
                 withSonarQubeEnv('SonarQube') {
-                    sh 'sonar-scanner -Dsonar.projectKey=taskflow-api || npx --yes sonarqube-scanner -Dsonar.projectKey=taskflow-api'
+                    sh '''
+                        SONAR_URL="${SONAR_HOST_URL:-http://host.docker.internal:9000}"
+                        if echo "$SONAR_URL" | grep -q "localhost"; then
+                            SONAR_URL=$(echo "$SONAR_URL" | sed 's/localhost/host.docker.internal/g')
+                        fi
+                        sonar-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL" || npx --yes sonarqube-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL"
+                    '''
                 }
             }
         }
