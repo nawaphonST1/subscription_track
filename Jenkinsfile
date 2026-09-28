@@ -52,6 +52,30 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy — Staging') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
+                sh 'echo deploying to staging--.'
+            }
+        }
+
+        stage('Deploy — Production') {
+            when {
+                beforeInput true
+                branch 'main'
+            }
+            input {
+                message 'Deploy to production?'
+            }
+            steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
+                sh 'echo deploying to production--.'
+            }
+        }
     }
 
     post {
