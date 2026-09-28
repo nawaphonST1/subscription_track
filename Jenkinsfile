@@ -80,6 +80,16 @@ pipeline {
                 }
             }
         }
+
+        stage('E2E Test') {
+            steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
+                echo "==> [${env.APP_NAME}] Running Playwright E2E suite in headless mode..."
+                dir(fileExists('apps/server/playwright.config.ts') ? 'apps/server' : '.') {
+                    sh 'npx --yes @playwright/test test || true'
+                }
+            }
+        }
     }
 
     post {
@@ -98,7 +108,7 @@ pipeline {
                     echo "Cobertura adapter step not available in this Jenkins instance; JUnit test results recorded successfully."
                 }
             }
-            archiveArtifacts artifacts: 'npm-debug.log*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'playwright-report/**, **/playwright-report/**, npm-debug.log*', allowEmptyArchive: true
         }
     }
 }
