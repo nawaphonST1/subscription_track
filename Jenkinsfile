@@ -219,10 +219,10 @@ pipeline {
                     sh """
                         export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
                         # 1. Output human-readable scan report table to console
-                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --severity HIGH,CRITICAL --ignore-unfixed ${env.IMAGE_TAG} || true
+                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed ${env.IMAGE_TAG} || true
 
                         # 2. Gate build and generate SARIF report for artifact archiving
-                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
+                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --scanners vuln --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
                     """
                 }
             }

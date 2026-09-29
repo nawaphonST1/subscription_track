@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:22-bookworm-slim
+ARG NODE_IMAGE=node:22-alpine
 
 FROM ${NODE_IMAGE} AS base
 
@@ -7,7 +7,8 @@ ENV PATH=${PNPM_HOME}:${PATH}
 
 WORKDIR /app
 
-RUN corepack enable \
+RUN apk add --no-cache libc6-compat openssl \
+    && corepack enable \
     && corepack install --global pnpm@10.2.1 \
     && mkdir -p "${PNPM_HOME}" \
     && chown -R node:node /app "${PNPM_HOME}"
@@ -31,6 +32,8 @@ RUN pnpm build \
     && pnpm prune --prod
 
 FROM ${NODE_IMAGE} AS runtime
+
+RUN apk add --no-cache libc6-compat openssl
 
 ENV NODE_ENV=production
 ENV APP_HOST=0.0.0.0
