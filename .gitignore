@@ -89,3 +89,7 @@ infra/redis/data/
 "jenkins_home.tgz" 
 "jenkins_home.tgz" 
 jenkins_home.tgz 
+
+# Downloaded tools / Binaries
+scripts/bin/
+!scripts/bin/sonar-scanner

@@ -48,6 +48,7 @@ pipeline {
                 echo "==> [${env.APP_NAME}] Running SAST: ESLint Security Plugin & Semgrep..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh '''
+                        npm install --no-save eslint-plugin-security @microsoft/eslint-formatter-sarif || true
                         npx --yes eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif || true
                     '''
                 }

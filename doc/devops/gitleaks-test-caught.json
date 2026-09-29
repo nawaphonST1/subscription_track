@@ -1,0 +1,23 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 4,
+  "EndLine": 4,
+  "StartColumn": 2,
+  "EndColumn": 61,
+  "Match": "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCY12345678",
+  "Secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCY12345678",
+  "File": "fake_secret.env",
+  "SymlinkFile": "",
+  "Commit": "29aadc0786126045881a48e9ba2c516b8feaec34",
+  "Link": "https://github.com/nawaphonST1/subscription_track/blob/29aadc0786126045881a48e9ba2c516b8feaec34/fake_secret.env#L4",
+  "Entropy": 5.037401,
+  "Author": "Nawaphon Sungthong",
+  "Email": "nawaphonsungthong@gmail.com",
+  "Date": "2026-09-28T21:11:11Z",
+  "Message": "test(security): add test aws credentials",
+  "Tags": [],
+  "Fingerprint": "29aadc0786126045881a48e9ba2c516b8feaec34:fake_secret.env:generic-api-key:4"
+ }
+]
