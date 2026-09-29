@@ -202,8 +202,7 @@ pipeline {
                     echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
                     sh """
                         export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
-                        export DOCKER_BUILDKIT=1
-                        docker build --target runtime -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
+                        docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
                         docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
                         docker push ${env.REGISTRY_IMAGE} || true
                         kind load docker-image ${env.IMAGE_TAG} --name taskflow || kind load docker-image ${env.IMAGE_TAG} || true
@@ -248,6 +247,18 @@ pipeline {
                     '''
 
                     def kcmd = "export KUBECONFIG='${WORKSPACE}/.kube/config'; export PATH='${WORKSPACE}/scripts/bin:\${PATH}'; kubectl"
+
+                    def svcExists = sh(
+                        script: "${kcmd} get svc taskflow >/dev/null 2>&1",
+                        returnStatus: true
+                    ) == 0
+
+                    if (!svcExists) {
+                        echo "==> [${env.APP_NAME}] taskflow service not found in cluster. Initializing k8s deployments and service..."
+                        sh "${kcmd} apply -f k8s/taskflow-blue.yaml"
+                        sh "${kcmd} apply -f k8s/taskflow-green.yaml"
+                        sh "${kcmd} apply -f k8s/taskflow-service.yaml"
+                    }
 
                     def current = sh(
                         script: "${kcmd} get svc taskflow -o jsonpath='{.spec.selector.color}'",
