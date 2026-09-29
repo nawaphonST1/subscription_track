@@ -202,6 +202,7 @@ pipeline {
                     echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
                     sh """
                         export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
+                        export DOCKER_BUILDKIT=1
                         docker build --target runtime -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
                         docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
                         docker push ${env.REGISTRY_IMAGE} || true

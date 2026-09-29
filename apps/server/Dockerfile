@@ -21,20 +21,6 @@ COPY --chown=node:node prisma ./prisma
 RUN pnpm install --frozen-lockfile \
     && pnpm prisma:generate
 
-FROM deps AS development
-
-COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
-COPY --chown=node:node prisma ./prisma
-COPY --chown=node:node src ./src
-
-ENV NODE_ENV=development
-ENV APP_HOST=0.0.0.0
-ENV PORT=8080
-
-EXPOSE 8080
-
-CMD ["sh", "-c", "pnpm prisma:migrate:deploy && pnpm prisma:seed && pnpm start:dev"]
-
 FROM deps AS build
 
 COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
@@ -42,17 +28,6 @@ COPY --chown=node:node prisma ./prisma
 COPY --chown=node:node src ./src
 
 RUN pnpm build
-
-FROM deps AS test
-
-COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
-COPY --chown=node:node .prettierrc eslint.config.mjs ./
-COPY --chown=node:node prisma ./prisma
-COPY --chown=node:node src ./src
-
-RUN pnpm test \
-    && pnpm lint \
-    && pnpm format:check
 
 FROM base AS prod-deps
 
@@ -81,3 +56,28 @@ USER node
 EXPOSE 8080
 
 CMD ["node", "dist/main.js"]
+
+FROM deps AS test
+
+COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY --chown=node:node .prettierrc eslint.config.mjs run-tests.mjs* ./
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node src ./src
+
+RUN pnpm test \
+    && pnpm lint \
+    && pnpm format:check
+
+FROM deps AS development
+
+COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node src ./src
+
+ENV NODE_ENV=development
+ENV APP_HOST=0.0.0.0
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["sh", "-c", "pnpm prisma:migrate:deploy && pnpm prisma:seed && pnpm start:dev"]
