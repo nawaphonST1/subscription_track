@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:22-alpine
+ARG NODE_IMAGE=node:22-alpine3.20
 
 FROM ${NODE_IMAGE} AS base
 
@@ -7,7 +7,8 @@ ENV PATH=${PNPM_HOME}:${PATH}
 
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat openssl \
+RUN apk update && apk upgrade --no-cache \
+    && apk add --no-cache libc6-compat openssl \
     && corepack enable \
     && corepack install --global pnpm@10.2.1 \
     && mkdir -p "${PNPM_HOME}" \
@@ -33,7 +34,8 @@ RUN pnpm build \
 
 FROM ${NODE_IMAGE} AS runtime
 
-RUN apk add --no-cache libc6-compat openssl
+RUN apk update && apk upgrade --no-cache \
+    && apk add --no-cache libc6-compat openssl
 
 ENV NODE_ENV=production
 ENV APP_HOST=0.0.0.0

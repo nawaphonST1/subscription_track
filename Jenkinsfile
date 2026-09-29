@@ -25,9 +25,17 @@ pipeline {
         stage('Install') {
             steps {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Installing dependencies in ${env.NODE_ENV} environment..."
+                echo "==> [${env.APP_NAME}] Installing dependencies in ${env.NODE_ENV} environment (cache-first)..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh 'npm ci || npm install --no-audit'
+                    sh '''
+                        export npm_config_cache="${WORKSPACE}/.npm-cache"
+                        if [ ! -d "node_modules" ] || [ package.json -nt node_modules ]; then
+                            echo "==> Installing packages using offline/prefer-offline cache..."
+                            npm install --prefer-offline --no-audit
+                        else
+                            echo "==> node_modules is cached and up to date, skipping re-download."
+                        fi
+                    '''
                 }
             }
         }
@@ -50,8 +58,11 @@ pipeline {
                 echo "==> [${env.APP_NAME}] Running SAST: ESLint Security Plugin & Semgrep..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh '''
-                        npm install --no-save eslint-plugin-security @microsoft/eslint-formatter-sarif || true
-                        npx --yes eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif || true
+                        export npm_config_cache="${WORKSPACE}/.npm-cache"
+                        if [ ! -d "node_modules/eslint-plugin-security" ]; then
+                            npm install --prefer-offline --no-save eslint-plugin-security @microsoft/eslint-formatter-sarif || true
+                        fi
+                        npx --no-install eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif 2>/dev/null || npx eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif || true
                     '''
                 }
                 sh '''
@@ -174,25 +185,25 @@ pipeline {
                         mkdir -p "${WORKSPACE}/scripts/bin"
                         export PATH="${WORKSPACE}/scripts/bin:${PATH}"
 
-                        if ! command -v docker >/dev/null 2>&1; then
+                        if [ ! -f "${WORKSPACE}/scripts/bin/docker" ] && ! command -v docker >/dev/null 2>&1; then
                             echo "==> Downloading static Docker CLI..."
                             curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar -xz -C "${WORKSPACE}/scripts/bin" --strip-components=1 docker/docker
                             chmod +x "${WORKSPACE}/scripts/bin/docker"
                         fi
 
-                        if ! command -v trivy >/dev/null 2>&1; then
+                        if [ ! -f "${WORKSPACE}/scripts/bin/trivy" ] && ! command -v trivy >/dev/null 2>&1; then
                             echo "==> Downloading static Trivy scanner..."
                             curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "${WORKSPACE}/scripts/bin"
                             chmod +x "${WORKSPACE}/scripts/bin/trivy"
                         fi
 
-                        if ! command -v kubectl >/dev/null 2>&1; then
+                        if [ ! -f "${WORKSPACE}/scripts/bin/kubectl" ] && ! command -v kubectl >/dev/null 2>&1; then
                             echo "==> Downloading static kubectl CLI..."
                             curl -fsSL -o "${WORKSPACE}/scripts/bin/kubectl" https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
                             chmod +x "${WORKSPACE}/scripts/bin/kubectl"
                         fi
 
-                        if ! command -v kind >/dev/null 2>&1; then
+                        if [ ! -f "${WORKSPACE}/scripts/bin/kind" ] && ! command -v kind >/dev/null 2>&1; then
                             echo "==> Downloading static kind CLI..."
                             curl -fsSL -o "${WORKSPACE}/scripts/bin/kind" https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
                             chmod +x "${WORKSPACE}/scripts/bin/kind"
@@ -222,14 +233,22 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Running Trivy container vulnerability scan on ${env.IMAGE_TAG}..."
+                    echo "==> [${env.APP_NAME}] Running Trivy container vulnerability scan on ${env.IMAGE_TAG} (offline/cache-first)..."
                     sh """
                         export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
-                        # 1. Output human-readable scan report table to console
-                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed ${env.IMAGE_TAG} || true
+                        mkdir -p "${WORKSPACE}/.trivy-cache"
 
-                        # 2. Gate build and generate SARIF report for artifact archiving
-                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --scanners vuln --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
+                        TRIVY_OPTS="--cache-dir ${WORKSPACE}/.trivy-cache --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed"
+                        if [ -d "${WORKSPACE}/.trivy-cache/db" ] || [ -f "${WORKSPACE}/.trivy-cache/db/trivy.db" ]; then
+                            echo "==> Trivy vulnerability database found in cache. Skipping online DB re-download."
+                            TRIVY_OPTS="\${TRIVY_OPTS} --skip-db-update --skip-check-update"
+                        fi
+
+                        # 1. Generate SARIF report for artifact archiving and assessment deliverable
+                        trivy image \${TRIVY_OPTS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} || true
+
+                        # 2. Print readable table in console and gate build on exit code 1 for HIGH,CRITICAL
+                        trivy image \${TRIVY_OPTS} --exit-code 1 --format table ${env.IMAGE_TAG}
                     """
                 }
             }
