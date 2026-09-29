@@ -167,9 +167,40 @@ pipeline {
                     env.IMAGE_TAG = "taskflow-api:${shortCommit}"
                     env.REGISTRY_IMAGE = "${env.REGISTRY}/taskflow-api:${shortCommit}"
 
+                    echo "==> [${env.APP_NAME}] Ensuring CLI tools (docker, trivy, kubectl, kind) are present in scripts/bin..."
+                    sh '''
+                        mkdir -p "${WORKSPACE}/scripts/bin"
+                        export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+
+                        if ! command -v docker >/dev/null 2>&1; then
+                            echo "==> Downloading static Docker CLI..."
+                            curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar -xz -C "${WORKSPACE}/scripts/bin" --strip-components=1 docker/docker
+                            chmod +x "${WORKSPACE}/scripts/bin/docker"
+                        fi
+
+                        if ! command -v trivy >/dev/null 2>&1; then
+                            echo "==> Downloading static Trivy scanner..."
+                            curl -fsSL https://github.com/aquasec/trivy/releases/download/v0.59.1/trivy_0.59.1_Linux-64bit.tar.gz | tar -xz -C "${WORKSPACE}/scripts/bin" trivy
+                            chmod +x "${WORKSPACE}/scripts/bin/trivy"
+                        fi
+
+                        if ! command -v kubectl >/dev/null 2>&1; then
+                            echo "==> Downloading static kubectl CLI..."
+                            curl -fsSL -o "${WORKSPACE}/scripts/bin/kubectl" https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
+                            chmod +x "${WORKSPACE}/scripts/bin/kubectl"
+                        fi
+
+                        if ! command -v kind >/dev/null 2>&1; then
+                            echo "==> Downloading static kind CLI..."
+                            curl -fsSL -o "${WORKSPACE}/scripts/bin/kind" https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
+                            chmod +x "${WORKSPACE}/scripts/bin/kind"
+                        fi
+
+                        chmod +x "${WORKSPACE}/scripts/bin"/* || true
+                    '''
+
                     echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
                     sh """
-                        chmod +x scripts/bin/* || true
                         docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
                         docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
                         docker push ${env.REGISTRY_IMAGE} || true
