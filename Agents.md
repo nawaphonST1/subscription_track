@@ -64,3 +64,13 @@ These rules govern all AI Agent interactions and development workflows for this 
 ## 8. Branch Constraint
 - **Restriction**: All project/lab work must strictly occur on the `jenkins-lab-nawaphon` branch.
 - **Protocol**: If external lab instructions dictate switching to a different branch, the agent must halt and notify the user instead of executing the branch change.
+
+---
+
+## 9. Proven & Verified Implementation Requirement
+- **Mandate**: The agent must strictly use verified, proven, and battle-tested solutions that are confirmed to work.
+- **Protocol**:
+  - Do NOT guess URLs, version tags, flags, or speculative workarounds that lead to trial-and-error iteration cycles.
+  - Always verify official specifications, URLs, tool parameters, and binary compatibility before proposing or editing configurations.
+  - Prioritize standard, robust, deterministic, and minimal-dependency approaches over experimental or unverified implementations.
+

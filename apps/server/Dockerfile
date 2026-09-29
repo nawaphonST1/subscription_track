@@ -34,9 +34,7 @@ FROM base AS prod-deps
 USER node
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY --chown=node:node prisma ./prisma
-RUN pnpm install --prod --frozen-lockfile \
-    && pnpm prisma:generate
+RUN pnpm install --prod --frozen-lockfile
 
 FROM deps AS development
 
@@ -63,6 +61,7 @@ WORKDIR /app
 COPY --chown=node:node package.json ./
 COPY --chown=node:node prisma ./prisma
 COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
+COPY --chown=node:node --from=deps /app/node_modules/.prisma ./node_modules/.prisma
 COPY --chown=node:node --from=build /app/dist ./dist
 
 USER node
