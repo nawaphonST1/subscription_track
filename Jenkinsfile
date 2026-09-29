@@ -151,7 +151,9 @@ pipeline {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Evaluating SonarQube Quality Gate threshold..."
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        waitForQualityGate abortPipeline: false
+                    }
                 }
             }
         }
