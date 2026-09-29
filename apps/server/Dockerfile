@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:24.21.0-trixie-slim
+ARG NODE_IMAGE=node:22-bookworm-slim
 
 FROM ${NODE_IMAGE} AS base
 

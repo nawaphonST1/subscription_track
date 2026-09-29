@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-blue
+  labels:
+    app: taskflow
+    color: blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskflow
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: taskflow
+        color: blue
+    spec:
+      containers:
+        - name: app
+          image: taskflow-api:initial
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: APP_HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8080"
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "subtracker_db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "password123"
+            - name: JWT_SECRET
+              value: "dev-only-local-secret-not-for-production-min-32-chars-long"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskflow-blue
+  labels:
+    app: taskflow
+    color: blue
+spec:
+  selector:
+    app: taskflow
+    color: blue
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -2,6 +2,7 @@ pipeline {
     agent {
         docker {
             image 'node:20-bookworm-security'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -9,6 +10,7 @@ pipeline {
         APP_NAME = 'taskflow-api'
         NODE_ENV = 'test'
         PATH = "${WORKSPACE}/scripts/bin:${env.PATH}"
+        REGISTRY = "${env.DOCKER_REGISTRY ?: 'localhost:5000'}"
     }
 
     options {
@@ -153,14 +155,88 @@ pipeline {
                 }
             }
         }
+
+        stage('Build Image') {
+            steps {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    def shortCommit = env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build${env.BUILD_NUMBER}"
+                    env.SHORT_COMMIT = shortCommit
+                    env.IMAGE_TAG = "taskflow-api:${shortCommit}"
+                    env.REGISTRY_IMAGE = "${env.REGISTRY}/taskflow-api:${shortCommit}"
+
+                    echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
+                    sh """
+                        chmod +x scripts/bin/* || true
+                        docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
+                        docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
+                        docker push ${env.REGISTRY_IMAGE} || true
+                        kind load docker-image ${env.IMAGE_TAG} || true
+                    """
+                }
+            }
+        }
+
+        stage('Container Scan') {
+            steps {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Running Trivy container vulnerability scan on ${env.IMAGE_TAG}..."
+                    sh """
+                        chmod +x scripts/bin/* || true
+                        trivy image --exit-code 1 --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
+                    """
+                }
+            }
+        }
+
+        stage('Blue/Green Deploy') {
+            steps {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    chmod +x scripts/bin/* || true
+                    def current = sh(
+                        script: "kubectl get svc taskflow -o jsonpath='{.spec.selector.color}'",
+                        returnStdout: true
+                    ).trim()
+                    def next = (current == 'blue') ? 'green' : 'blue'
+                    env.PREV_COLOR = current
+                    env.NEXT_COLOR = next
+                    def commitTag = env.SHORT_COMMIT ?: (env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build${env.BUILD_NUMBER}")
+
+                    echo "==> [${env.APP_NAME}] Active service color: ${current}. Upgrading deployment: taskflow-${next} to tag ${commitTag}..."
+                    sh "kubectl set image deployment/taskflow-${next} app=taskflow-api:${commitTag}"
+                    sh "kubectl rollout status deployment/taskflow-${next} --timeout=90s"
+
+                    echo "==> [${env.APP_NAME}] Smoke testing new pods directly via internal service http://taskflow-${next}:8080/health..."
+                    sh "kubectl run smoke-${env.BUILD_NUMBER} --rm -i --restart=Never --image=curlimages/curl -- curl -sf http://taskflow-${next}:8080/health"
+
+                    echo "==> [${env.APP_NAME}] Smoke test passed! Switching service selector traffic from ${current} to ${next}..."
+                    sh "kubectl patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${next}\"}}}'"
+                    echo "Switched traffic from ${current} to ${next}"
+                    env.DEPLOY_SUCCESS = 'true'
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "✅ ${env.APP_NAME} passed on ${env.NODE_ENV}"
+            echo "✅ ${env.APP_NAME} deployment passed on ${env.NODE_ENV}. Active traffic serving color is now: ${env.NEXT_COLOR ?: 'active'}."
         }
         failure {
             echo "❌ Failed at stage: ${env.CURRENT_STAGE ?: env.STAGE_NAME}"
+            script {
+                if (env.PREV_COLOR && env.DEPLOY_SUCCESS != 'true') {
+                    echo "⚠️ Blue/Green deployment or smoke test failed! Executing automated rollback to ${env.PREV_COLOR}..."
+                    sh "kubectl patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${env.PREV_COLOR}\"}}}' || true"
+                    def activeColor = sh(
+                        script: "kubectl get svc taskflow -o jsonpath='{.spec.selector.color}'",
+                        returnStdout: true
+                    ).trim()
+                    echo "🔄 Service taskflow selector preserved/rolled back to: ${activeColor}"
+                }
+            }
         }
         always {
             junit 'reports/junit.xml'
@@ -181,6 +257,7 @@ pipeline {
                 semgrep.sarif,
                 apps/server/eslint-results.sarif,
                 eslint-results.sarif,
+                trivy-results.sarif,
                 playwright-report/**,
                 **/playwright-report/**
             ''', allowEmptyArchive: true

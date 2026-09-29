@@ -452,6 +452,10 @@
 │   │   ├── lab04_multibranch_pipeline_guide.md         # Step-by-step setup guide for Multibranch and Webhooks in Lab 04
 │   │   ├── lab05_assessment_checklist.md               # 100/100 points criteria checklist for Automated Testing & Quality Gates
 │   │   ├── lab05_automated_testing_quality_gates_guide.md # Comprehensive guide for SonarQube, Quality Gates and JUnit/Cobertura reporting
+│   │   ├── lab06_assessment_checklist.md               # Assessment checklist for Shift-Left Security Pipeline (Lab 06)
+│   │   ├── lab06_security_pipeline_guide.md             # Implementation guide for DevSecOps scanning and OPA policy (Lab 06)
+│   │   ├── lab07_assessment_checklist.md               # 100/100 points criteria checklist for Containers, Scanning & Deployment
+│   │   ├── lab07_containers_scanning_deployment_guide.md # Step-by-step setup guide for Trivy and Kubernetes Blue/Green Deploy
 │   │   └── .gitkeep                                    # Keep directory tracked in git
 │   ├── frontend
 │   │   └── subscription_track_frontend_screens.md      # UI Screen Specifications, Theme Policy & Component Matrix
@@ -470,9 +474,15 @@
 │   │   └── .gitkeep                                    # Keep directory tracked in git
 │   └── redis                                           # Redis infrastructure boundary
 │       └── .gitkeep                                    # Keep directory tracked in git
+├── k8s                                                 # Kubernetes manifests for Blue/Green deployment
+│   ├── taskflow-blue.yaml                              # Blue deployment and internal direct service
+│   ├── taskflow-green.yaml                             # Green deployment and internal direct service
+│   └── taskflow-service.yaml                           # Main taskflow service with dynamic color selector
 ├── scripts                                             # Repository automation scripts boundary
 │   ├── bin
-│   │   └── sonar-scanner                               # Cross-platform shim to execute sonar-scanner CLI or fallback to npx
+│   │   ├── kubectl                                     # Cross-platform CLI wrapper shim for kubectl
+│   │   ├── sonar-scanner                               # Cross-platform shim to execute sonar-scanner CLI or fallback to npx
+│   │   └── trivy                                       # Container vulnerability scanner runner shim
 │   ├── .gitkeep                                        # Keep directory tracked in git
 │   └── run_checks_terminals.sh                         # Shell script to run linter, test and static checks across monorepo
 ├── docker-compose.yml                                  # Development API and PostgreSQL 16 orchestration
