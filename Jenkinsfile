@@ -194,7 +194,7 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    chmod +x scripts/bin/* || true
+                    sh 'chmod +x scripts/bin/* || true'
                     def current = sh(
                         script: "kubectl get svc taskflow -o jsonpath='{.spec.selector.color}'",
                         returnStdout: true
