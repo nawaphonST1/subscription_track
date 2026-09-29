@@ -133,15 +133,17 @@ pipeline {
             steps {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
                 echo "==> [${env.APP_NAME}] Running SonarQube static code & coverage analysis..."
-                sh 'chmod +x scripts/bin/sonar-scanner || true'
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        SONAR_URL="${SONAR_HOST_URL:-http://host.docker.internal:9000}"
-                        if echo "$SONAR_URL" | grep -q "localhost"; then
-                            SONAR_URL=$(echo "$SONAR_URL" | sed 's/localhost/host.docker.internal/g')
-                        fi
-                        sonar-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL" || npx --yes sonarqube-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL"
-                    '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh 'chmod +x scripts/bin/sonar-scanner || true'
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            SONAR_URL="${SONAR_HOST_URL:-http://host.docker.internal:9000}"
+                            if echo "$SONAR_URL" | grep -q "localhost"; then
+                                SONAR_URL=$(echo "$SONAR_URL" | sed 's/localhost/host.docker.internal/g')
+                            fi
+                            sonar-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL" || npx --yes sonarqube-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL"
+                        '''
+                    }
                 }
             }
         }
@@ -205,7 +207,12 @@ pipeline {
                         docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
                         docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
                         docker push ${env.REGISTRY_IMAGE} || true
-                        kind load docker-image ${env.IMAGE_TAG} --name taskflow || kind load docker-image ${env.IMAGE_TAG} || true
+                        CLUSTER_NAME=\$(kind get clusters 2>/dev/null | head -n 1)
+                        if [ -n "\$CLUSTER_NAME" ]; then
+                            kind load docker-image ${env.IMAGE_TAG} --name "\$CLUSTER_NAME" || true
+                        else
+                            kind load docker-image ${env.IMAGE_TAG} || true
+                        fi
                     """
                 }
             }
@@ -240,9 +247,13 @@ pipeline {
                         CONTAINER_ID=$(hostname)
                         docker network connect kind "${CONTAINER_ID}" 2>/dev/null || true
 
-                        # Retrieve kind cluster internal kubeconfig
-                        kind get kubeconfig --name taskflow --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || \
-                        kind get kubeconfig --name taskflow > "${WORKSPACE}/.kube/config" 2>/dev/null || true
+                        # Retrieve kind cluster internal kubeconfig dynamically
+                        CLUSTER_NAME=$(kind get clusters 2>/dev/null | head -n 1)
+                        [ -z "$CLUSTER_NAME" ] && CLUSTER_NAME="taskflow"
+
+                        kind get kubeconfig --name "${CLUSTER_NAME}" --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || \
+                        kind get kubeconfig --name "${CLUSTER_NAME}" > "${WORKSPACE}/.kube/config" 2>/dev/null || \
+                        kind get kubeconfig --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || true
 
                         if [ ! -s "${WORKSPACE}/.kube/config" ] && [ -f "${HOME}/.kube/config" ]; then
                             cp "${HOME}/.kube/config" "${WORKSPACE}/.kube/config"
