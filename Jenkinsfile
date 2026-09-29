@@ -18,7 +18,7 @@ pipeline {
             steps {
                 echo "Running Install for ${env.APP_NAME} in environment ${env.NODE_ENV}"
                 dir('apps/server') {
-                    sh 'npm ci'
+                    sh 'npm ci --legacy-peer-deps || npm install --legacy-peer-deps'
                 }
             }
         }
