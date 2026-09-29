@@ -27,7 +27,8 @@ COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
 COPY --chown=node:node prisma ./prisma
 COPY --chown=node:node src ./src
 
-RUN pnpm build
+RUN pnpm build \
+    && pnpm prune --prod
 
 FROM ${NODE_IMAGE} AS runtime
 
@@ -39,7 +40,7 @@ WORKDIR /app
 
 COPY --chown=node:node package.json ./
 COPY --chown=node:node prisma ./prisma
-COPY --chown=node:node --from=deps /app/node_modules ./node_modules
+COPY --chown=node:node --from=build /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
 
 USER node

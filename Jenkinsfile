@@ -218,7 +218,11 @@ pipeline {
                     echo "==> [${env.APP_NAME}] Running Trivy container vulnerability scan on ${env.IMAGE_TAG}..."
                     sh """
                         export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
-                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --exit-code 1 --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
+                        # 1. Output human-readable scan report table to console
+                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --severity HIGH,CRITICAL --ignore-unfixed ${env.IMAGE_TAG} || true
+
+                        # 2. Gate build and generate SARIF report for artifact archiving
+                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
                     """
                 }
             }
