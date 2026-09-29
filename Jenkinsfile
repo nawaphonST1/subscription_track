@@ -202,7 +202,7 @@ pipeline {
                     echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
                     sh """
                         export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
-                        docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
+                        docker build --target runtime -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
                         docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
                         docker push ${env.REGISTRY_IMAGE} || true
                         kind load docker-image ${env.IMAGE_TAG} --name taskflow || kind load docker-image ${env.IMAGE_TAG} || true
