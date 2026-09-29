@@ -29,27 +29,6 @@ COPY --chown=node:node src ./src
 
 RUN pnpm build
 
-FROM base AS prod-deps
-
-USER node
-
-COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --prod --frozen-lockfile
-
-FROM deps AS development
-
-COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./
-COPY --chown=node:node prisma ./prisma
-COPY --chown=node:node src ./src
-
-ENV NODE_ENV=development
-ENV APP_HOST=0.0.0.0
-ENV PORT=8080
-
-EXPOSE 8080
-
-CMD ["sh", "-c", "pnpm prisma:migrate:deploy && pnpm prisma:seed && pnpm start:dev"]
-
 FROM ${NODE_IMAGE} AS runtime
 
 ENV NODE_ENV=production
@@ -60,8 +39,7 @@ WORKDIR /app
 
 COPY --chown=node:node package.json ./
 COPY --chown=node:node prisma ./prisma
-COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
-COPY --chown=node:node --from=deps /app/node_modules/.prisma ./node_modules/.prisma
+COPY --chown=node:node --from=deps /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
 
 USER node
