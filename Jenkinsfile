@@ -180,7 +180,7 @@ pipeline {
 
                         if ! command -v trivy >/dev/null 2>&1; then
                             echo "==> Downloading static Trivy scanner..."
-                            curl -fsSL https://github.com/aquasec/trivy/releases/download/v0.59.1/trivy_0.59.1_Linux-64bit.tar.gz | tar -xz -C "${WORKSPACE}/scripts/bin" trivy
+                            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "${WORKSPACE}/scripts/bin"
                             chmod +x "${WORKSPACE}/scripts/bin/trivy"
                         fi
 
@@ -201,10 +201,11 @@ pipeline {
 
                     echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
                     sh """
+                        export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
                         docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
                         docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
                         docker push ${env.REGISTRY_IMAGE} || true
-                        kind load docker-image ${env.IMAGE_TAG} || true
+                        kind load docker-image ${env.IMAGE_TAG} --name taskflow || kind load docker-image ${env.IMAGE_TAG} || true
                     """
                 }
             }
@@ -216,8 +217,8 @@ pipeline {
                     env.CURRENT_STAGE = env.STAGE_NAME
                     echo "==> [${env.APP_NAME}] Running Trivy container vulnerability scan on ${env.IMAGE_TAG}..."
                     sh """
-                        chmod +x scripts/bin/* || true
-                        trivy image --exit-code 1 --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
+                        export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
+                        trivy image --cache-dir "${WORKSPACE}/.trivy-cache" --exit-code 1 --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG}
                     """
                 }
             }
@@ -227,9 +228,28 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    sh 'chmod +x scripts/bin/* || true'
+                    sh '''
+                        export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                        mkdir -p "${WORKSPACE}/.kube"
+
+                        # Connect current container to kind docker network if needed
+                        CONTAINER_ID=$(hostname)
+                        docker network connect kind "${CONTAINER_ID}" 2>/dev/null || true
+
+                        # Retrieve kind cluster internal kubeconfig
+                        kind get kubeconfig --name taskflow --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || \
+                        kind get kubeconfig --name taskflow > "${WORKSPACE}/.kube/config" 2>/dev/null || true
+
+                        if [ ! -s "${WORKSPACE}/.kube/config" ] && [ -f "${HOME}/.kube/config" ]; then
+                            cp "${HOME}/.kube/config" "${WORKSPACE}/.kube/config"
+                            sed -i 's/127.0.0.1/host.docker.internal/g' "${WORKSPACE}/.kube/config" 2>/dev/null || true
+                        fi
+                    '''
+
+                    def kcmd = "export KUBECONFIG='${WORKSPACE}/.kube/config'; export PATH='${WORKSPACE}/scripts/bin:\${PATH}'; kubectl"
+
                     def current = sh(
-                        script: "kubectl get svc taskflow -o jsonpath='{.spec.selector.color}'",
+                        script: "${kcmd} get svc taskflow -o jsonpath='{.spec.selector.color}'",
                         returnStdout: true
                     ).trim()
                     def next = (current == 'blue') ? 'green' : 'blue'
@@ -238,14 +258,14 @@ pipeline {
                     def commitTag = env.SHORT_COMMIT ?: (env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build${env.BUILD_NUMBER}")
 
                     echo "==> [${env.APP_NAME}] Active service color: ${current}. Upgrading deployment: taskflow-${next} to tag ${commitTag}..."
-                    sh "kubectl set image deployment/taskflow-${next} app=taskflow-api:${commitTag}"
-                    sh "kubectl rollout status deployment/taskflow-${next} --timeout=90s"
+                    sh "${kcmd} set image deployment/taskflow-${next} app=taskflow-api:${commitTag}"
+                    sh "${kcmd} rollout status deployment/taskflow-${next} --timeout=90s"
 
                     echo "==> [${env.APP_NAME}] Smoke testing new pods directly via internal service http://taskflow-${next}:8080/health..."
-                    sh "kubectl run smoke-${env.BUILD_NUMBER} --rm -i --restart=Never --image=curlimages/curl -- curl -sf http://taskflow-${next}:8080/health"
+                    sh "${kcmd} run smoke-${env.BUILD_NUMBER} --rm -i --restart=Never --image=curlimages/curl -- curl -sf http://taskflow-${next}:8080/health"
 
                     echo "==> [${env.APP_NAME}] Smoke test passed! Switching service selector traffic from ${current} to ${next}..."
-                    sh "kubectl patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${next}\"}}}'"
+                    sh "${kcmd} patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${next}\"}}}'"
                     echo "Switched traffic from ${current} to ${next}"
                     env.DEPLOY_SUCCESS = 'true'
                 }
@@ -262,9 +282,10 @@ pipeline {
             script {
                 if (env.PREV_COLOR && env.DEPLOY_SUCCESS != 'true') {
                     echo "⚠️ Blue/Green deployment or smoke test failed! Executing automated rollback to ${env.PREV_COLOR}..."
-                    sh "kubectl patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${env.PREV_COLOR}\"}}}' || true"
+                    def kcmd = "export KUBECONFIG='${WORKSPACE}/.kube/config'; export PATH='${WORKSPACE}/scripts/bin:\${PATH}'; kubectl"
+                    sh "${kcmd} patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${env.PREV_COLOR}\"}}}' || true"
                     def activeColor = sh(
-                        script: "kubectl get svc taskflow -o jsonpath='{.spec.selector.color}'",
+                        script: "${kcmd} get svc taskflow -o jsonpath='{.spec.selector.color}'",
                         returnStdout: true
                     ).trim()
                     echo "🔄 Service taskflow selector preserved/rolled back to: ${activeColor}"
