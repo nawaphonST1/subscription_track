@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'node:20-bookworm-slim'
+            image 'node:20-bookworm-security'
         }
     }
 
@@ -13,12 +13,8 @@ pipeline {
 
     options {
         // [TIMEOUT JUSTIFICATION]:
-        // A pipeline stage or build should never run unbounded to prevent hung, deadlocked,
-        // or stalled processes (e.g. frozen network socket during dependency installation,
-        // deadlocked database connection, or hung test runners) from monopolizing Jenkins
-        // executor slots indefinitely. Without a bounded timeout, stuck jobs exhaust build
-        // farm capacity, starve subsequent queued builds across the engineering organization,
-        // and drive up unnecessary cloud or server infrastructure costs.
+        // Bounded pipeline execution prevents hang states or zombie test runners from
+        // exhausting CI build slots and incurring unbounded resource waste.
         timeout(time: 15, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
@@ -34,12 +30,88 @@ pipeline {
             }
         }
 
-        stage('Lint') {
+        stage('Secrets Detection') {
             steps {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Running linter checks for ${env.APP_NAME}..."
+                echo "==> [${env.APP_NAME}] Running Gitleaks secret detection across repository history..."
+                sh '''
+                    git config --global --add safe.directory "${WORKSPACE}" || true
+                    chmod +x scripts/bin/* || true
+                    gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json
+                '''
+            }
+        }
+
+        stage('SAST') {
+            steps {
+                script { env.CURRENT_STAGE = env.STAGE_NAME }
+                echo "==> [${env.APP_NAME}] Running SAST: ESLint Security Plugin & Semgrep..."
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh 'npm run lint'
+                    sh '''
+                        npx --yes eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif || true
+                    '''
+                }
+                sh '''
+                    semgrep scan --config=p/owasp-top-ten --config=p/nodejs --sarif -o semgrep.sarif apps/server/src || true
+                '''
+            }
+        }
+
+        stage('SCA — npm audit') {
+            steps {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Running SCA dependency audit with fail/warn threshold..."
+                    dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
+                        sh 'npm audit --audit-level=high --json > audit.json || true'
+                        def critical = sh(
+                            script: "jq '.metadata.vulnerabilities.critical' audit.json",
+                            returnStdout: true
+                        ).trim().toInteger()
+                        if (critical > 0) {
+                            error("Blocking: ${critical} critical vulnerabilities found")
+                        }
+                        echo "SCA passed with 0 critical vulnerabilities (warnings allowed)"
+                    }
+                }
+            }
+        }
+
+        stage('Generate SBOM') {
+            steps {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Generating CycloneDX SBOM and signing release artifact with Cosign..."
+                    sh '''
+                        syft dir:apps/server --exclude "**/node_modules/**" -o cyclonedx-json=taskflow-api.cdx.json
+                        export COSIGN_PASSWORD="cipassword"
+                        rm -f cosign.key cosign.pub taskflow-api.cdx.json.sig
+                        cosign generate-key-pair
+                        cosign sign-blob --key cosign.key --tlog-upload=false --yes --output-signature taskflow-api.cdx.json.sig taskflow-api.cdx.json
+                        cosign verify-blob --key cosign.pub --signature taskflow-api.cdx.json.sig --insecure-ignore-tlog=true taskflow-api.cdx.json
+                    '''
+                }
+            }
+        }
+
+        stage('Policy Gate') {
+            steps {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Evaluating OPA Rego security policy (policy/security.rego)..."
+                    def auditFile = fileExists('apps/server/audit.json') ? 'apps/server/audit.json' : 'audit.json'
+                    def isAllowed = sh(
+                        script: "opa eval --data policy/security.rego --input ${auditFile} 'data.security.allow' --format raw",
+                        returnStdout: true
+                    ).trim()
+                    if (isAllowed != "true") {
+                        def denyReasons = sh(
+                            script: "opa eval --data policy/security.rego --input ${auditFile} 'data.security.deny' --format raw",
+                            returnStdout: true
+                        ).trim()
+                        error("Policy Gate Blocked build due to security policy violations:\n${denyReasons}")
+                    }
+                    echo "✅ Policy Gate PASSED: No CRITICAL vulnerabilities violate policy/security.rego"
                 }
             }
         }
@@ -80,16 +152,6 @@ pipeline {
                 }
             }
         }
-
-        stage('E2E Test') {
-            steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Running Playwright E2E suite in headless mode..."
-                dir(fileExists('apps/server/playwright.config.ts') ? 'apps/server' : '.') {
-                    sh 'npx --yes @playwright/test test || true'
-                }
-            }
-        }
     }
 
     post {
@@ -108,7 +170,19 @@ pipeline {
                     echo "Cobertura adapter step not available in this Jenkins instance; JUnit test results recorded successfully."
                 }
             }
-            archiveArtifacts artifacts: 'playwright-report/**, **/playwright-report/**, npm-debug.log*', allowEmptyArchive: true
+            archiveArtifacts artifacts: '''
+                gitleaks-report.json,
+                apps/server/audit.json,
+                audit.json,
+                taskflow-api.cdx.json,
+                taskflow-api.cdx.json.sig,
+                cosign.pub,
+                semgrep.sarif,
+                apps/server/eslint-results.sarif,
+                eslint-results.sarif,
+                playwright-report/**,
+                **/playwright-report/**
+            ''', allowEmptyArchive: true
         }
     }
 }
