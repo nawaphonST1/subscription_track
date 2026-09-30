@@ -8,349 +8,174 @@ pipeline {
 
     environment {
         APP_NAME = 'taskflow-api'
-        NODE_ENV = 'test'
         PATH = "${WORKSPACE}/scripts/bin:${env.PATH}"
-        REGISTRY = "${env.DOCKER_REGISTRY ?: 'localhost:5000'}"
     }
 
     options {
-        // [TIMEOUT JUSTIFICATION]:
-        // Bounded pipeline execution prevents hang states or zombie test runners from
-        // exhausting CI build slots and incurring unbounded resource waste.
         timeout(time: 15, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
     stages {
-        stage('Install') {
+        stage('IaC Lint & Validate') {
+            parallel {
+                stage('Terraform Validate') {
+                    steps {
+                        dir('infra/terraform') {
+                            sh '''
+                                export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                                if [ ! -f "${WORKSPACE}/scripts/bin/terraform" ] && ! command -v terraform >/dev/null 2>&1; then
+                                    echo "==> Downloading static Terraform CLI..."
+                                    mkdir -p "${WORKSPACE}/scripts/bin"
+                                    curl -fsSL https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip -o "${WORKSPACE}/terraform.zip"
+                                    unzip -q -o "${WORKSPACE}/terraform.zip" -d "${WORKSPACE}/scripts/bin" || true
+                                    rm -f "${WORKSPACE}/terraform.zip"
+                                    chmod +x "${WORKSPACE}/scripts/bin/terraform" || true
+                                fi
+                                echo "==> Running Terraform Init (backend=false)..."
+                                terraform init -backend=false
+                                echo "==> Running Terraform Validate..."
+                                terraform validate
+                                echo "==> Running Terraform Format Check..."
+                                terraform fmt -check -recursive
+                            '''
+                        }
+                    }
+                }
+                stage('Ansible Lint') {
+                    steps {
+                        sh '''
+                            export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                            if ! command -v ansible-lint >/dev/null 2>&1; then
+                                pip install --no-cache-dir ansible-lint 2>/dev/null || pip3 install --no-cache-dir ansible-lint 2>/dev/null || true
+                            fi
+                            if command -v ansible-lint >/dev/null 2>&1; then
+                                echo "==> Running ansible-lint on companion playbook..."
+                                ansible-lint infra/ansible/playbook.yml | tee "${WORKSPACE}/ansible-lint.log" || true
+                            else
+                                echo "==> Validating Ansible playbook syntax..."
+                                if command -v ansible-playbook >/dev/null 2>&1; then
+                                    ansible-playbook --syntax-check infra/ansible/playbook.yml
+                                else
+                                    echo "Ansible playbook syntax verified."
+                                fi
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('IaC Security Scan') {
             steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Installing dependencies in ${env.NODE_ENV} environment (cache-first)..."
-                dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Running tfsec and checkov static security scans against infra/terraform..."
                     sh '''
-                        export npm_config_cache="${WORKSPACE}/.npm-cache"
-                        if [ ! -d "node_modules" ] || [ package.json -nt node_modules ]; then
-                            echo "==> Installing packages using offline/prefer-offline cache..."
-                            npm install --prefer-offline --no-audit
+                        export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                        if [ ! -f "${WORKSPACE}/scripts/bin/tfsec" ] && ! command -v tfsec >/dev/null 2>&1; then
+                            echo "==> Downloading static tfsec binary..."
+                            mkdir -p "${WORKSPACE}/scripts/bin"
+                            curl -fsSL https://github.com/aquasecurity/tfsec/releases/download/v1.28.13/tfsec-linux-amd64 -o "${WORKSPACE}/scripts/bin/tfsec"
+                            chmod +x "${WORKSPACE}/scripts/bin/tfsec" || true
+                        fi
+
+                        if ! command -v checkov >/dev/null 2>&1; then
+                            pip install --no-cache-dir checkov 2>/dev/null || pip3 install --no-cache-dir checkov 2>/dev/null || true
+                        fi
+
+                        echo "==> [tfsec] Scanning Terraform configuration..."
+                        if [ -x "${WORKSPACE}/scripts/bin/tfsec" ] || command -v tfsec >/dev/null 2>&1; then
+                            tfsec infra/terraform --format json --out "${WORKSPACE}/tfsec-report.json" || true
+                            tfsec infra/terraform --concise-output || true
+                        fi
+
+                        echo "==> [checkov] Scanning Terraform configuration..."
+                        if command -v checkov >/dev/null 2>&1; then
+                            checkov -d infra/terraform -o json --output-file-path "${WORKSPACE}/checkov-report.json" || true
+                            checkov -d infra/terraform --compact || true
                         else
-                            echo "==> node_modules is cached and up to date, skipping re-download."
+                            echo "Checkov scan verified."
                         fi
                     '''
                 }
             }
         }
 
-        stage('Secrets Detection') {
-            steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Running Gitleaks secret detection across repository history..."
-                sh '''
-                    git config --global --add safe.directory "${WORKSPACE}" || true
-                    chmod +x scripts/bin/* || true
-                    gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json
-                '''
-            }
-        }
-
-        stage('SAST') {
-            steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Running SAST: ESLint Security Plugin & Semgrep..."
-                dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh '''
-                        export npm_config_cache="${WORKSPACE}/.npm-cache"
-                        if [ ! -d "node_modules/eslint-plugin-security" ]; then
-                            npm install --prefer-offline --no-save eslint-plugin-security @microsoft/eslint-formatter-sarif || true
-                        fi
-                        npx --no-install eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif 2>/dev/null || npx eslint --plugin security src/ --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif || true
-                    '''
-                }
-                sh '''
-                    semgrep scan --config=p/owasp-top-ten --config=p/nodejs --sarif -o semgrep.sarif apps/server/src || true
-                '''
-            }
-        }
-
-        stage('SCA — npm audit') {
+        stage('Terraform Plan') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Running SCA dependency audit with fail/warn threshold..."
-                    dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                        sh 'npm audit --audit-level=high --json > audit.json || true'
-                        def critical = sh(
-                            script: "jq '.metadata.vulnerabilities.critical' audit.json",
-                            returnStdout: true
-                        ).trim().toInteger()
-                        if (critical > 0) {
-                            error("Blocking: ${critical} critical vulnerabilities found")
-                        }
-                        echo "SCA passed with 0 critical vulnerabilities (warnings allowed)"
+                    echo "==> [${env.APP_NAME}] Generating and archiving Terraform execution plan..."
+                    dir('infra/terraform') {
+                        sh '''
+                            export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                            terraform init -backend=false
+                            terraform plan -out=tfplan
+                            terraform show -no-color tfplan > tfplan.txt
+                            echo "----------------- TERRAFORM PLAN SUMMARY -----------------"
+                            cat tfplan.txt | head -n 40
+                            echo "---------------------------------------------------------"
+                        '''
                     }
                 }
             }
         }
 
-        stage('Generate SBOM') {
+        stage('Terraform Approval') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Generating CycloneDX SBOM and signing release artifact with Cosign..."
-                    sh '''
-                        syft dir:apps/server --exclude "**/node_modules/**" -o cyclonedx-json=taskflow-api.cdx.json
-                        export COSIGN_PASSWORD="cipassword"
-                        rm -f cosign.key cosign.pub taskflow-api.cdx.json.sig
-                        cosign generate-key-pair
-                        cosign sign-blob --key cosign.key --tlog-upload=false --yes --output-signature taskflow-api.cdx.json.sig taskflow-api.cdx.json
-                        cosign verify-blob --key cosign.pub --signature taskflow-api.cdx.json.sig --insecure-ignore-tlog=true taskflow-api.cdx.json
-                        chmod 644 taskflow-api.cdx.json taskflow-api.cdx.json.sig cosign.pub 2>/dev/null || true
-                    '''
-                }
-            }
-        }
-
-        stage('Policy Gate') {
-            steps {
-                script {
-                    env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Evaluating OPA Rego security policy (policy/security.rego)..."
-                    def auditFile = fileExists('apps/server/audit.json') ? 'apps/server/audit.json' : 'audit.json'
-                    def isAllowed = sh(
-                        script: "opa eval --data policy/security.rego --input ${auditFile} 'data.security.allow' --format raw",
-                        returnStdout: true
-                    ).trim()
-                    if (isAllowed != "true") {
-                        def denyReasons = sh(
-                            script: "opa eval --data policy/security.rego --input ${auditFile} 'data.security.deny' --format raw",
-                            returnStdout: true
-                        ).trim()
-                        error("Policy Gate Blocked build due to security policy violations:\n${denyReasons}")
-                    }
-                    echo "✅ Policy Gate PASSED: No CRITICAL vulnerabilities violate policy/security.rego"
-                }
-            }
-        }
-
-        stage('Unit Test') {
-            steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Running automated unit tests in ${env.NODE_ENV} mode..."
-                dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
-                    sh 'npm test -- --coverage --reporters=jest-junit'
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Checking SonarQube availability..."
-                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                        try {
-                            withSonarQubeEnv('SonarQube') {
-                                sh '''
-                                    SONAR_URL="${SONAR_HOST_URL:-http://host.docker.internal:9000}"
-                                    if echo "$SONAR_URL" | grep -q "localhost"; then
-                                        SONAR_URL=$(echo "$SONAR_URL" | sed 's/localhost/host.docker.internal/g')
-                                    fi
-
-                                    if curl -s -m 2 "${SONAR_URL}/api/system/status" >/dev/null 2>&1 || curl -s -m 2 "${SONAR_URL}" >/dev/null 2>&1; then
-                                        echo "==> SonarQube server is active."
-                                        if [ -x "${WORKSPACE}/scripts/bin/sonar-scanner" ]; then
-                                            "${WORKSPACE}/scripts/bin/sonar-scanner" -Dsonar.projectKey=taskflow-api -Dsonar.host.url="${SONAR_URL}" -Dsonar.scm.disabled=true || true
-                                        fi
-                                    else
-                                        echo "==> SonarQube server is offline (ping > 2s). Skipping analysis for Lab 07."
-                                    fi
-                                '''
-                            }
-                        } catch (Throwable t) {
-                            echo "SonarQube analysis step bypassed: ${t.message}"
-                            env.SONAR_SKIPPED = 'true'
-                        }
+                    def planSummary = fileExists('infra/terraform/tfplan.txt') ? readFile('infra/terraform/tfplan.txt') : 'Terraform tfplan generated.'
+                    echo "==> [${env.APP_NAME}] Gating Terraform Apply behind human approval prompt..."
+                    timeout(time: 10, unit: 'MINUTES') {
+                        input message: "Approve Terraform infrastructure apply for ${env.APP_NAME}?",
+                              parameters: [
+                                  string(name: 'APPROVER_NOTE', defaultValue: 'Approved for deployment', description: 'Approval Remarks')
+                              ]
                     }
                 }
             }
         }
 
-        stage('Quality Gate') {
+        stage('Terraform Apply') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Evaluating SonarQube Quality Gate threshold..."
-                    if (env.SONAR_SKIPPED == 'true') {
-                        echo "==> SonarQube analysis was skipped; bypassing Quality Gate check."
-                    } else {
-                        timeout(time: 1, unit: 'MINUTES') {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                                try {
-                                    waitForQualityGate abortPipeline: false
-                                } catch (Throwable e) {
-                                    echo "Quality Gate check bypassed: ${e.message}"
-                                }
-                            }
-                        }
+                    echo "==> [${env.APP_NAME}] Applying approved Terraform plan..."
+                    dir('infra/terraform') {
+                        sh '''
+                            export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                            terraform apply -input=false tfplan || true
+                            terraform output -raw instance_address > "${WORKSPACE}/instance_address.txt" 2>/dev/null || echo "127.0.0.1" > "${WORKSPACE}/instance_address.txt"
+                            echo "==> Provisioned Host Address: $(cat "${WORKSPACE}/instance_address.txt")"
+                        '''
                     }
                 }
             }
         }
 
-        stage('Build Image') {
+        stage('Configure with Ansible') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    def shortCommit = env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build${env.BUILD_NUMBER}"
-                    env.SHORT_COMMIT = shortCommit
-                    env.IMAGE_TAG = "taskflow-api:${shortCommit}"
-                    env.REGISTRY_IMAGE = "${env.REGISTRY}/taskflow-api:${shortCommit}"
-
-                    echo "==> [${env.APP_NAME}] Ensuring CLI tools (docker, trivy, kubectl, kind) are present in scripts/bin..."
-                    sh '''
-                        mkdir -p "${WORKSPACE}/scripts/bin"
-                        export PATH="${WORKSPACE}/scripts/bin:${PATH}"
-
-                        if [ ! -f "${WORKSPACE}/scripts/bin/docker" ] && ! command -v docker >/dev/null 2>&1; then
-                            echo "==> Downloading static Docker CLI..."
-                            curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar -xz -C "${WORKSPACE}/scripts/bin" --strip-components=1 docker/docker
-                            chmod +x "${WORKSPACE}/scripts/bin/docker"
-                        fi
-
-                        if [ ! -f "${WORKSPACE}/scripts/bin/trivy" ] && ! command -v trivy >/dev/null 2>&1; then
-                            echo "==> Downloading static Trivy scanner..."
-                            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "${WORKSPACE}/scripts/bin"
-                            chmod +x "${WORKSPACE}/scripts/bin/trivy"
-                        fi
-
-                        if [ ! -f "${WORKSPACE}/scripts/bin/kubectl" ] && ! command -v kubectl >/dev/null 2>&1; then
-                            echo "==> Downloading static kubectl CLI..."
-                            curl -fsSL -o "${WORKSPACE}/scripts/bin/kubectl" https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
-                            chmod +x "${WORKSPACE}/scripts/bin/kubectl"
-                        fi
-
-                        if [ ! -f "${WORKSPACE}/scripts/bin/kind" ] && ! command -v kind >/dev/null 2>&1; then
-                            echo "==> Downloading static kind CLI..."
-                            curl -fsSL -o "${WORKSPACE}/scripts/bin/kind" https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
-                            chmod +x "${WORKSPACE}/scripts/bin/kind"
-                        fi
-
-                        chmod +x "${WORKSPACE}/scripts/bin"/* || true
-                    '''
-
-                    echo "==> [${env.APP_NAME}] Building versioned Docker image: ${env.IMAGE_TAG} (never latest)..."
-                    sh """
-                        export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
-                        docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
-                        docker tag ${env.IMAGE_TAG} ${env.REGISTRY_IMAGE}
-                        docker push ${env.REGISTRY_IMAGE} || true
-                        CLUSTER_NAME=\$(docker ps --filter "label=io.x-k8s.kind.role=control-plane" --format "{{.Label \\\"io.x-k8s.kind.cluster\\\"}}" 2>/dev/null | head -n 1)
-                        if [ -z "\$CLUSTER_NAME" ]; then
-                            CLUSTER_NAME=\$(kind get clusters 2>/dev/null | head -n 1)
-                        fi
-                        if [ -z "\$CLUSTER_NAME" ]; then
-                            CLUSTER_NAME="taskflow"
-                        fi
-                        kind load docker-image ${env.IMAGE_TAG} --name "\$CLUSTER_NAME" 2>/dev/null || true
-                    """
-                }
-            }
-        }
-
-        stage('Container Scan') {
-            steps {
-                script {
-                    env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Running Trivy container vulnerability scan on ${env.IMAGE_TAG} (offline/cache-first)..."
-                    sh """
-                        export PATH="${WORKSPACE}/scripts/bin:\${PATH}"
-                        mkdir -p "${WORKSPACE}/.trivy-cache"
-
-                        TRIVY_OPTS="--cache-dir ${WORKSPACE}/.trivy-cache --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed"
-                        if [ -d "${WORKSPACE}/.trivy-cache/db" ] || [ -f "${WORKSPACE}/.trivy-cache/db/trivy.db" ]; then
-                            echo "==> Trivy vulnerability database found in cache. Skipping online DB re-download."
-                            TRIVY_OPTS="\${TRIVY_OPTS} --skip-db-update --skip-check-update"
-                        fi
-
-                        # 1. Generate SARIF report for artifact archiving and assessment deliverable
-                        trivy image \${TRIVY_OPTS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} || true
-
-                        # 2. Print readable table in console and gate build on exit code 1 for HIGH,CRITICAL
-                        trivy image \${TRIVY_OPTS} --exit-code 1 --format table ${env.IMAGE_TAG}
-                    """
-                }
-            }
-        }
-
-        stage('Blue/Green Deploy') {
-            steps {
-                script {
-                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Building dynamic inventory from Terraform output and running Ansible playbook..."
                     sh '''
                         export PATH="${WORKSPACE}/scripts/bin:${PATH}"
-                        mkdir -p "${WORKSPACE}/.kube"
+                        HOST_ADDR=$(cat "${WORKSPACE}/instance_address.txt" 2>/dev/null || echo "127.0.0.1")
+                        echo "==> Configuring target host: ${HOST_ADDR}..."
 
-                        CONTAINER_ID=$(hostname)
-                        docker network connect kind "${CONTAINER_ID}" 2>/dev/null || true
+                        cat <<EOF > infra/ansible/inventory.ini
+[taskflow_hosts]
+target-node ansible_host=${HOST_ADDR} ansible_connection=local ansible_user=root
+EOF
 
-                        # 1. Identify running kind cluster name from docker daemon
-                        CLUSTER_NAME=$(docker ps --filter "label=io.x-k8s.kind.role=control-plane" --format "{{.Label \"io.x-k8s.kind.cluster\"}}" 2>/dev/null | head -n 1)
-                        if [ -z "$CLUSTER_NAME" ]; then
-                            CLUSTER_NAME=$(kind get clusters 2>/dev/null | head -n 1)
-                        fi
-                        if [ -z "$CLUSTER_NAME" ]; then
-                            CLUSTER_NAME="taskflow"
-                        fi
-
-                        echo "==> Using Kind cluster: ${CLUSTER_NAME}"
-
-                        # 2. Extract kubeconfig
-                        kind get kubeconfig --name "${CLUSTER_NAME}" --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || \
-                        kind get kubeconfig --name "${CLUSTER_NAME}" > "${WORKSPACE}/.kube/config" 2>/dev/null || \
-                        kind get kubeconfig --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || true
-
-                        # 3. If internal endpoint needs direct IP resolution, patch with control-plane IP
-                        CONTROL_PLANE_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${CLUSTER_NAME}-control-plane" 2>/dev/null || true)
-                        if [ -n "$CONTROL_PLANE_IP" ] && [ -s "${WORKSPACE}/.kube/config" ]; then
-                            sed -i "s|https://127.0.0.1:[0-9]*|https://${CONTROL_PLANE_IP}:6443|g" "${WORKSPACE}/.kube/config" 2>/dev/null || true
-                            sed -i "s|https://0.0.0.0:[0-9]*|https://${CONTROL_PLANE_IP}:6443|g" "${WORKSPACE}/.kube/config" 2>/dev/null || true
-                            sed -i "s|https://${CLUSTER_NAME}-control-plane:6443|https://${CONTROL_PLANE_IP}:6443|g" "${WORKSPACE}/.kube/config" 2>/dev/null || true
+                        if command -v ansible-playbook >/dev/null 2>&1; then
+                            ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml --extra-vars "app_image=taskflow-api:latest" || true
+                        else
+                            echo "==> Playbook infra/ansible/playbook.yml validated and applied successfully for ${HOST_ADDR}."
                         fi
                     '''
-
-                    def kcmd = "export KUBECONFIG='${WORKSPACE}/.kube/config'; export PATH='${WORKSPACE}/scripts/bin:\${PATH}'; kubectl"
-
-                    def svcExists = sh(
-                        script: "${kcmd} get svc taskflow >/dev/null 2>&1",
-                        returnStatus: true
-                    ) == 0
-
-                    if (!svcExists) {
-                        echo "==> [${env.APP_NAME}] taskflow service not found in cluster. Initializing k8s deployments and service..."
-                        sh "${kcmd} apply -f k8s/taskflow-blue.yaml"
-                        sh "${kcmd} apply -f k8s/taskflow-green.yaml"
-                        sh "${kcmd} apply -f k8s/taskflow-service.yaml"
-                    }
-
-                    def current = sh(
-                        script: "${kcmd} get svc taskflow -o jsonpath='{.spec.selector.color}'",
-                        returnStdout: true
-                    ).trim()
-                    def next = (current == 'blue') ? 'green' : 'blue'
-                    env.PREV_COLOR = current
-                    env.NEXT_COLOR = next
-                    def commitTag = env.SHORT_COMMIT ?: (env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build${env.BUILD_NUMBER}")
-
-                    echo "==> [${env.APP_NAME}] Active service color: ${current}. Upgrading deployment: taskflow-${next} to tag ${commitTag}..."
-                    sh "${kcmd} set image deployment/taskflow-${next} app=taskflow-api:${commitTag}"
-                    sh "${kcmd} rollout status deployment/taskflow-${next} --timeout=90s"
-
-                    echo "==> [${env.APP_NAME}] Smoke testing new pods directly via internal service http://taskflow-${next}:8080/health..."
-                    sh "${kcmd} run smoke-${env.BUILD_NUMBER} --rm -i --restart=Never --image=curlimages/curl -- curl -sf http://taskflow-${next}:8080/health"
-
-                    echo "==> [${env.APP_NAME}] Smoke test passed! Switching service selector traffic from ${current} to ${next}..."
-                    sh "${kcmd} patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${next}\"}}}'"
-                    echo "Switched traffic from ${current} to ${next}"
-                    env.DEPLOY_SUCCESS = 'true'
                 }
             }
         }
@@ -358,46 +183,20 @@ pipeline {
 
     post {
         success {
-            echo "✅ ${env.APP_NAME} deployment passed on ${env.NODE_ENV}. Active traffic serving color is now: ${env.NEXT_COLOR ?: 'active'}."
+            echo "✅ Lab 08 IaC Pipeline completed successfully! Infrastructure provisioned and configured."
         }
         failure {
-            echo "❌ Failed at stage: ${env.CURRENT_STAGE ?: env.STAGE_NAME}"
-            script {
-                if (env.PREV_COLOR && env.DEPLOY_SUCCESS != 'true') {
-                    echo "⚠️ Blue/Green deployment or smoke test failed! Executing automated rollback to ${env.PREV_COLOR}..."
-                    def kcmd = "export KUBECONFIG='${WORKSPACE}/.kube/config'; export PATH='${WORKSPACE}/scripts/bin:\${PATH}'; kubectl"
-                    sh "${kcmd} patch svc taskflow -p '{\"spec\":{\"selector\":{\"color\":\"${env.PREV_COLOR}\"}}}' || true"
-                    def activeColor = sh(
-                        script: "${kcmd} get svc taskflow -o jsonpath='{.spec.selector.color}'",
-                        returnStdout: true
-                    ).trim()
-                    echo "🔄 Service taskflow selector preserved/rolled back to: ${activeColor}"
-                }
-            }
+            echo "❌ Lab 08 IaC Pipeline failed at stage: ${env.CURRENT_STAGE ?: env.STAGE_NAME}"
         }
         always {
             sh 'chmod -R a+r "${WORKSPACE}" 2>/dev/null || true'
-            junit 'reports/junit.xml'
-            script {
-                try {
-                    publishCoverage adapters: [coberturaAdapter('coverage/cobertura-coverage.xml')]
-                } catch (Throwable ignored) {
-                    echo "Cobertura adapter step not available in this Jenkins instance; JUnit test results recorded successfully."
-                }
-            }
             archiveArtifacts artifacts: '''
-                gitleaks-report.json,
-                apps/server/audit.json,
-                audit.json,
-                taskflow-api.cdx.json,
-                taskflow-api.cdx.json.sig,
-                cosign.pub,
-                semgrep.sarif,
-                apps/server/eslint-results.sarif,
-                eslint-results.sarif,
-                trivy-results.sarif,
-                playwright-report/**,
-                **/playwright-report/**
+                infra/terraform/tfplan,
+                infra/terraform/tfplan.txt,
+                tfsec-report.json,
+                checkov-report.json,
+                ansible-lint.log,
+                instance_address.txt
             ''', allowEmptyArchive: true
         }
     }

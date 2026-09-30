@@ -93,3 +93,18 @@ jenkins_home.tgz
 # Downloaded tools / Binaries
 scripts/bin/
 !scripts/bin/sonar-scanner
+
+# ==========================================
+# IaC: Terraform & Ansible (infra/)
+# ==========================================
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan*
+.terraform.lock.hcl
+*.retry
+infra/ansible/inventory.ini
+ansible-lint.log
+tfsec-report.json
+checkov-report.json

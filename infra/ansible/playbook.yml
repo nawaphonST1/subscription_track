@@ -1,0 +1,65 @@
+---
+- name: Configure provisioned taskflow host with Docker and Node.js
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    nodejs_version: "20.x"
+    app_image: "taskflow-api:latest"
+    app_container_name: "taskflow-api"
+    app_port: 8080
+
+  tasks:
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_pkg_mgr == 'apt'
+
+    - name: Install prerequisite system packages
+      ansible.builtin.package:
+        name:
+          - curl
+          - gnupg
+          - ca-certificates
+          - lsb-release
+          - iptables
+        state: present
+
+    - name: Install Node.js runtime
+      ansible.builtin.package:
+        name:
+          - nodejs
+          - npm
+        state: present
+
+    - name: Install Docker container engine
+      ansible.builtin.package:
+        name:
+          - docker.io
+        state: present
+
+    - name: Ensure Docker service is started and enabled
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+      ignore_errors: true
+
+    - name: Pull taskflow-api container image built in pipeline
+      ansible.builtin.command:
+        cmd: "docker pull {{ app_image }}"
+      register: docker_pull_result
+      changed_when: "'Downloaded newer image' in docker_pull_result.stdout or 'Pull complete' in docker_pull_result.stdout"
+      ignore_errors: true
+
+    - name: Verify host environment prerequisites
+      ansible.builtin.command:
+        cmd: "node --version"
+      register: node_version_check
+      changed_when: false
+
+    - name: Display installed Node.js version
+      ansible.builtin.debug:
+        msg: "Provisioned host is running Node.js: {{ node_version_check.stdout }}"
