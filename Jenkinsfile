@@ -24,11 +24,18 @@ pipeline {
                         dir('infra/terraform') {
                             sh '''
                                 export PATH="${WORKSPACE}/scripts/bin:${PATH}"
+                                mkdir -p "${WORKSPACE}/scripts/bin"
                                 if [ ! -f "${WORKSPACE}/scripts/bin/terraform" ] && ! command -v terraform >/dev/null 2>&1; then
                                     echo "==> Downloading static Terraform CLI..."
-                                    mkdir -p "${WORKSPACE}/scripts/bin"
                                     curl -fsSL https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip -o "${WORKSPACE}/terraform.zip"
-                                    unzip -q -o "${WORKSPACE}/terraform.zip" -d "${WORKSPACE}/scripts/bin" || true
+                                    if command -v unzip >/dev/null 2>&1; then
+                                        unzip -q -o "${WORKSPACE}/terraform.zip" -d "${WORKSPACE}/scripts/bin"
+                                    elif command -v python3 >/dev/null 2>&1; then
+                                        python3 -c "import zipfile; zipfile.ZipFile('${WORKSPACE}/terraform.zip').extractall('${WORKSPACE}/scripts/bin')"
+                                    else
+                                        apt-get update -qq && apt-get install -y -qq unzip
+                                        unzip -q -o "${WORKSPACE}/terraform.zip" -d "${WORKSPACE}/scripts/bin"
+                                    fi
                                     rm -f "${WORKSPACE}/terraform.zip"
                                     chmod +x "${WORKSPACE}/scripts/bin/terraform" || true
                                 fi
