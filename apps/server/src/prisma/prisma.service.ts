@@ -11,8 +11,9 @@ export class PrismaService
   async onModuleInit() {
     try {
       await this.$connect();
-    } catch (error) {
-      this.logger.warn(`Database connection deferred (offline during startup): ${error?.message || error}`);
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      this.logger.warn(`Database connection deferred (offline during startup): ${msg}`);
     }
   }
 
