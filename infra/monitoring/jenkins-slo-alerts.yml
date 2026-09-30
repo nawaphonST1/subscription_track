@@ -1,0 +1,20 @@
+groups:
+  - name: jenkins-slo
+    rules:
+      - alert: JenkinsQueueBacklog
+        expr: jenkins_queue_size_value > 0 and avg_over_time(jenkins_queue_size_value[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Jenkins build queue backlog exceeds 2 minutes"
+          description: "Jenkins build queue has had queued jobs waiting (jenkins_queue_size_value > 0) with a 5m rolling average > 0 for more than 5 minutes. This indicates insufficient Kubernetes pod agent capacity."
+
+      - alert: JenkinsSLOBreachBuildDurationP95
+        expr: (jenkins_builds_duration_milliseconds_summary{quantile="0.95"} / 1000) > 360
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Jenkins pipeline p95 duration exceeds 6-minute SLO"
+          description: "p95 build latency for taskflow-api pipeline is above 360 seconds (6 minutes) against the 7-day rolling target."

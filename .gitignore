@@ -108,3 +108,4 @@ infra/ansible/inventory.ini
 ansible-lint.log
 tfsec-report.json
 checkov-report.json
+*.exe
