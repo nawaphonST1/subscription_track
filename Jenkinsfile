@@ -287,21 +287,34 @@ pipeline {
                         export PATH="${WORKSPACE}/scripts/bin:${PATH}"
                         mkdir -p "${WORKSPACE}/.kube"
 
-                        # Connect current container to kind docker network if needed
                         CONTAINER_ID=$(hostname)
                         docker network connect kind "${CONTAINER_ID}" 2>/dev/null || true
 
-                        # Retrieve kind cluster internal kubeconfig dynamically
-                        CLUSTER_NAME=$(kind get clusters 2>/dev/null | head -n 1)
-                        [ -z "$CLUSTER_NAME" ] && CLUSTER_NAME="taskflow"
+                        # 1. Identify kind cluster name from docker daemon
+                        CLUSTER_NAME=$(docker ps --filter "label=io.x-k8s.kind.role=control-plane" --format "{{.Label \"io.x-k8s.kind.cluster\"}}" 2>/dev/null | head -n 1)
+                        if [ -z "$CLUSTER_NAME" ]; then
+                            CLUSTER_NAME=$(kind get clusters 2>/dev/null | head -n 1)
+                        fi
+                        if [ -z "$CLUSTER_NAME" ]; then
+                            CLUSTER_NAME="taskflow"
+                            echo "==> Creating Kind cluster: ${CLUSTER_NAME}..."
+                            kind create cluster --name "${CLUSTER_NAME}" 2>/dev/null || true
+                            docker network connect kind "${CONTAINER_ID}" 2>/dev/null || true
+                        fi
 
+                        echo "==> Using Kind cluster: ${CLUSTER_NAME}"
+
+                        # 2. Extract kubeconfig
                         kind get kubeconfig --name "${CLUSTER_NAME}" --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || \
                         kind get kubeconfig --name "${CLUSTER_NAME}" > "${WORKSPACE}/.kube/config" 2>/dev/null || \
                         kind get kubeconfig --internal > "${WORKSPACE}/.kube/config" 2>/dev/null || true
 
-                        if [ ! -s "${WORKSPACE}/.kube/config" ] && [ -f "${HOME}/.kube/config" ]; then
-                            cp "${HOME}/.kube/config" "${WORKSPACE}/.kube/config"
-                            sed -i 's/127.0.0.1/host.docker.internal/g' "${WORKSPACE}/.kube/config" 2>/dev/null || true
+                        # 3. If internal endpoint needs direct IP resolution, patch with control-plane IP
+                        CONTROL_PLANE_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${CLUSTER_NAME}-control-plane" 2>/dev/null || true)
+                        if [ -n "$CONTROL_PLANE_IP" ] && [ -s "${WORKSPACE}/.kube/config" ]; then
+                            sed -i "s|https://127.0.0.1:[0-9]*|https://${CONTROL_PLANE_IP}:6443|g" "${WORKSPACE}/.kube/config" 2>/dev/null || true
+                            sed -i "s|https://0.0.0.0:[0-9]*|https://${CONTROL_PLANE_IP}:6443|g" "${WORKSPACE}/.kube/config" 2>/dev/null || true
+                            sed -i "s|https://${CLUSTER_NAME}-control-plane:6443|https://${CONTROL_PLANE_IP}:6443|g" "${WORKSPACE}/.kube/config" 2>/dev/null || true
                         fi
                     '''
 
