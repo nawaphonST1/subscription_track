@@ -21,8 +21,7 @@ USER node
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=node:node prisma ./prisma
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1000,gid=1000 \
-    pnpm install --frozen-lockfile \
+RUN pnpm install --frozen-lockfile --prefer-offline \
     && pnpm prisma:generate
 
 COPY --chown=node:node nest-cli.json tsconfig.json tsconfig.build.json ./

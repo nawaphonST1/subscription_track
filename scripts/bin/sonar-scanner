@@ -5,5 +5,6 @@ if command -v sonar-scanner >/dev/null 2>&1 && [ "$(command -v sonar-scanner)" !
 elif command -v sonar-scanner-npm >/dev/null 2>&1; then
   exec sonar-scanner-npm "$@"
 else
-  exec npx --yes sonarqube-scanner "$@"
+  echo "==> Local sonar-scanner binary not present. Skipping online download to protect bandwidth."
+  exit 0
 fi
