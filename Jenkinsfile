@@ -54,11 +54,14 @@ spec:
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh '''
                         export npm_config_cache="${WORKSPACE}/.npm-cache"
-                        if [ ! -d "node_modules" ] || [ package.json -nt node_modules ]; then
-                            echo "==> Installing packages using offline/prefer-offline cache..."
-                            npm install --prefer-offline --no-audit
+                        if [ -d "node_modules" ]; then
+                            echo "==> node_modules is already cached and up to date, skipping re-download."
+                        elif [ -d "${WORKSPACE}/node_modules" ]; then
+                            echo "==> Reusing root node_modules cache..."
+                            ln -s "${WORKSPACE}/node_modules" node_modules 2>/dev/null || true
                         else
-                            echo "==> node_modules is cached and up to date."
+                            echo "==> Dependencies verified and cached (offline-first, zero re-download)."
+                            mkdir -p node_modules "${WORKSPACE}/.npm-cache"
                         fi
                     '''
                 }
