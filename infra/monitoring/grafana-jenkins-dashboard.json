@@ -96,7 +96,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "(sum(jenkins_runs_success_build_count) / (sum(jenkins_runs_total_build_count) > 0 or 1)) * 100 or ((sum(rate(jenkins_builds_success_build_count_total[1h])) / sum(rate(jenkins_builds_total_build_count_total[1h]))) * 100)",
+          "expr": "(sum(jenkins_runs_success_total) / sum(jenkins_runs_total_total)) * 100 or ((sum(default_jenkins_builds_success_build_count_total) / sum(default_jenkins_builds_total_build_count_total)) * 100)",
           "legendFormat": "Build Success Rate (%)",
           "range": true,
           "refId": "A"
@@ -120,7 +120,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "Duration",
+            "axisLabel": "Duration (s)",
             "axisPlacement": "auto",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -194,10 +194,21 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jenkins_builds_duration_milliseconds_summary{quantile=\"0.95\"} / 1000 or (histogram_quantile(0.95, sum(rate(jenkins_builds_duration_milliseconds_summary_bucket[5m])) by (le)) / 1000)",
-          "legendFormat": "p95 Build Duration (s)",
+          "expr": "max by (jenkins_job) (default_jenkins_builds_last_build_duration_milliseconds{jenkins_job=~\"taskflow-multibranch/jenkins-lab-nawaphon\"}) / 1000",
+          "legendFormat": "{{jenkins_job}} (s)",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "quantile(0.95, default_jenkins_builds_last_build_duration_milliseconds{jenkins_job=~\"taskflow.*\"}) / 1000",
+          "legendFormat": "p95 Overall Duration (s)",
+          "range": true,
+          "refId": "B"
         }
       ],
       "title": "Panel 2: p95 Build Duration (SLO < 6m)",
@@ -295,7 +306,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jenkins_queue_size_value",
+          "expr": "max(jenkins_queue_size_value) or max(default_jenkins_executors_queue_length)",
           "legendFormat": "Queue Size (Waiting Items)",
           "range": true,
           "refId": "A"
@@ -306,7 +317,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jenkins_queue_blocked_value",
+          "expr": "max(jenkins_queue_blocked_value)",
           "legendFormat": "Queue Blocked",
           "range": true,
           "refId": "B"
@@ -344,6 +355,6 @@
   "timezone": "browser",
   "title": "Jenkins Pipeline Health & Dynamic Kubernetes Agents (Lab 09)",
   "uid": "jenkins-pipeline-health-lab09",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

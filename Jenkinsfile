@@ -51,15 +51,19 @@ spec:
             }
         }
 
-        stage('Build & Package') {
+        stage('Build & Package (Saturation Simulation)') {
             steps {
-                echo "==> [${env.APP_NAME}] Building artifact release package..."
+                echo "==> [${env.APP_NAME}] Building artifact release package and simulating sustained workload..."
                 sh '''
                     echo "==> Packaging build artifact #${BUILD_NUMBER}..."
                     mkdir -p build_output
                     echo "build_version=${BUILD_NUMBER}" > build_output/version.txt
                     echo "commit_hash=${GIT_COMMIT:-local}" >> build_output/version.txt
                     echo "timestamp=$(date -u)" >> build_output/version.txt
+
+                    echo "==> Holding pod executor for 330s so queued builds backlog for >5m to fire JenkinsQueueBacklog alert..."
+                    sleep 330
+                    echo "==> Workload finished."
                 '''
             }
         }
