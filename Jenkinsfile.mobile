@@ -1,0 +1,114 @@
+// subscription_track mobile CI (Lab 10). Jenkins job "taskflow-mobile-pipeline", Script Path = Jenkinsfile.mobile
+// (the root Jenkinsfile is the NestJS server pipeline; the Flutter app lives in apps/mobile).
+//
+// Flutter runs in ghcr.io/cirruslabs/flutter:stable (the Docker Hub cirruslabs/flutter name no longer exists).
+// The image runs as root and its SDK is root-owned, so the container runs as root and the post step hands the
+// workspace files back to the workspace owner. Named volumes cache pub packages and Gradle (Docker volumes,
+// not host bind mounts).
+pipeline {
+    agent {
+        docker {
+            image 'ghcr.io/cirruslabs/flutter:stable'
+            label 'linux-build'
+            args '-u root:root -v subscription-mobile-pub-cache:/root/.pub-cache -v subscription-mobile-gradle:/root/.gradle'
+        }
+    }
+
+    options {
+        timeout(time: 40, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Flutter Analyze') {
+            steps {
+                dir('apps/mobile') {
+                    sh 'flutter --version'
+                    sh 'flutter pub get'
+                    sh 'flutter analyze'
+                }
+            }
+        }
+
+        stage('Flutter Test') {
+            steps {
+                dir('apps/mobile') {
+                    sh 'flutter test --coverage'
+                }
+            }
+        }
+
+        stage('SCA — osv-scanner') {
+            steps {
+                dir('apps/mobile') {
+                    // Findings are reported but do not block (Lab 10 treats this SCA as informational). Anything that
+                    // is NOT "vulnerabilities found" (download failure, scanner crash) still fails the stage.
+                    sh '''
+                        rm -f osv-scanner osv-report.txt
+                        curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+                        chmod +x osv-scanner
+                        ./osv-scanner --version
+                        rc=0
+                        ./osv-scanner --lockfile=pubspec.lock > osv-report.txt 2>&1 || rc=$?
+                        cat osv-report.txt
+                        rm -f osv-scanner
+                        echo "osv-scanner exit code: $rc (0 = clean, 1 = vulnerabilities found, reported only)"
+                        if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
+                            echo "osv-scanner failed operationally (not a finding)"; exit "$rc"
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Build Debug APK') {
+            steps {
+                dir('apps/mobile') {
+                    sh '''
+                        rm -rf build/app/outputs
+                        flutter build apk --debug
+                        # exit code alone is not proof: the file must exist and be non-empty
+                        test -s build/app/outputs/flutter-apk/app-debug.apk
+                        ls -l build/app/outputs/flutter-apk/app-debug.apk
+                    '''
+                }
+            }
+        }
+
+        stage('Build Signed Release AAB') {
+            steps {
+                // No `when { branch 'main' }`: in a plain Pipeline-from-SCM job BRANCH_NAME is unset, so that
+                // condition would silently skip this stage on every branch.
+                dir('apps/mobile') {
+                    withCredentials([
+                        file(credentialsId: 'android-keystore', variable: 'KEYSTORE_FILE'),
+                        string(credentialsId: 'android-keystore-password', variable: 'KEYSTORE_PASSWORD'),
+                        string(credentialsId: 'android-key-alias', variable: 'KEY_ALIAS')
+                    ]) {
+                        // android/app/build.gradle.kts reads KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS from the
+                        // environment, so nothing secret is written to the workspace and nothing is committed.
+                        sh '''
+                            flutter build appbundle --release \
+                              --build-name=1.0.0 \
+                              --build-number=${BUILD_NUMBER}
+                            AAB=build/app/outputs/bundle/release/app-release.aab
+                            test -s "$AAB"
+                            ls -l "$AAB"
+                            # independent proof that it is signed with OUR key, not the debug key
+                            keytool -printcert -jarfile "$AAB" | tee aab-signer.txt
+                            grep -q "CN=Lab10" aab-signer.txt
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // root-owned build output must not block the next run / the agent's own cleanup
+            sh 'chown -R "$(stat -c \'%u:%g\' .)" . || true'
+            archiveArtifacts artifacts: 'apps/mobile/build/app/outputs/**/*.apk,apps/mobile/build/app/outputs/**/*.aab,apps/mobile/aab-signer.txt,apps/mobile/coverage/lcov.info', allowEmptyArchive: true
+        }
+    }
+}

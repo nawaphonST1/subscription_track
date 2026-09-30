@@ -25,11 +25,27 @@ android {
         versionName = flutter.versionName
     }
 
+    // Release signing data comes ONLY from the environment (Jenkins withCredentials supplies it); nothing
+    // secret is committed. KEYSTORE_FILE is the path of the keystore, KEYSTORE_PASSWORD is used for the store and
+    // the key, KEY_ALIAS is the key alias.
+    val releaseKeystore: String? = System.getenv("KEYSTORE_FILE")
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // With the env vars: real release signing. Without them (a plain local build) fall back to the debug
+            // key so `flutter run --release` still works - such a build is NOT a signed release.
+            signingConfig = if (releaseKeystore != null) signingConfigs.getByName("release")
+                            else signingConfigs.getByName("debug")
         }
     }
 }
