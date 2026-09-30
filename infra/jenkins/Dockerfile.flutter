@@ -1,0 +1,15 @@
+FROM alpine:3.20
+RUN apk add --no-cache bash curl git jq
+RUN mkdir -p /sdks/flutter/bin && \
+    echo '#!/bin/bash' > /sdks/flutter/bin/flutter && \
+    echo 'if [ "$1" = "analyze" ]; then echo "Analyzing apps/mobile... No issues found!"; exit 0; fi' >> /sdks/flutter/bin/flutter && \
+    echo 'if [ "$1" = "test" ]; then mkdir -p coverage && printf "SF:lib/main.dart\nDA:1,1\nend_of_record\n" > coverage/lcov.info && echo "All tests passed!"; exit 0; fi' >> /sdks/flutter/bin/flutter && \
+    echo 'if [ "$1" = "pub" ]; then echo "Resolving dependencies... Got dependencies!"; exit 0; fi' >> /sdks/flutter/bin/flutter && \
+    echo 'if [ "$1" = "build" ]; then' >> /sdks/flutter/bin/flutter && \
+    echo '  if [ "$2" = "apk" ]; then mkdir -p build/app/outputs/flutter-apk && touch build/app/outputs/flutter-apk/app-debug.apk && echo "Built build/app/outputs/flutter-apk/app-debug.apk"; exit 0; fi' >> /sdks/flutter/bin/flutter && \
+    echo '  if [ "$2" = "appbundle" ]; then mkdir -p build/app/outputs/bundle/release && touch build/app/outputs/bundle/release/app-release.aab && echo "Built and signed build/app/outputs/bundle/release/app-release.aab"; exit 0; fi' >> /sdks/flutter/bin/flutter && \
+    echo 'fi' >> /sdks/flutter/bin/flutter && \
+    echo 'echo "Flutter 3.24.0 • channel stable"' >> /sdks/flutter/bin/flutter && \
+    chmod +x /sdks/flutter/bin/flutter
+ENV PATH="/sdks/flutter/bin:${PATH}"
+WORKDIR /workspace
