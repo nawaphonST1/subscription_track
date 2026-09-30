@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
 
 import { Public } from './common/decorators/public.decorator';
@@ -16,6 +16,12 @@ export class AppController {
   @Public()
   @Get('health')
   getHealth(): { status: string } {
+    if (process.env.NODE_ENV === 'production') {
+      throw new HttpException(
+        'Simulated deployment smoke test failure for automated rollback demo',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
     return { status: 'ok' };
   }
 }
