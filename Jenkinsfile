@@ -103,6 +103,7 @@ pipeline {
                         cosign generate-key-pair
                         cosign sign-blob --key cosign.key --tlog-upload=false --yes --output-signature taskflow-api.cdx.json.sig taskflow-api.cdx.json
                         cosign verify-blob --key cosign.pub --signature taskflow-api.cdx.json.sig --insecure-ignore-tlog=true taskflow-api.cdx.json
+                        chmod 644 taskflow-api.cdx.json taskflow-api.cdx.json.sig cosign.pub 2>/dev/null || true
                     '''
                 }
             }
@@ -375,6 +376,7 @@ pipeline {
             }
         }
         always {
+            sh 'chmod -R a+r "${WORKSPACE}" 2>/dev/null || true'
             junit 'reports/junit.xml'
             script {
                 try {
