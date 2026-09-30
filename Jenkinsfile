@@ -284,42 +284,10 @@ spec:
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Querying Prometheus health metrics endpoint for rolling build success rate..."
-                    
-                    // Live Demo Failure simulation check
-                    if (params.SIMULATE_HEALTH_FAILURE == true || env.SIMULATE_HEALTH_FAILURE == 'true') {
-                        echo "❌ [HEALTH GATE BLOCKED]: Simulated rolling build success rate is 75.0% (< 90.0% threshold)!"
-                        echo "❌ Live gate actively blocked production deployment to prevent cascading failures."
-                        error("Pipeline Health Gate failed: Rolling build success rate (75.0%) is below 90% threshold.")
+                    echo "==> [${env.APP_NAME}] Running Pipeline Health Gate verification..."
+                    withEnv(["SIMULATE_HEALTH_FAILURE=${params.SIMULATE_HEALTH_FAILURE ?: false}"]) {
+                        sh 'node scripts/check-health-gate.mjs'
                     }
-
-                    sh '''
-                        PROM_TARGET="${PROMETHEUS_URL}"
-                        if echo "$PROM_TARGET" | grep -q "localhost"; then
-                            PROM_TARGET=$(echo "$PROM_TARGET" | sed 's/localhost/host.docker.internal/g')
-                        fi
-
-                        # Query rolling build success rate over the last 20 builds or 1 hour
-                        PROM_QUERY='sum(rate(jenkins_builds_success_total[1h])) / sum(rate(jenkins_builds_total[1h])) * 100'
-                        RESPONSE=$(curl -s -m 3 -G "${PROM_TARGET}/api/v1/query" --data-urlencode "query=${PROM_QUERY}" 2>/dev/null || true)
-
-                        if [ -n "$RESPONSE" ] && echo "$RESPONSE" | grep -q "status\":\"success\""; then
-                            SUCCESS_RATE=$(echo "$RESPONSE" | jq -r '.data.result[0].value[1] // empty' 2>/dev/null || true)
-                            if [ -n "$SUCCESS_RATE" ]; then
-                                echo "==> Prometheus Reported Rolling Build Success Rate: ${SUCCESS_RATE}%"
-                                PASS=$(awk -v rate="${SUCCESS_RATE}" 'BEGIN { if (rate >= 90.0) print "true"; else print "false"; }')
-                                if [ "$PASS" = "false" ]; then
-                                    echo "❌ ERROR: Rolling build success rate (${SUCCESS_RATE}%) is below 90% threshold!"
-                                    exit 1
-                                fi
-                            else
-                                echo "==> Prometheus query returned empty metric set (insufficient historical data); proceeding with gate pass."
-                            fi
-                        else
-                            echo "==> Prometheus endpoint (${PROM_TARGET}) standby; health index nominal."
-                        fi
-                        echo "✅ Pipeline Health Gate PASSED: Build health index >= 90%"
-                    '''
                 }
             }
         }
