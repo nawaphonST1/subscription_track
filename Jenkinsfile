@@ -10,7 +10,7 @@ metadata:
 spec:
   containers:
   - name: node
-    image: node:20-bookworm-security
+    image: node:20-alpine
     command: ['cat']
     tty: true
     volumeMounts:
