@@ -136,41 +136,19 @@ pipeline {
     post {
         success {
             echo "✅ [${env.APP_NAME}] Pipeline SUCCEEDED for branch ${env.BRANCH_NAME ?: 'current'}!"
-            script {
-                try {
-                    slackSend(
-                        channel: '#ci-deployments',
-                        color: 'good',
-                        message: "SUCCESS: Pipeline ${env.JOB_NAME} [Build #${env.BUILD_NUMBER}] on branch ${env.BRANCH_NAME ?: 'current'}\nURL: ${env.BUILD_URL}"
-                    )
-                } catch (Throwable ignored) {
-                    echo "Slack notification plugin not active; console notification emitted."
-                }
-            }
+            echo "📢 [Notification] Pipeline ${env.JOB_NAME} [Build #${env.BUILD_NUMBER}] - SUCCESS | Branch: ${env.BRANCH_NAME ?: 'current'} | URL: ${env.BUILD_URL}"
         }
         failure {
             echo "❌ [${env.APP_NAME}] Pipeline FAILED at stage ${env.CURRENT_STAGE ?: env.STAGE_NAME} on branch ${env.BRANCH_NAME ?: 'current'}!"
-            script {
-                try {
-                    slackSend(
-                        channel: '#ci-deployments',
-                        color: 'danger',
-                        message: "FAILURE: Pipeline ${env.JOB_NAME} [Build #${env.BUILD_NUMBER}] failed at stage ${env.CURRENT_STAGE} on branch ${env.BRANCH_NAME ?: 'current'}\nURL: ${env.BUILD_URL}"
-                    )
-                } catch (Throwable ignored) {
-                    echo "Slack notification plugin not active; console notification emitted."
-                }
-            }
+            echo "📢 [Notification] Pipeline ${env.JOB_NAME} [Build #${env.BUILD_NUMBER}] - FAILED at ${env.CURRENT_STAGE} | URL: ${env.BUILD_URL}"
         }
         always {
-            dir(fileExists('apps/mobile/pubspec.yaml') ? 'apps/mobile' : '.') {
-                archiveArtifacts artifacts: '''
-                    build/app/outputs/flutter-apk/*.apk,
-                    build/app/outputs/bundle/release/*.aab,
-                    coverage/lcov.info,
-                    osv-results.json
-                ''', allowEmptyArchive: true
-            }
+            archiveArtifacts artifacts: '''
+                **/build/app/outputs/flutter-apk/*.apk,
+                **/build/app/outputs/bundle/release/*.aab,
+                **/coverage/lcov.info,
+                **/osv-results.json
+            ''', allowEmptyArchive: true
         }
     }
 }
