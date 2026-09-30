@@ -46,8 +46,9 @@ These rules govern all AI Agent interactions and development workflows for this 
 3. **Autonomous Execution:**
    - Pre-configure all required runtime parameters, flags, and configuration files to run tasks autonomously without asking permission beforehand. Avoid interactive prompts or confirmations (e.g., auto-submit, non-interactive CLI flags like `-y`, `--yes`, or headless mode defaults).
    - After completing tasks, provide a thorough, structured report summarizing all executed commands, findings, and results to the user.
-4. **Assessment Over-Optimization Prohibition:**
-   - When provided with lab "ASSESSMENT", "DELIVERABLES", or grading criteria, the agent must **NOT** attempt to autonomously generate screenshots, create mock deliverable files, or run exhaustive hidden background tests to ensure a 100% pass rate.
+4. **Assessment Accuracy Over Points (No Over-Optimization):**
+   - When provided with lab "ASSESSMENT", "DELIVERABLES", or grading criteria, do **NOT** worry about points or score chasing. The objective is simply to fulfill the **ASSESSMENT requirements accurately and correctly**.
+   - Do **NOT** attempt to autonomously generate screenshots, create mock deliverable files, or run exhaustive hidden background tests to artificially ensure a 100% pass rate.
    - The agent's responsibility is solely to write the correct code/configuration required by the lab. Verifying the assessment and gathering deliverables is strictly the user's responsibility.
 
 ---
@@ -73,4 +74,14 @@ These rules govern all AI Agent interactions and development workflows for this 
   - Do NOT guess URLs, version tags, flags, or speculative workarounds that lead to trial-and-error iteration cycles.
   - Always verify official specifications, URLs, tool parameters, and binary compatibility before proposing or editing configurations.
   - Prioritize standard, robust, deterministic, and minimal-dependency approaches over experimental or unverified implementations.
+
+---
+
+## 10. Non-Regression & Working State Preservation
+- **Strict Mandate**: The agent must **NEVER break, degrade, or introduce errors into existing features, stages, or configurations that are already working**.
+- **Protocol**:
+  - Treat all previously working pipeline stages, scripts, and application logic as invariant baselines.
+  - When introducing new stages, features, or fixes, do NOT alter or compromise existing working behavior.
+  - Always verify backward compatibility with existing project configurations before applying changes.
+
 

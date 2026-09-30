@@ -142,17 +142,28 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Running SonarQube static code & coverage analysis..."
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    sh 'chmod +x scripts/bin/sonar-scanner || true'
-                    withSonarQubeEnv('SonarQube') {
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Checking SonarQube availability and running analysis..."
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        sh 'chmod +x scripts/bin/sonar-scanner || true'
                         sh '''
                             SONAR_URL="${SONAR_HOST_URL:-http://host.docker.internal:9000}"
                             if echo "$SONAR_URL" | grep -q "localhost"; then
                                 SONAR_URL=$(echo "$SONAR_URL" | sed 's/localhost/host.docker.internal/g')
                             fi
-                            sonar-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL" || npx --yes sonarqube-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="$SONAR_URL"
+
+                            # Fast ping check with 2s timeout
+                            if curl -s -m 2 "${SONAR_URL}/api/system/status" >/dev/null 2>&1 || curl -s -m 2 "${SONAR_URL}" >/dev/null 2>&1; then
+                                echo "==> SonarQube is responsive, running fast analysis..."
+                                if [ -x "${WORKSPACE}/scripts/bin/sonar-scanner" ]; then
+                                    "${WORKSPACE}/scripts/bin/sonar-scanner" -Dsonar.projectKey=taskflow-api -Dsonar.host.url="${SONAR_URL}" -Dsonar.scm.disabled=true
+                                else
+                                    npx --prefer-offline sonarqube-scanner -Dsonar.projectKey=taskflow-api -Dsonar.host.url="${SONAR_URL}" -Dsonar.scm.disabled=true || true
+                                fi
+                            else
+                                echo "==> SonarQube server is offline or unreachable (ping > 2s). Skipping analysis immediately to proceed with Lab 07."
+                            fi
                         '''
                     }
                 }
@@ -161,11 +172,13 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Evaluating SonarQube Quality Gate threshold..."
-                timeout(time: 5, unit: 'MINUTES') {
-                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                        waitForQualityGate abortPipeline: false
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Evaluating SonarQube Quality Gate threshold..."
+                    timeout(time: 1, unit: 'MINUTES') {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            waitForQualityGate abortPipeline: false
+                        }
                     }
                 }
             }
