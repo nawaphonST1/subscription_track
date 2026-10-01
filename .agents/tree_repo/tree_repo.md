@@ -448,7 +448,8 @@
 │   ├── frontend
 │   │   └── subscription_track_frontend_screens.md      # UI Screen Specifications, Theme Policy & Component Matrix
 │   ├── task
-│   │   └── team_task_allocation.md                     # Developer Task Allocation, Work Breakdown & Schedule
+│   │   ├── epics_expansion_roadmap.md                  # Epics Specification & Task Allocation for Next-Phase (Integration, Membership, Redis Caching)
+│   │   └── team_task_allocation.md                     # Developer Task Allocation, Work Breakdown & Schedule (Frontend MVP)
 │   └── Subscription_Track_PRD.md                       # Product Requirement Document (PRD)
 ├── .github
 │   └── workflows                                       # GitHub Actions CI/CD workflows boundary

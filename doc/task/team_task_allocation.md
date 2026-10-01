@@ -6,7 +6,8 @@
 **Duration:** 8 weeks  
 **Date:** 28 July 2026
 
-**Implementation status updated:** 12 September 2026 (Frontend MVP Feature-Complete — 5-Tab Shell, Add/Preset Packages, PIN Security & Theme Mode)
+**Implementation status updated:** 12 September 2026 (Frontend MVP Feature-Complete — 5-Tab Shell, Add/Preset Packages, PIN Security & Theme Mode)  
+> 📌 **Next Phase Roadmap & Epics:** สำหรับงานใน Phase 1.0 (เชื่อมต่อ Frontend-Backend, ระบบสมาชิก, และ Dual-Layer Redis Caching ใน Backend & Traefik) ติดตามได้ใน [epics_expansion_roadmap.md](file:///c:/Users/Devasipason/Desktop/subject/moblie%20app/subscription_track/doc/task/epics_expansion_roadmap.md)
 
 ---
 
