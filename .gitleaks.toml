@@ -1,0 +1,15 @@
+title = "Subscription Track Gitleaks Config"
+
+[allowlist]
+description = "Allowlist for known test mock fixtures and sample documentation tokens"
+paths = [
+    '''apps/server/test/.*''',
+    '''apps/server/src/notifications/notifications.service.spec.ts''',
+    '''apps/server/README.md''',
+    '''doc/.*'''
+]
+regexes = [
+    '''abc123def456''',
+    '''integration-test-secret-at-least-32-characters-entropy''',
+    '''renewal-sub-1-2026-10-08'''
+]

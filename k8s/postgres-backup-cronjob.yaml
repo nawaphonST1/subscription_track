@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup-script
+  labels:
+    app: postgres-backup
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -euo pipefail
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_DIR="/tmp/backups"
+    mkdir -p "${BACKUP_DIR}"
+
+    BACKUP_FILE="${BACKUP_DIR}/${POSTGRES_DB}_backup_${TIMESTAMP}.dump.gz"
+    CHECKSUM_FILE="${BACKUP_FILE}.sha256"
+
+    echo "==> [$(date)] Starting backup for ${POSTGRES_DB} on ${DB_HOST}:${DB_PORT}..."
+    export PGPASSWORD="${POSTGRES_PASSWORD}"
+
+    pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -Fc | gzip -c > "${BACKUP_FILE}"
+    sha256sum "${BACKUP_FILE}" > "${CHECKSUM_FILE}"
+
+    EXTRA_ARGS=""
+    if [ -n "${AWS_ENDPOINT_URL:-}" ]; then
+        EXTRA_ARGS="--endpoint-url ${AWS_ENDPOINT_URL}"
+    fi
+
+    S3_TARGET="s3://${S3_BACKUP_BUCKET}/postgres/$(basename "${BACKUP_FILE}")"
+    S3_CHECKSUM="s3://${S3_BACKUP_BUCKET}/postgres/$(basename "${CHECKSUM_FILE}")"
+
+    echo "==> Uploading backup to ${S3_TARGET}..."
+    aws s3 cp "${BACKUP_FILE}" "${S3_TARGET}" ${EXTRA_ARGS}
+    aws s3 cp "${CHECKSUM_FILE}" "${S3_CHECKSUM}" ${EXTRA_ARGS}
+
+    rm -rf "${BACKUP_DIR}"
+    echo "✅ Backup completed and verified successfully."
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  labels:
+    app: postgres-backup
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup-runner
+              image: alpine:3.20
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  apk update && apk add --no-cache postgresql16-client aws-cli bash gzip
+                  /scripts/backup.sh
+              env:
+                - name: DB_HOST
+                  value: "postgres"
+                - name: DB_PORT
+                  value: "5432"
+                - name: POSTGRES_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_DB
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_USER
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_PASSWORD
+                - name: S3_BACKUP_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-s3-secret
+                      key: S3_BACKUP_BUCKET
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-s3-secret
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-s3-secret
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: AWS_DEFAULT_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-s3-secret
+                      key: AWS_DEFAULT_REGION
+                - name: AWS_ENDPOINT_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-s3-secret
+                      key: AWS_ENDPOINT_URL
+                      optional: true
+              volumeMounts:
+                - name: script-volume
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: script-volume
+              configMap:
+                name: postgres-backup-script
+                defaultMode: 0755

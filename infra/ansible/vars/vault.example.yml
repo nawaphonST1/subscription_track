@@ -1,0 +1,25 @@
+# ==============================================================================
+# Ansible Vault Template: Production Secrets Schema
+# ==============================================================================
+# Copy this file to infra/ansible/vars/vault.yml and encrypt it using:
+#   ansible-vault encrypt infra/ansible/vars/vault.yml
+# NEVER commit unencrypted vault.yml or .vault_pass to version control.
+# ==============================================================================
+
+# Database Credentials
+vault_postgres_db: "subtracker_db"
+vault_postgres_user: "postgres"
+vault_postgres_password: "replace-with-a-secure-production-db-password"
+
+# Application Authentication Secrets (Minimum 32 characters, 256-bit entropy)
+vault_jwt_secret: "replace-with-a-cryptographically-random-secret-at-least-32-chars"
+
+# Redis Cache Credentials
+vault_redis_password: ""
+
+# S3 Backup Storage Credentials (for DP-103)
+vault_s3_backup_bucket: "subtracker-backups"
+vault_s3_backup_region: "ap-southeast-1"
+vault_s3_backup_endpoint: ""  # Leave empty for AWS S3, or set for MinIO/LocalStack
+vault_s3_backup_access_key: "replace-with-s3-access-key-id"
+vault_s3_backup_secret_key: "replace-with-s3-secret-access-key"
