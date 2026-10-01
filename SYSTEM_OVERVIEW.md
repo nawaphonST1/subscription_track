@@ -40,10 +40,10 @@ subscription_track/
 │   ├── mobile/         📱 ส่วนที่ 1: Frontend Mobile & Web Client (Flutter)
 │   └── server/         🖥️ ส่วนที่ 2: Backend REST API & Workers (NestJS)
 ├── infra/              🐳 ส่วนที่ 3: Infrastructure Configurations (Nginx, Postgres, Redis, Monitoring)
-├── doc/                📚 เอกสารสเปก, PRD, สถาปัตยกรรม, และการแบ่งงาน
 ├── scripts/            ⚙️ สคริปต์อัตโนมัติระดับ Monorepo
 ├── docker-compose.yml  🚀 ตัวจัดการ Container รันเครื่องแม่ข่ายและฐานข้อมูล
-└── SYSTEM_OVERVIEW.md  📄 เอกสารภาพรวมระบบฉบับนี้
+├── agent.md            📋 กฎระเบียบและแนวทางการทำงานร่วมกับ AI Agent
+└── SYSTEM_OVERVIEW.md  📄 เอกสารภาพรวมระบบฉบับนี้ (Living Architecture & System Source of Truth)
 ```
 
 ---
@@ -285,3 +285,12 @@ fvm flutter run -d chrome
 # หรือรันผ่าน Web Server:
 fvm flutter run -d web-server --web-port 8080
 ```
+
+---
+
+## 📝 6. บันทึกประวัติและการเปลี่ยนแปลงสถาปัตยกรรม (Architecture & System Changelog)
+
+| วันที่ | ขอบเขตการเปลี่ยนแปลง | รายละเอียด |
+|---|---|---|
+| **2026-10-02** | **Project Documentation & Agent Rules Cleanup** | ลบโฟลเดอร์ `/doc` ภายในโปรเจกต์ และยุบขอบเขต Agent ให้คงเหลือเพียง `agent.md` เป็นกฎหลัก พร้อมเพิ่มลงใน `.gitignore` โดยรวมศูนย์เอกสารภาพรวมระบบทั้งหมดมาไว้ที่ `SYSTEM_OVERVIEW.md` ฉบับนี้เพียงจุดเดียว ซึ่ง AI Agent จะต้องเข้ามาอัปเดตและอธิบายรายละเอียดทุกครั้งหลังปฏิบัติงานเสร็จสิ้นตาม Rule 6 |
+
