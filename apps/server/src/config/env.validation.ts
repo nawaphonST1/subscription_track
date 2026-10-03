@@ -10,6 +10,14 @@ const environmentSchema = z.object({
   // published to the host or proxied by nginx. 0 asks the OS for a free port,
   // which is what tests use.
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+  // Rolling window for the `active_users` gauge. Counted in process memory
+  // from authenticated requests; no user id ever leaves the process.
+  ACTIVE_USERS_WINDOW_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(86400)
+    .default(900),
   DB_HOST: z.string().trim().min(1, 'DB_HOST is required'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
   DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),

@@ -2,11 +2,13 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { QuerySubscriptionDto } from './dto/query-subscription.dto';
+import { BusinessMetrics } from '../metrics/business.metrics';
 import {
   BillingCycle,
   Prisma,
@@ -16,7 +18,10 @@ import {
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly metrics?: BusinessMetrics,
+  ) {}
 
   async findAll(userId: string, query: QuerySubscriptionDto) {
     const where: Prisma.UserSubscriptionWhereInput = {
@@ -218,6 +223,8 @@ export class SubscriptionsService {
       },
     });
 
+    this.metrics?.recordSubscriptionCreated();
+
     return {
       ...sub,
       price: Number(sub.price),
@@ -263,6 +270,8 @@ export class SubscriptionsService {
       },
     });
 
+    this.metrics?.recordSubscriptionUpdated();
+
     return {
       ...updated,
       price: Number(updated.price),
@@ -281,6 +290,8 @@ export class SubscriptionsService {
     await this.prisma.userSubscription.delete({
       where: { id },
     });
+
+    this.metrics?.recordSubscriptionDeleted();
 
     return { message: 'Subscription deleted successfully' };
   }

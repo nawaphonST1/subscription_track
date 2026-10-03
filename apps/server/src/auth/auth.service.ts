@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -9,12 +10,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { NotificationType } from '@prisma/client';
+import { BusinessMetrics } from '../metrics/business.metrics';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    // Optional so the many unit tests that construct this service directly
+    // keep working; MetricsModule is global, so production always has it.
+    @Optional() private readonly metrics?: BusinessMetrics,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -76,11 +81,13 @@ export class AuthService {
     });
 
     if (!user) {
+      this.metrics?.recordLogin('failure', 'password');
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password_hash);
     if (!isMatch) {
+      this.metrics?.recordLogin('failure', 'password');
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -88,6 +95,8 @@ export class AuthService {
       sub: user.id,
       email: user.email,
     });
+
+    this.metrics?.recordLogin('success', 'password');
 
     return {
       token,
