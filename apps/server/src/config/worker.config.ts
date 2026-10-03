@@ -4,6 +4,7 @@ import { validateWorkerEnvironment } from './worker-env.validation';
 export interface WorkerConfiguration {
   redisHost: string;
   redisPort: number;
+  metricsPort: number;
   pushProvider: 'stub' | 'fcm';
   fcmServiceAccountJson?: string;
 }
@@ -16,6 +17,7 @@ export const workerConfig = registerAs('worker', (): WorkerConfiguration => {
   return {
     redisHost: environment.REDIS_HOST,
     redisPort: environment.REDIS_PORT,
+    metricsPort: environment.METRICS_PORT,
     pushProvider: environment.PUSH_PROVIDER,
     fcmServiceAccountJson: environment.FCM_SERVICE_ACCOUNT_JSON,
   };
