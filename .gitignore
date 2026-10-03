@@ -79,3 +79,7 @@ lerna-debug.log*
 # ==========================================
 infra/postgres/data/
 infra/redis/data/
+
+# Monitoring stack secrets: SSH private key + verified known_hosts for the
+# reverse tunnel to the production VM. Created by hand on the monitoring VM.
+infra/monitoring/secrets/

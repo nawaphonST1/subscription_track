@@ -1,0 +1,6 @@
+# Real secrets for this stack — created by hand on the monitoring VM.
+.env
+secrets/
+
+!.env.example
+!.gitignore
