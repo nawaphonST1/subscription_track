@@ -202,7 +202,7 @@ API รับการเชื่อมต่อที่ `http://localhost:300
 docker compose --env-file apps/server/.env down
 ```
 
-ใช้ `docker compose --env-file apps/server/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx ยังเป็น commented future drafts และไม่ได้เปิดใช้งานใน BE-004
+ใช้ `docker compose --env-file apps/server/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx เปิดใช้งานแล้วใน `docker-compose.yml` (Nginx reverse proxy ฟัง `http://localhost:3000` → `api:8080`) ดูวิธี deploy ขึ้น production VM ได้ที่หัวข้อ [🏭 Production Deployment (VM)](#-production-deployment-vm) ด้านล่าง
 
 ---
 
@@ -214,6 +214,63 @@ docker compose --env-file apps/server/.env down
   - `infra/postgres/`: สคริปต์ Schema initialization และ Volume persistence
   - `infra/redis/`: การตั้งค่า Redis Cache และ Queue storage
   - `infra/monitoring/`: การตั้งค่า Prometheus, Grafana และ Health probe endpoints
+
+---
+
+## 🏭 Production Deployment (VM)
+
+สำหรับทดสอบ deploy ขึ้นเครื่อง VM จริง (ไม่ใช่เครื่อง dev) ใช้ไฟล์ `docker-compose-prosuction.yml` ที่ root ของ repo — เป็น production variant ของ `docker-compose.yml` เดิม (service เดียวกัน: `api`, `postgres`, `redis`, `worker`, `nginx`) แต่ปิดช่องโหว่ที่ไม่ควรมีใน production:
+
+- `postgres`/`redis` **ไม่เปิด host port** (เข้าถึงได้เฉพาะในวง Compose network ผ่าน `api`/`worker`)
+- **ไม่มี default secret** ฝังในไฟล์ — ทุกค่า secret อ่านจาก `apps/server/.env.production` ผ่าน `env_file:` ถ้าไฟล์นี้ไม่มี `docker compose` จะ error ทันที ไม่ fallback ไปใช้ค่า dev
+- `api`/`worker` build จาก Dockerfile target `runtime` (production image, non-root user) ไม่ใช่ `development` ที่ bind-mount source
+- Migration แยกเป็น job `migrate` ต่างหาก ไม่รันอัตโนมัติตอน `up` (กัน container หลายตัวรัน migration ซ้ำกัน)
+
+> [!WARNING]
+> **ยังไม่มี HTTPS** — `infra/nginx/nginx.conf` ยังเป็น HTTP ล้วน ไฟล์นี้จึงเหมาะสำหรับทดสอบว่า stack รันได้จริงบน VM เท่านั้น **ห้ามเปิดพอร์ตนี้สู่อินเทอร์เน็ตสาธารณะ** จนกว่าจะมี TLS termination (เช่น Let's Encrypt/Certbot หรือ reverse proxy อื่นที่ทำ HTTPS ให้) ซึ่งยังไม่ได้ implement ใน repo นี้
+
+### ขั้นตอน Deploy
+
+**1) Clone repo ขึ้น VM และติดตั้ง Docker + Docker Compose v2** (ถ้ายังไม่มี)
+
+**2) ตั้งค่า secrets** (ไฟล์นี้ gitignore อยู่แล้ว ไม่ถูก commit แน่นอน):
+```bash
+cp apps/server/.env.production.example apps/server/.env.production
+# แก้ไข apps/server/.env.production ด้วยค่าจริง:
+# - POSTGRES_DB/USER/PASSWORD ต้องตรงกับ DB_NAME/DB_USER/DB_PASSWORD
+# - DATABASE_URL ต้อง sync กับค่าด้านบน
+# - JWT_SECRET ต้องสุ่มด้วย CSPRNG อย่างน้อย 32 ตัวอักษร
+```
+
+**3) ตรวจสอบว่า compose ไฟล์ถูกต้องและ secrets ครบ:**
+```bash
+docker compose -f docker-compose-prosuction.yml config
+```
+
+**4) รัน database migration ครั้งแรก (ก่อน `up` เสมอ):**
+```bash
+docker compose -f docker-compose-prosuction.yml run --rm migrate
+```
+
+**5) ขึ้นระบบทั้งหมด:**
+```bash
+docker compose -f docker-compose-prosuction.yml up -d --build
+```
+
+**6) ตรวจสอบสถานะและทดสอบ end-to-end:**
+```bash
+docker compose -f docker-compose-prosuction.yml ps
+curl -i http://localhost/health
+```
+ควรได้ `HTTP/1.1 200 OK` พร้อม `"status":"ok","checks":{"database":"ok"}` ที่ผ่านเส้นทาง Nginx (พอร์ต 80) → `api:8080` → PostgreSQL
+
+**7) หยุดระบบ (เก็บข้อมูลไว้ใน volume):**
+```bash
+docker compose -f docker-compose-prosuction.yml down
+```
+ใช้ `down -v` เฉพาะเมื่อต้องการลบข้อมูล PostgreSQL โดยตั้งใจเท่านั้น
+
+> มี production compose อีกไฟล์ที่ `apps/server/docker-compose-prosuction.yml` สำหรับกรณีต้องการ deploy เฉพาะ backend scope แยกจาก root — ใช้ไฟล์ secrets ร่วมกัน (`apps/server/.env.production`) แต่สำหรับการใช้งานทั่วไปแนะนำไฟล์ root ด้านบนเพราะรวม Nginx reverse proxy ไว้ให้แล้ว
 
 ---
 
