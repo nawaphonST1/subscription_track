@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { Registry } from 'prom-client';
+import { Registry } from '@prometheus-io/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HttpMetrics } from './http.metrics';
