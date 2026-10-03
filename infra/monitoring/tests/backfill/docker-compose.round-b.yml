@@ -1,0 +1,13 @@
+# PHASE 1.5 overlay — ROUND B (control round).
+#
+# Layered last, it swaps only the Prometheus config file that is mounted:
+#   -f ../../docker-compose.yml -f docker-compose.backfill.yml -f docker-compose.round-b.yml
+#
+# Compose merges volume mounts by target path, so this replaces the source of
+# /etc/prometheus/prometheus.yml and leaves every other mount (including the
+# prom-data volume) untouched. The phase-1 prometheus/prometheus.yml file is
+# never edited by the test.
+services:
+  prometheus:
+    volumes:
+      - ./tests/backfill/prometheus-no-ooo.yml:/etc/prometheus/prometheus.yml:ro

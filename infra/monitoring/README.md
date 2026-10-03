@@ -18,6 +18,7 @@ Prometheus + Loki + Grafana + blackbox-exporter + node-exporter สำหรั�
 | `grafana/provisioning/` | datasource (Prometheus/Loki) + ตัวโหลด dashboard — provision จากไฟล์ล้วน |
 | `grafana/dashboards/host-overview.json` | dashboard สุขภาพเครื่อง 6 panel |
 | `tunnel/Dockerfile` | autossh สำหรับ reverse tunnel ไป Azure (เฟส 3 เท่านั้น) |
+| `tests/backfill/` | ชุดทดสอบเฟส 1.5: ข้อมูลกลับมาครบไหมหลังช่วงขาด — ไม่ถูกสตาร์ตโดย `up` ปกติ (profile `backfilltest`) |
 
 ## 1. เตรียม `.env`
 
@@ -127,9 +128,11 @@ docker ps --format '{{.Names}}\t{{.Status}}'
    (เพราะ `pid: host` + `--path.rootfs=/host`) แต่ `node_network_*` เป็นของ namespace ใน container
    panel "Network I/O" จึงใช้ดูได้แค่ว่ามีชีวิตอยู่ · ตัวเลข network ของ **เครื่อง production** จะได้จาก
    exporter ที่ติดตั้งบน Azure ในเฟส 3 ซึ่งตั้ง host networking ได้เต็มที่
-2. **`out_of_order_time_window: 1h` ยังไม่ได้ทดสอบจริง** — ตั้งไว้เพื่อให้ Alloy ส่งข้อมูลย้อนหลังเข้ามาได้
-   หลัง tunnel หลุด **ต้องพิสูจน์ในเฟส 3** ด้วยการ `docker compose stop tunnel` 3 นาที แล้วเปิดใหม่
-   และดูว่าช่วงที่ขาดหายเติมกลับมาครบหรือไม่
+2. **`out_of_order_time_window: 1h` — สถานะ "รอผลทดสอบ"** ค่านี้ตั้งไว้เพื่อรองรับกรณีที่ Alloy ส่งข้อมูล
+   ย้อนหลังเข้ามาหลัง tunnel หลุด แต่ **ยังไม่มีหลักฐานว่าจำเป็นหรือไม่จำเป็น** และห้ามสรุปทั้งสองทางจนกว่าจะมีผลจริง
+   ชุดทดสอบที่ตอบคำถามนี้อยู่ที่ [`tests/backfill/`](tests/backfill/README.md) (เฟส 1.5) — เปรียบเทียบรอบที่มีค่านี้
+   กับรอบที่ไม่มี ภายใต้ช่วงขาด 3 แบบ · เมื่อได้ผลแล้วค่อยตัดสินใจว่าจะเก็บหรือถอดค่านี้ออก
+   และยังต้องยืนยันซ้ำกับ tunnel จริงในเฟส 3 อีกครั้ง
 3. **blackbox probe ตอนนี้ยิงเป้าหมายภายใน** (`http://grafana:3000/api/health`) เพื่อพิสูจน์ว่าการต่อสาย
    blackbox ↔ Prometheus ถูกต้องตั้งแต่เฟส 1 · เฟส 3 ให้เปลี่ยน target เป็น `https://<โดเมน prod>/health/ready`
 4. **Loki ยังไม่มี log เข้าเลยในเฟส 1** — ผู้ส่ง (Alloy บน Azure) มาในเฟส 3 ดังนั้น Explore ของ Loki ที่ว่างเปล่า

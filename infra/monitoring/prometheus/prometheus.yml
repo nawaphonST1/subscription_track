@@ -10,13 +10,16 @@ global:
 
 storage:
   tsdb:
-    # Phase 3: when the reverse SSH tunnel drops (the university captive-portal
-    # session lasts ~1 day), Alloy on the production VM buffers samples and
-    # replays them once the tunnel is back. With the default of 0s those
-    # replayed samples are rejected as out-of-order and the data is lost for
-    # good. 1h covers a realistic outage without materially growing the head
-    # block. MUST be re-tested in phase 3 ("stop the tunnel for 3 minutes,
-    # the gap has to fill in").
+    # STATUS: UNDER TEST — do not treat this as settled either way.
+    # When the reverse SSH tunnel drops (the university captive-portal session
+    # lasts ~1 day), Alloy on the production VM buffers samples and replays
+    # them once the tunnel is back. Those replayed samples are older than the
+    # head's max time; whether Prometheus accepts them without this setting is
+    # exactly what ../tests/backfill measures (phase 1.5: one round with this
+    # window, one round without). 1h is a starting value that covers a
+    # realistic outage without materially growing the head block. Keep or drop
+    # it once the A/B numbers exist, then confirm again over the real tunnel
+    # in phase 3.
     out_of_order_time_window: 1h
 
 scrape_configs:

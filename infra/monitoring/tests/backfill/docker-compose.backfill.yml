@@ -1,0 +1,38 @@
+# PHASE 1.5 overlay — the backfill test agent.
+#
+# Never used on its own. Always layered on top of the phase-1 stack:
+#   docker compose -f ../../docker-compose.yml -f docker-compose.backfill.yml ...
+#
+# `docker compose up -d` without --profile does NOT start anything from this
+# file, so the normal phase-1 stack is unaffected by its presence.
+services:
+  alloy-test:
+    profiles: ["backfilltest"]
+    image: grafana/alloy:v1.20.1
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      # WAL + component state. Backed by a named volume so that `restart`
+      # (scenario S3) replays buffered samples instead of starting empty.
+      - --storage.path=/var/lib/alloy/data
+      # The image default is 127.0.0.1:12345, which a published port cannot
+      # reach. The port below is loopback-only on the host.
+      - --server.http.listen-addr=0.0.0.0:12345
+      # This host only has internet behind a captive portal.
+      - --disable-reporting
+    ports:
+      # Test-only, loopback-only: run.sh reads Alloy's own /metrics from here.
+      - "127.0.0.1:12345:12345"
+    volumes:
+      - ./tests/backfill/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-test-data:/var/lib/alloy/data
+    mem_limit: 256m
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  alloy-test-data:
