@@ -17,9 +17,9 @@ vault_jwt_secret: "replace-with-a-cryptographically-random-secret-at-least-32-ch
 # Redis Cache Credentials
 vault_redis_password: ""
 
-# S3 Backup Storage Credentials (for DP-103)
-vault_s3_backup_bucket: "subtracker-backups"
-vault_s3_backup_region: "ap-southeast-1"
-vault_s3_backup_endpoint: ""  # Leave empty for AWS S3, or set for MinIO/LocalStack
-vault_s3_backup_access_key: "replace-with-s3-access-key-id"
-vault_s3_backup_secret_key: "replace-with-s3-secret-access-key"
+# Azure Blob Storage Backup Credentials (for DP-103)
+vault_azure_storage_account: "subtrackerbackups"
+vault_azure_storage_container: "postgres"
+vault_azure_storage_key: "replace-with-azure-storage-account-key"
+vault_azure_storage_sas_token: ""  # Optional SAS token (if authenticating via SAS instead of account key)
+

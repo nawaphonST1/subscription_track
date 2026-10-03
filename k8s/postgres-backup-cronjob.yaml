@@ -21,20 +21,23 @@ data:
     pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -Fc | gzip -c > "${BACKUP_FILE}"
     sha256sum "${BACKUP_FILE}" > "${CHECKSUM_FILE}"
 
-    EXTRA_ARGS=""
-    if [ -n "${AWS_ENDPOINT_URL:-}" ]; then
-        EXTRA_ARGS="--endpoint-url ${AWS_ENDPOINT_URL}"
+    BLOB_PATH="${AZURE_BACKUP_PREFIX:-backups}/$(basename "${BACKUP_FILE}")"
+    CHECKSUM_PATH="${AZURE_BACKUP_PREFIX:-backups}/$(basename "${CHECKSUM_FILE}")"
+    BLOB_BASE_URL="https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}"
+
+    echo "==> Uploading backup to Azure Blob Storage: ${BLOB_BASE_URL}/${BLOB_PATH}..."
+    export AZCOPY_ACCOUNT_KEY="${AZURE_STORAGE_KEY:-}"
+    SAS_SUFFIX=""
+    if [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
+        SAS_TOKEN_CLEAN=$(echo "${AZURE_STORAGE_SAS_TOKEN}" | sed 's/^[?]*//')
+        SAS_SUFFIX="?${SAS_TOKEN_CLEAN}"
     fi
 
-    S3_TARGET="s3://${S3_BACKUP_BUCKET}/postgres/$(basename "${BACKUP_FILE}")"
-    S3_CHECKSUM="s3://${S3_BACKUP_BUCKET}/postgres/$(basename "${CHECKSUM_FILE}")"
-
-    echo "==> Uploading backup to ${S3_TARGET}..."
-    aws s3 cp "${BACKUP_FILE}" "${S3_TARGET}" ${EXTRA_ARGS}
-    aws s3 cp "${CHECKSUM_FILE}" "${S3_CHECKSUM}" ${EXTRA_ARGS}
+    azcopy copy "${BACKUP_FILE}" "${BLOB_BASE_URL}/${BLOB_PATH}${SAS_SUFFIX}" --overwrite=true
+    azcopy copy "${CHECKSUM_FILE}" "${BLOB_BASE_URL}/${CHECKSUM_PATH}${SAS_SUFFIX}" --overwrite=true
 
     rm -rf "${BACKUP_DIR}"
-    echo "✅ Backup completed and verified successfully."
+    echo "✅ Backup completed and verified successfully on Azure Blob Storage."
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -62,7 +65,8 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  apk update && apk add --no-cache postgresql16-client aws-cli bash gzip
+                  apk update && apk add --no-cache postgresql16-client bash gzip curl ca-certificates
+                  curl -sSL https://aka.ms/downloadazcopy-v10-linux | tar -xz -C /tmp --strip-components=1 && mv /tmp/azcopy /usr/local/bin/azcopy && chmod +x /usr/local/bin/azcopy
                   /scripts/backup.sh
               env:
                 - name: DB_HOST
@@ -84,31 +88,27 @@ spec:
                     secretKeyRef:
                       name: postgres-secret
                       key: POSTGRES_PASSWORD
-                - name: S3_BACKUP_BUCKET
+                - name: AZURE_STORAGE_ACCOUNT
                   valueFrom:
                     secretKeyRef:
-                      name: backup-s3-secret
-                      key: S3_BACKUP_BUCKET
-                - name: AWS_ACCESS_KEY_ID
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_ACCOUNT
+                - name: AZURE_STORAGE_CONTAINER
                   valueFrom:
                     secretKeyRef:
-                      name: backup-s3-secret
-                      key: AWS_ACCESS_KEY_ID
-                - name: AWS_SECRET_ACCESS_KEY
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_CONTAINER
+                - name: AZURE_STORAGE_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: backup-s3-secret
-                      key: AWS_SECRET_ACCESS_KEY
-                - name: AWS_DEFAULT_REGION
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_KEY
+                      optional: true
+                - name: AZURE_STORAGE_SAS_TOKEN
                   valueFrom:
                     secretKeyRef:
-                      name: backup-s3-secret
-                      key: AWS_DEFAULT_REGION
-                - name: AWS_ENDPOINT_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: backup-s3-secret
-                      key: AWS_ENDPOINT_URL
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_SAS_TOKEN
                       optional: true
               volumeMounts:
                 - name: script-volume
@@ -125,3 +125,4 @@ spec:
               configMap:
                 name: postgres-backup-script
                 defaultMode: 0755
+

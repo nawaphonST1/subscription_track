@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Automated PostgreSQL Backup & S3 Sync Script
+# Automated PostgreSQL Backup & Azure Blob Storage Sync Script
 # ==============================================================================
 set -euo pipefail
 
@@ -11,8 +11,10 @@ DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-subtracker_db}"
 DB_USER="${DB_USER:-postgres}"
 DB_PASSWORD="${DB_PASSWORD:-password123}"
-S3_BUCKET="${S3_BACKUP_BUCKET:-subtracker-backups}"
-S3_PREFIX="${S3_BACKUP_PREFIX:-postgres}"
+
+AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-subtrackerbackups}"
+AZURE_CONTAINER="${AZURE_STORAGE_CONTAINER:-postgres}"
+AZURE_PREFIX="${AZURE_BACKUP_PREFIX:-backups}"
 
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_backup_${TIMESTAMP}.dump.gz"
 CHECKSUM_FILE="${BACKUP_FILE}.sha256"
@@ -36,21 +38,38 @@ echo "==> Generating SHA256 checksum..."
 sha256sum "${BACKUP_FILE}" > "${CHECKSUM_FILE}"
 cat "${CHECKSUM_FILE}"
 
-# 3. Upload to S3-compatible object storage
-S3_TARGET="s3://${S3_BUCKET}/${S3_PREFIX}/$(basename "${BACKUP_FILE}")"
-S3_CHECKSUM_TARGET="s3://${S3_BUCKET}/${S3_PREFIX}/$(basename "${CHECKSUM_FILE}")"
+# 3. Upload to Azure Blob Storage
+BLOB_PATH="${AZURE_PREFIX}/$(basename "${BACKUP_FILE}")"
+CHECKSUM_PATH="${AZURE_PREFIX}/$(basename "${CHECKSUM_FILE}")"
+BLOB_BASE_URL="https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_CONTAINER}"
 
-EXTRA_ARGS=""
-if [ -n "${AWS_ENDPOINT_URL:-}" ]; then
-    EXTRA_ARGS="--endpoint-url ${AWS_ENDPOINT_URL}"
+echo "==> Uploading backup archive to Azure Blob Storage: ${BLOB_BASE_URL}/${BLOB_PATH}..."
+
+if command -v azcopy >/dev/null 2>&1; then
+    export AZCOPY_ACCOUNT_KEY="${AZURE_STORAGE_KEY:-}"
+    SAS_SUFFIX=""
+    if [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
+        SAS_TOKEN_CLEAN=$(echo "${AZURE_STORAGE_SAS_TOKEN}" | sed 's/^[?]*//')
+        SAS_SUFFIX="?${SAS_TOKEN_CLEAN}"
+    fi
+    azcopy copy "${BACKUP_FILE}" "${BLOB_BASE_URL}/${BLOB_PATH}${SAS_SUFFIX}" --overwrite=true
+    azcopy copy "${CHECKSUM_FILE}" "${BLOB_BASE_URL}/${CHECKSUM_PATH}${SAS_SUFFIX}" --overwrite=true
+elif command -v az >/dev/null 2>&1; then
+    AUTH_ARGS=""
+    if [ -n "${AZURE_STORAGE_KEY:-}" ]; then
+        AUTH_ARGS="--account-key ${AZURE_STORAGE_KEY}"
+    elif [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
+        AUTH_ARGS="--sas-token ${AZURE_STORAGE_SAS_TOKEN}"
+    fi
+    az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_CONTAINER}" --file "${BACKUP_FILE}" --name "${BLOB_PATH}" --overwrite ${AUTH_ARGS}
+    az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_CONTAINER}" --file "${CHECKSUM_FILE}" --name "${CHECKSUM_PATH}" --overwrite ${AUTH_ARGS}
+else
+    echo "⚠️  Neither azcopy nor az CLI found. Local backup file is stored at: ${BACKUP_FILE}"
 fi
 
-echo "==> Uploading backup archive to S3: ${S3_TARGET}..."
-aws s3 cp "${BACKUP_FILE}" "${S3_TARGET}" ${EXTRA_ARGS}
-aws s3 cp "${CHECKSUM_FILE}" "${S3_CHECKSUM_TARGET}" ${EXTRA_ARGS}
-
-echo "✅ Backup successfully synced to offsite storage: ${S3_TARGET}"
+echo "✅ Backup successfully synced to Azure offsite storage: ${BLOB_BASE_URL}/${BLOB_PATH}"
 
 # 4. Clean up local temporary files
 rm -f "${BACKUP_FILE}" "${CHECKSUM_FILE}"
 echo "==> [$(date)] Backup process completed successfully!"
+
