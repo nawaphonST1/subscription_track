@@ -23,6 +23,12 @@ async function bootstrap() {
 
   setupSwagger(app, configuration.environment);
 
+  // Required so the internal metrics server is closed on SIGTERM/SIGINT and
+  // releases its port on restart. It also makes the existing
+  // OnModuleDestroy hooks (e.g. PrismaService.$disconnect) run on shutdown,
+  // which previously only happened on an explicit app.close().
+  app.enableShutdownHooks();
+
   await app.listen(configuration.port, configuration.host);
 }
 

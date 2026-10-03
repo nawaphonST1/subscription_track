@@ -34,7 +34,23 @@ describe('validateEnvironment', () => {
       DB_USER: 'subscription_track',
       DB_PASSWORD: 'test-password',
       JWT_SECRET: TEST_JWT_SECRET,
+      METRICS_PORT: 9464,
     });
+  });
+
+  it('defaults METRICS_PORT to the internal Prometheus port', () => {
+    expect(validateEnvironment(validEnvironment).METRICS_PORT).toBe(9464);
+  });
+
+  it('accepts an explicit METRICS_PORT, including 0 for an OS-assigned port', () => {
+    expect(
+      validateEnvironment({ ...validEnvironment, METRICS_PORT: '9465' })
+        .METRICS_PORT,
+    ).toBe(9465);
+    expect(
+      validateEnvironment({ ...validEnvironment, METRICS_PORT: '0' })
+        .METRICS_PORT,
+    ).toBe(0);
   });
 
   it('accepts a Docker Compose service name as DB_HOST', () => {
