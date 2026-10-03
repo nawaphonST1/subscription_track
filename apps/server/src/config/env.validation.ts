@@ -6,6 +6,10 @@ const environmentSchema = z.object({
   NODE_ENV: z.enum(nodeEnvironments).default('development'),
   APP_HOST: z.string().trim().min(1).default('0.0.0.0'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  // Internal Prometheus endpoint, served on its own HTTP server and never
+  // published to the host or proxied by nginx. 0 asks the OS for a free port,
+  // which is what tests use.
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   DB_HOST: z.string().trim().min(1, 'DB_HOST is required'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
   DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),
