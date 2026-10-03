@@ -1,4 +1,4 @@
-import { Registry } from 'prom-client';
+import { Registry } from '@prometheus-io/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MetricsServerService } from './metrics-server.service';

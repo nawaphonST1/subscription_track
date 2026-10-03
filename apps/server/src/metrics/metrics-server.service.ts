@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createServer, Server } from 'node:http';
-import { Registry } from 'prom-client';
+import { Registry } from '@prometheus-io/client';
 
 import type { AppConfiguration } from '../config/app.config';
 import { METRICS_REGISTRY } from './metrics.registry';
