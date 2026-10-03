@@ -35,7 +35,14 @@ describe('validateEnvironment', () => {
       DB_PASSWORD: 'test-password',
       JWT_SECRET: TEST_JWT_SECRET,
       METRICS_PORT: 9464,
+      ACTIVE_USERS_WINDOW_SECONDS: 900,
     });
+  });
+
+  it('defaults ACTIVE_USERS_WINDOW_SECONDS to 15 minutes', () => {
+    expect(
+      validateEnvironment(validEnvironment).ACTIVE_USERS_WINDOW_SECONDS,
+    ).toBe(900);
   });
 
   it('defaults METRICS_PORT to the internal Prometheus port', () => {
