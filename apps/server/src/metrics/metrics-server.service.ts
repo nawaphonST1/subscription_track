@@ -11,6 +11,7 @@ import { createServer, Server } from 'node:http';
 import { Registry } from '@prometheus-io/client';
 
 import type { AppConfiguration } from '../config/app.config';
+import type { WorkerConfiguration } from '../config/worker.config';
 import { METRICS_REGISTRY } from './metrics.registry';
 
 export const DEFAULT_METRICS_PORT = 9464;
@@ -64,8 +65,12 @@ export class MetricsServerService
   }
 
   private resolvePort(): number {
+    // The API registers its config under 'app' and the worker under
+    // 'worker'; only one of the two exists in a given process.
     const app = this.configService?.get<AppConfiguration>('app');
-    return app?.metricsPort ?? DEFAULT_METRICS_PORT;
+    const worker = this.configService?.get<WorkerConfiguration>('worker');
+
+    return app?.metricsPort ?? worker?.metricsPort ?? DEFAULT_METRICS_PORT;
   }
 
   private async listen(): Promise<void> {

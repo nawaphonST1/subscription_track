@@ -11,6 +11,7 @@ import type { WorkerConfiguration } from '../config/worker.config';
 import { RenewalReminderScheduler } from './queue/renewal-reminder.scheduler';
 import { RenewalReminderProcessor } from './jobs/renewal-reminder.processor';
 import { RENEWAL_REMINDER_QUEUE } from './queue/renewal-reminder.queue';
+import { WorkerMetricsModule } from './metrics/worker-metrics.module';
 
 // Worker runtime composition root. This module MUST NOT import AppModule,
 // main.ts, or anything that bootstraps HTTP/Swagger/JwtAuthGuard: the Worker
@@ -40,6 +41,9 @@ import { RENEWAL_REMINDER_QUEUE } from './queue/renewal-reminder.queue';
       },
     }),
     BullModule.registerQueue({ name: RENEWAL_REMINDER_QUEUE }),
+    // Internal Prometheus endpoint + queue gauges. Imports MetricsCoreModule
+    // only: nothing here loads Express, Swagger or the API HTTP stack.
+    WorkerMetricsModule,
   ],
   providers: [
     RenewalReminderDiscoveryService,

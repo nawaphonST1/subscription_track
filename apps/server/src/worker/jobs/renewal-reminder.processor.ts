@@ -1,4 +1,4 @@
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, Optional } from '@nestjs/common';
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { DeviceRegistrationStatus, SubscriptionStatus } from '@prisma/client';
@@ -13,6 +13,7 @@ import {
 } from '../../notifications/renewal-reminder/renewal-reminder.policy';
 import { PUSH_PROVIDER } from '../../notifications/push/push.constants';
 import { PushProvider } from '../../notifications/push/push-provider.interface';
+import { WorkerJobMetrics } from '../metrics/worker-job.metrics';
 import {
   RENEWAL_DISCOVERY_JOB,
   RENEWAL_REMINDER_QUEUE,
@@ -21,6 +22,10 @@ import {
   REMINDER_JOB_RETRY_OPTIONS,
   RenewalReminderJobData,
 } from '../queue/renewal-reminder.queue';
+
+function elapsedSeconds(startedAt: bigint): number {
+  return Number(process.hrtime.bigint() - startedAt) / 1e9;
+}
 
 function buildReminderContent(
   subscriptionName: string,
@@ -50,11 +55,48 @@ export class RenewalReminderProcessor extends WorkerHost {
     private readonly discoveryService: RenewalReminderDiscoveryService,
     @InjectQueue(RENEWAL_REMINDER_QUEUE) private readonly queue: Queue,
     @Inject(PUSH_PROVIDER) private readonly pushProvider: PushProvider,
+    // Optional so the existing unit tests keep constructing this processor
+    // unchanged; WorkerMetricsModule always provides it at runtime.
+    @Optional() private readonly metrics?: WorkerJobMetrics,
   ) {
     super();
   }
 
   async process(
+    job: Job<RenewalReminderJobData | Record<string, never>>,
+  ): Promise<void> {
+    const startedAt = process.hrtime.bigint();
+
+    try {
+      await this.dispatch(job);
+    } catch (error) {
+      this.measure('failure', startedAt);
+      // Rethrown unchanged: BullMQ's retry/backoff must see the original
+      // error, and measuring must not alter job semantics.
+      throw error;
+    }
+
+    this.measure('success', startedAt);
+  }
+
+  /**
+   * Belt and braces: WorkerJobMetrics already swallows its own failures, and
+   * this guarantees the job outcome stays untouched even if that ever stops
+   * being true.
+   */
+  private measure(result: 'success' | 'failure', startedAt: bigint): void {
+    try {
+      this.metrics?.recordJob(
+        RENEWAL_REMINDER_QUEUE,
+        result,
+        elapsedSeconds(startedAt),
+      );
+    } catch {
+      // Intentionally ignored.
+    }
+  }
+
+  private async dispatch(
     job: Job<RenewalReminderJobData | Record<string, never>>,
   ): Promise<void> {
     switch (job.name) {

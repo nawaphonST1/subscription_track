@@ -7,6 +7,10 @@ const workerEnvironmentSchema = z
     DATABASE_URL: z.string().trim().min(1, 'DATABASE_URL is required'),
     REDIS_HOST: z.string().trim().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
+    // Internal Prometheus endpoint of the worker process, same contract as
+    // the API's: never published to the host, 0 lets the OS pick a port
+    // (used by tests).
+    METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
     PUSH_PROVIDER: z.enum(pushProviders, {
       message: `PUSH_PROVIDER is required and must be one of: ${pushProviders.join(', ')}`,
     }),
