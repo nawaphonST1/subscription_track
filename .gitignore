@@ -25,6 +25,8 @@ migrate_working_dir/
 # Private & Secrets
 **/.private/
 agent.md
+agents.md
+AGENTS.md
 .agents/
 .agents/skills.json
 .env
