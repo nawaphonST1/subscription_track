@@ -293,4 +293,5 @@ fvm flutter run -d web-server --web-port 8080
 | วันที่ | ขอบเขตการเปลี่ยนแปลง | รายละเอียด |
 |---|---|---|
 | **2026-10-02** | **Project Documentation & Agent Rules Cleanup** | ลบโฟลเดอร์ `/doc` ภายในโปรเจกต์ และยุบขอบเขต Agent ให้คงเหลือเพียง `agent.md` เป็นกฎหลัก พร้อมเพิ่มลงใน `.gitignore` โดยรวมศูนย์เอกสารภาพรวมระบบทั้งหมดมาไว้ที่ `SYSTEM_OVERVIEW.md` ฉบับนี้เพียงจุดเดียว ซึ่ง AI Agent จะต้องเข้ามาอัปเดตและอธิบายรายละเอียดทุกครั้งหลังปฏิบัติงานเสร็จสิ้นตาม Rule 6 |
+| **2026-10-03** | **EPICDP 0, 1 & 4 Implementation & Verification** | ผสานรวมระบบ EPICDP 0, 1, 4 บน Branch `EPICDP-0,1-and-4`: เพิ่ม Docker Compose 5-service stack, Kubernetes StatefulSets/CronJob, Ansible Vault templates, และ Jenkins DevSecOps ครบทั้ง SAST (Semgrep/Gitleaks), SCA (pnpm audit), Test Orchestration (tmpfs postgres), Multi-arch Buildx, Trivy, Syft SBOM, DAST (OWASP ZAP) และ ArgoCD GitOps พร้อมแก้ไขปัญหา Local verification: ปรับ `start_period: 60s`, ติดตั้งและเปิดใช้งาน Gitleaks pre-commit บนเครื่อง, และติดตั้ง host dependencies ผ่านการทดสอบ Vitest 187/187 tests |
 
