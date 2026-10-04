@@ -178,6 +178,28 @@ class LoginScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+
+                // --- Switch to Register Link ---
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'ยังไม่มีบัญชีใช่ไหม? ',
+                      style: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.go(RouteConstants.register),
+                      child: const Text(
+                        'สมัครสมาชิก',
+                        style: TextStyle(
+                          color: Color(0xFF3B82F6),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
