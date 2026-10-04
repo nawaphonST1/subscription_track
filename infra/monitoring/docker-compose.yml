@@ -77,6 +77,13 @@ services:
       # ships in git.
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in infra/monitoring/.env}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # DP-504. The webhook URL is never in git: provisioning/alerting/
+      # contact-points.yaml contains the literal string $DISCORD_WEBHOOK_URL,
+      # which Grafana substitutes from this environment at startup. Required
+      # rather than optional on purpose — an unset variable would provision a
+      # contact point that delivers nowhere, and the first time anyone noticed
+      # would be the outage it was supposed to report.
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:?set DISCORD_WEBHOOK_URL in infra/monitoring/.env}
       # No outbound calls: this host only has internet while a captive-portal
       # session is alive, and analytics/update pings just add noise and delay.
       GF_ANALYTICS_REPORTING_ENABLED: "false"
