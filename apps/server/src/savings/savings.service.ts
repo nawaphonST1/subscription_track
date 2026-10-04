@@ -2,9 +2,11 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { BatchCancelDto } from './dto/batch-cancel.dto';
 import {
   BillingCycle,
@@ -15,7 +17,10 @@ import {
 
 @Injectable()
 export class SavingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
 
   private normalizeMonthlyCost(price: number, cycle: BillingCycle): number {
     switch (cycle) {
@@ -115,7 +120,7 @@ export class SavingsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       let totalYearlySavings = 0;
       const cancellationLogs = [];
 
@@ -170,6 +175,12 @@ export class SavingsService {
         })),
       };
     });
+
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
+    return result;
   }
 
   async getCancellationLogs(userId: string) {

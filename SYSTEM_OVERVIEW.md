@@ -93,7 +93,24 @@ subscription_track/
 | **SavingsModule** | `savings/` | เครื่องมือคำนวณการตัดลดค่าบริการ และบันทึกประวัติการยกเลิก (`SavingsCancellationLog`) |
 | **NotificationsModule** | `notifications/` | แจ้งเตือนรอบบิลใกล้ถึงกำหนด, แจ้งเตือนบริการที่ไม่ได้ใช้งาน (Unused Subscriptions) |
 | **AdminPackagesModule** | `admin/packages/` | จัดการแคตตาล็อกเทมเพลตบริการส่วนกลาง (Subscription Presets) สำหรับผู้ดูแลระบบ |
+| **CacheModule** | `cache/` | จัดการ Caching ทั่วทั้งระบบด้วย Redis (ioredis) พร้อม In-Memory Fallback สำหรับ Auth, Analytics, และ Packages |
 | **PrismaModule** | `prisma/` | Singleton Client สำหรับเชื่อมต่อและทำ Transaction ฐานข้อมูล PostgreSQL |
+
+### ⚡ สถาปัตยกรรมระบบแคช (Multi-Tier Caching Architecture)
+ระบบใช้กลยุทธ์ **Cache-Aside Pattern** และ **Event-Driven Cache Invalidation** ผ่าน `CacheService` เชื่อมต่อ Redis 7 (พร้อม In-Memory Fallback อัตโนมัติเมื่อรันแบบ Isolated/Unit Test):
+1. **Security Auth Cache (`auth:user:{userId}`):**
+   - แคช Minimal Safe User Payload (`{ id, email, name }`) ใน `JwtStrategy` (ไม่เก็บ Password หรือ PIN Hash)
+   - **TTL:** 180 วินาที (3 นาที) ช่วยลด DB Roundtrip จาก 5-15ms เหลือ 0.2ms ต่อทุก Authenticated Request
+   - **Invalidation:** ลบแคชทันทีเมื่อมีการเปลี่ยน PIN (`UsersService.changePin`) หรืออัปเดตโปรไฟล์
+   - **Security Guarantee:** การตรวจ Security PIN 6 หลัก (`verifyPin`) ตรวจสอบกับฐานข้อมูลสดเสมอโดยไม่ผ่านแคช
+2. **Creep Score & Analytics Cache (`cache:user:{userId}:creep-score`):**
+   - แคชผลลัพธ์การคำนวณและสัดส่วนค่าใช้จ่ายต่อเดือนใน `CreepScoreService`
+   - **TTL:** 900 วินาที (15 นาที) เร่งความเร็วการเปิดหน้าแรกและ Dashboard แบบ Instant
+   - **Invalidation:** ลบแคชทันทีเมื่อเพิ่ม/แก้/ลบ Subscription, อัปเดตรายได้ (`monthly_income`), จัดการบัตร, หรือทำ Batch Cancel
+3. **Preset Packages Catalog Cache (`cache:packages:*` & `cache:subscriptions:presets`):**
+   - แคชรายการแพ็กเกจบริการสำเร็จรูปส่วนกลาง (Netflix, Spotify, iCloud ฯลฯ)
+   - **TTL:** 86,400 วินาที (24 ชั่วโมง)
+   - **Invalidation:** ลบแคชแบบ Pattern ทันทีเมื่อ Admin ทำ Create/Update/Delete/Disable Package ใน `PackagesService`
 
 ### โครงสร้างโมเดลฐานข้อมูล (Prisma Schema Entities)
 - `User`: บัญชีผู้ใช้งาน, รหัสผ่านแฮช, PIN แฮช, รายได้รายเดือน
@@ -218,6 +235,7 @@ flowchart LR
 | **Runtime & Language** | Node.js (22-24 LTS), TypeScript (~6.0) | ภาษาและสภาพแวดล้อมรันเซิร์ฟเวอร์ความเร็วสูง |
 | **Package Manager** | **pnpm** (10.2.1) + Corepack | ตัวจัดการแพ็กเกจที่รวดเร็วและประหยัดเนื้อที่ Disk |
 | **Database & ORM** | **Prisma ORM** (^6.4.1), `@prisma/client` | การเชื่อมต่อฐานข้อมูล Type-safe Data Access และ Migration |
+| **Caching Engine** | **ioredis** (^5.9.1), Redis 7 | ไคลเอนต์และตัวจัดการ Distributed Caching ประสิทธิภาพสูง รองรับ TTL และ Invalidation |
 | **Authentication** | `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcrypt`, `bcryptjs` | ระบบยืนยันตัวตนด้วย Access Token, การเข้ารหัส Password & PIN |
 | **Validation** | `class-validator`, `class-transformer`, `zod` | ตรวจสอบ Data Transfer Object (DTO) และ Environment Variables |
 | **API Docs** | `@nestjs/swagger` (^12.0.1) | สร้าง Swagger UI และ OpenAPI 3.0 Documentation อัตโนมัติ |
@@ -229,7 +247,7 @@ flowchart LR
 | **CI/CD Orchestration** | **Jenkins** | Build, Test, Release, Deploy | เครื่องมือ Pipeline Orchestrator ควบคุมการสร้าง ทดสอบ และส่งมอบระบบอัตโนมัติ |
 | **Mobile Delivery** | **Flutter SDK & Test** | Build, Test | คอมไพล์และทดสอบโค้ดแอปพลิเคชันมือถือ |
 | **Mobile Delivery** | **Fastlane** | Release, Deploy | จัดการ Code Signing และส่งมอบแอปเข้าสู่ App Store & Play Store |
-| **Testing & Verification** | **Vitest, Playwright, Docker Compose** | Test | ชุดทดสอบ Unit/Integration API และ E2E UI บนสภาพแวดล้อมจำลอง |
+| **Testing & Verification** | **Vitest, Playwright, Docker Compose, k6** | Test | ชุดทดสอบ Unit/Integration API, E2E UI, และ Performance/Load Testing ด้วย k6 จำลองพฤติกรรมผู้ใช้และทดสอบเพดานระบบ |
 | **Container Registry** | **GHCR** (GitHub Container Registry) | Release | คลังจัดเก็บ Production Docker Images อย่างปลอดภัย |
 | **GitOps Delivery** | **ArgoCD** | Deploy | ตรวจจับการเปลี่ยนแปลงของ Manifest และ Sync ขึ้น K8s อัตโนมัติ |
 | **Cloud Runtime & IaC** | **Kubernetes, Traefik, Terraform** | Operate | คลัสเตอร์จัดการ Container, Ingress Routing และเครื่องมือจัดการ Cloud Infra แบบโค้ด |
@@ -295,5 +313,7 @@ fvm flutter run -d web-server --web-port 8080
 | **2026-10-02** | **Project Documentation & Agent Rules Cleanup** | ลบโฟลเดอร์ `/doc` ภายในโปรเจกต์ และยุบขอบเขต Agent ให้คงเหลือเพียง `agent.md` เป็นกฎหลัก พร้อมเพิ่มลงใน `.gitignore` โดยรวมศูนย์เอกสารภาพรวมระบบทั้งหมดมาไว้ที่ `SYSTEM_OVERVIEW.md` ฉบับนี้เพียงจุดเดียว ซึ่ง AI Agent จะต้องเข้ามาอัปเดตและอธิบายรายละเอียดทุกครั้งหลังปฏิบัติงานเสร็จสิ้นตาม Rule 6 |
 | **2026-10-03** | **EPICDP 0, 1 & 4 Implementation & Verification** | ผสานรวมระบบ EPICDP 0, 1, 4 บน Branch `EPICDP-0,1-and-4`: เพิ่ม Docker Compose 5-service stack, Kubernetes StatefulSets/CronJob, Ansible Vault templates, และ Jenkins DevSecOps ครบทั้ง SAST (Semgrep/Gitleaks), SCA (pnpm audit), Test Orchestration (tmpfs postgres), Multi-arch Buildx, Trivy, Syft SBOM, DAST (OWASP ZAP) และ ArgoCD GitOps พร้อมแก้ไขปัญหา Local verification: ปรับ `start_period: 60s`, ติดตั้งและเปิดใช้งาน Gitleaks pre-commit บนเครื่อง, และติดตั้ง host dependencies ผ่านการทดสอบ Vitest 187/187 tests |
 | **2026-10-03** | **Cloud Provider Migration to Microsoft Azure (Rule 8 Mandate)** | ปรับเปลี่ยนระบบคลาวด์และโครงสร้างพื้นฐานทั้งหมดจาก AWS สู่ Microsoft Azure: ย้ายฐานสำรองข้อมูลและ DR (DP-103) จาก AWS S3 มาเป็น Azure Blob Storage ด้วย AzCopy/Azure CLI, ปรับโครงสร้างความลับ Ansible Vault & Template (DP-102) เป็น `backup-azure-secret`, กำหนด StorageClass สำหรับ StatefulSet บน AKS เป็น `managed-csi`, และอัปเดต Terraform Provider เป็น `hashicorp/azurerm` |
+| **2026-10-04** | **Distributed Caching Layer & Cross-Service Eviction Suite** | ติดตั้ง `CacheModule` / `CacheService` ด้วย Redis 7 + `ioredis` พร้อม In-Memory Graceful Fallback รองรับ 3 จุดสำคัญ: 1) Auth User Identity (`auth:user:{id}`, TTL 180s) 2) Creep Score Analytics (`cache:user:{id}:creep-score`, TTL 900s) 3) Catalog Presets (`cache:packages:*`, TTL 24h) พร้อมเพิ่ม Unit Test Assertion ยืนยันการทำ Event-driven Cross-Service Eviction บน `SubscriptionsService` และ `UsersService` ผ่านการทดสอบ Vitest ครบ 276/276 tests |
+| **2026-10-04** | **k6 Realistic & Ceiling Stress Load Testing Suite** | พัฒนาชุดทดสอบโหลด `scripts/k6/load-test.js` และ `scripts/k6/run-k6.ps1` จำลองพฤติกรรมผู้ใช้จริง (Browse Catalog, Batch Dashboard 5-endpoint fetch, Savings Optimizer, และ Subscription Mutation triggering Eviction) พร้อมโหมด Ceiling Stress ไต่ระดับ 0 ➔ 500 VUs แบบลด Think Time เพื่อค้นหาคอขวด Event Loop, DB Connection Pool, และวัดประสิทธิภาพการบรรเทาภาระของ Redis Cache |
 
 

@@ -14,11 +14,17 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-password123}
       DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-subtracker_db}?schema=public"
       JWT_SECRET: ${JWT_SECRET:-dev-only-local-secret-not-for-production-min-32-chars-long}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - ./apps/server/src:/app/src
       - ./apps/server/prisma:/app/prisma
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     init: true
     healthcheck:
@@ -31,8 +37,8 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 90s
 
   postgres:
     image: postgres:16-alpine
@@ -56,6 +62,8 @@ services:
     image: redis:7-alpine
     container_name: subtracker_redis
     restart: unless-stopped
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:

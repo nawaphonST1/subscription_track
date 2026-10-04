@@ -228,6 +228,36 @@ describe('SubscriptionsService', () => {
       expect(result.status).toBe(SubscriptionStatus.ACTIVE);
       expect(result.next_renewal_date).toBeDefined();
     });
+
+    it('should evict user creep score cache when creating a subscription', async () => {
+      const mockCacheService = {
+        del: vi.fn().mockResolvedValue(true),
+      };
+      const serviceWithCache = new SubscriptionsService(
+        prismaMock,
+        undefined,
+        mockCacheService as any,
+      );
+
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.userSubscription.create.mockResolvedValue({
+        id: 'sub-new',
+        price: 289,
+        status: SubscriptionStatus.ACTIVE,
+      });
+
+      await serviceWithCache.create('user-1', {
+        payment_card_id: 'card-1',
+        name: 'Disney+',
+        category: 'Streaming',
+        price: 289,
+        billing_cycle: BillingCycle.MONTHLY,
+      });
+
+      expect(mockCacheService.del).toHaveBeenCalledWith(
+        'cache:user:user-1:creep-score',
+      );
+    });
   });
 
   describe('findUpcoming', () => {
@@ -450,6 +480,29 @@ describe('SubscriptionsService', () => {
 
       expect(prismaMock.userSubscription.update).not.toHaveBeenCalled();
     });
+
+    it('should evict user creep score cache when updating a subscription', async () => {
+      const mockCacheService = {
+        del: vi.fn().mockResolvedValue(true),
+      };
+      const serviceWithCache = new SubscriptionsService(
+        prismaMock,
+        undefined,
+        mockCacheService as any,
+      );
+
+      prismaMock.userSubscription.findFirst.mockResolvedValue(existingSub);
+      prismaMock.userSubscription.update.mockResolvedValue({
+        ...existingSub,
+        price: 350,
+      });
+
+      await serviceWithCache.update('user-1', 'sub-1', { price: 350 });
+
+      expect(mockCacheService.del).toHaveBeenCalledWith(
+        'cache:user:user-1:creep-score',
+      );
+    });
   });
 
   describe('remove', () => {
@@ -479,6 +532,29 @@ describe('SubscriptionsService', () => {
         where: { id: 'sub-1' },
       });
       expect(result).toEqual({ message: 'Subscription deleted successfully' });
+    });
+
+    it('should evict user creep score cache when removing a subscription', async () => {
+      const mockCacheService = {
+        del: vi.fn().mockResolvedValue(true),
+      };
+      const serviceWithCache = new SubscriptionsService(
+        prismaMock,
+        undefined,
+        mockCacheService as any,
+      );
+
+      prismaMock.userSubscription.findFirst.mockResolvedValue({
+        id: 'sub-1',
+        user_id: 'user-1',
+      });
+      prismaMock.userSubscription.delete.mockResolvedValue({ id: 'sub-1' });
+
+      await serviceWithCache.remove('user-1', 'sub-1');
+
+      expect(mockCacheService.del).toHaveBeenCalledWith(
+        'cache:user:user-1:creep-score',
+      );
     });
   });
 });
