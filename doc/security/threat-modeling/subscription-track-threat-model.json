@@ -1,0 +1,323 @@
+{
+  "version": "2.0.0",
+  "summary": {
+    "title": "Subscription Track - Infrastructure & System Threat Model",
+    "owner": "zukataiyo",
+    "description": "STRIDE Threat Model for Subscription Track covering Mobile App, Traefik Ingress, NestJS API, BullMQ Worker, PostgreSQL, Redis, and Cloud Infrastructure."
+  },
+  "detail": {
+    "contributors": [
+      { "name": "zukataiyo (Security & Infrastructure Lead)" },
+      { "name": "nawaphonST1 (DevOps & Backend)" },
+      { "name": "Nekokun2004 (Frontend & Architecture)" }
+    ],
+    "diagrams": [
+      {
+        "title": "Subscription Track End-to-End System DFD",
+        "id": 0,
+        "diagramType": "STRIDE",
+        "placeholder": "Data Flow Diagram representing components, boundaries, and threat vectors.",
+        "cells": [
+          {
+            "type": "tm.Actor",
+            "size": { "width": 140, "height": 80 },
+            "position": { "x": 60, "y": 200 },
+            "angle": 0,
+            "id": "actor-mobile-user",
+            "z": 1,
+            "attrs": {
+              "text": { "text": "Mobile App User\n(Flutter Client)" }
+            },
+            "threats": [
+              {
+                "title": "Mobile Device Theft or Unauthorized Access",
+                "status": "Mitigated",
+                "severity": "Medium",
+                "type": "Spoofing",
+                "description": "An attacker with physical access to the device attempts to perform sensitive actions (change subscription, view billing).",
+                "mitigation": "6-digit Security PIN verification step-up required before critical actions (PinVerificationDialog + X-PIN-Verification header)."
+              },
+              {
+                "title": "Token Extraction from Client Storage",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Information disclosure",
+                "description": "Malicious apps or compromised device accessing cached JWT tokens.",
+                "mitigation": "Store tokens exclusively in OS-level hardware-backed secure storage (Flutter Secure Storage / Keychain / KeyStore). Short-lived access tokens (15m)."
+              }
+            ]
+          },
+          {
+            "type": "tm.Boundary",
+            "size": { "width": 860, "height": 520 },
+            "position": { "x": 240, "y": 80 },
+            "angle": 0,
+            "id": "boundary-cloud-network",
+            "z": 0,
+            "attrs": {
+              "text": { "text": "Cloud Virtual Network (Azure VNet / VPC Boundary)" }
+            }
+          },
+          {
+            "type": "tm.Process",
+            "size": { "width": 160, "height": 80 },
+            "position": { "x": 280, "y": 200 },
+            "angle": 0,
+            "id": "process-traefik-ingress",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "Traefik Ingress\nController & Gateway" }
+            },
+            "threats": [
+              {
+                "title": "DDoS and API Flooding Attacks",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Denial of service",
+                "description": "Attackers send voluminous requests to exhaust backend memory and CPU.",
+                "mitigation": "Traefik RateLimiting middleware (DP-303) and K8s ResourceQuotas (DP-202)."
+              },
+              {
+                "title": "Man-in-the-Middle (MitM) Eavesdropping",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Information disclosure",
+                "description": "Interception of credentials and payload between client and server.",
+                "mitigation": "Strict TLS 1.3 encryption with automated Let's Encrypt certificates managed by Traefik ACME (DP-301)."
+              },
+              {
+                "title": "Bad Bot and Vulnerability Scanning",
+                "status": "Mitigated",
+                "severity": "Medium",
+                "type": "Tampering",
+                "description": "Automated scanners probing for open endpoints and zero-day vulnerabilities.",
+                "mitigation": "Traefik Bad-bot filtering and Security Headers middleware (X-Content-Type-Options, HSTS, CSP)."
+              }
+            ]
+          },
+          {
+            "type": "tm.Process",
+            "size": { "width": 160, "height": 80 },
+            "position": { "x": 520, "y": 200 },
+            "angle": 0,
+            "id": "process-backend-api",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "NestJS REST API\n(Stateless API Pods)" }
+            },
+            "threats": [
+              {
+                "title": "Broken Object Level Authorization (BOLA / IDOR)",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Elevation of privilege",
+                "description": "User A modifies or deletes Subscription owned by User B by altering subscriptionId.",
+                "mitigation": "Enforce CurrentUser ownership checks in Repository/Service layer (BE-206) with 404 concealment on unauthorized access."
+              },
+              {
+                "title": "JWT Token Forgery or Tampering",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Spoofing",
+                "description": "Attacker crafts or modifies JWT claims to impersonate admin or another user.",
+                "mitigation": "Cryptographic signature validation using secure JWT_SECRET (managed via Ansible Vault), strict expiration, and token rotation."
+              },
+              {
+                "title": "SQL and NoSQL Injection",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Tampering",
+                "description": "Attacker inserts malicious SQL syntax into user profile or subscription parameters.",
+                "mitigation": "TypeORM / Prisma parameterized queries and strict class-validator DTO input validation pipelines."
+              }
+            ]
+          },
+          {
+            "type": "tm.Process",
+            "size": { "width": 160, "height": 80 },
+            "position": { "x": 520, "y": 380 },
+            "angle": 0,
+            "id": "process-bullmq-worker",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "NestJS Background\nWorker (BullMQ)" }
+            },
+            "threats": [
+              {
+                "title": "Billing Reminder Duplicate Execution",
+                "status": "Mitigated",
+                "severity": "Low",
+                "type": "Tampering",
+                "description": "Worker crashes and replays billing notification multiple times causing spam.",
+                "mitigation": "Idempotent job deduplication keys in Redis and tracking sent notifications in PostgreSQL with unique notification constraint."
+              }
+            ]
+          },
+          {
+            "type": "tm.Store",
+            "size": { "width": 140, "height": 80 },
+            "position": { "x": 780, "y": 140 },
+            "angle": 0,
+            "id": "store-postgres-db",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "PostgreSQL 17\n(Primary Database)" }
+            },
+            "threats": [
+              {
+                "title": "Unauthorized Database Access from Public Internet",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Information disclosure",
+                "description": "Direct port 5432 exposure allowing brute force or data exfiltration.",
+                "mitigation": "Placed strictly inside Private Subnet without public IP; protected by Azure NSG and K8s NetworkPolicies allowing only API/Worker access."
+              },
+              {
+                "title": "Data Loss from Server Crash or Corruption",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Denial of service",
+                "description": "Hardware failure destroys subscription data.",
+                "mitigation": "Persistent Volume Claims (PVC) backed by managed cloud disks and automated daily backup cronjob synced offsite."
+              }
+            ]
+          },
+          {
+            "type": "tm.Store",
+            "size": { "width": 140, "height": 80 },
+            "position": { "x": 780, "y": 300 },
+            "angle": 0,
+            "id": "store-redis",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "Redis 7\n(Cache & Queue)" }
+            },
+            "threats": [
+              {
+                "title": "Unauthenticated Redis Access / Memory Snooping",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Information disclosure",
+                "description": "Accessing cached session data or BullMQ queue payloads.",
+                "mitigation": "Mandatory requirepass authentication, protected mode enabled, binding only to private cluster network."
+              }
+            ]
+          },
+          {
+            "type": "tm.Actor",
+            "size": { "width": 140, "height": 80 },
+            "position": { "x": 780, "y": 460 },
+            "angle": 0,
+            "id": "actor-external-fcm",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "FCM / Apple APNs\n(Push Notification)" }
+            },
+            "threats": [
+              {
+                "title": "Push Token Poisoning or Hijacking",
+                "status": "Mitigated",
+                "severity": "Medium",
+                "type": "Spoofing",
+                "description": "Attacker registers another user's device token to receive their billing notices.",
+                "mitigation": "BE-401 device registration requires authenticated Bearer session, binding device tokens to the authenticated user ID."
+              }
+            ]
+          },
+          {
+            "type": "tm.Process",
+            "size": { "width": 160, "height": 80 },
+            "position": { "x": 280, "y": 380 },
+            "angle": 0,
+            "id": "process-wazuh-agent",
+            "z": 2,
+            "attrs": {
+              "text": { "text": "Wazuh Agent\n(Host & K8s Security)" }
+            },
+            "threats": [
+              {
+                "title": "Undetected Host Compromise or Privilege Escalation",
+                "status": "Mitigated",
+                "severity": "High",
+                "type": "Elevation of privilege",
+                "description": "Attacker breaks out of container to root node without detection.",
+                "mitigation": "Continuous File Integrity Monitoring (FIM), anomaly detection, rootkit scanning, and alert forwarding to Wazuh SIEM (DP-203/DP-505)."
+              }
+            ]
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "actor-mobile-user" },
+            "target": { "id": "process-traefik-ingress" },
+            "id": "flow-user-to-ingress",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "HTTPS / TLS 1.3 (:443)" }
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "process-traefik-ingress" },
+            "target": { "id": "process-backend-api" },
+            "id": "flow-ingress-to-api",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "HTTP Proxy (Private)" }
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "process-backend-api" },
+            "target": { "id": "store-postgres-db" },
+            "id": "flow-api-to-db",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "SQL (Port 5432)" }
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "process-backend-api" },
+            "target": { "id": "store-redis" },
+            "id": "flow-api-to-redis",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "RESP (Port 6379)" }
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "process-bullmq-worker" },
+            "target": { "id": "store-redis" },
+            "id": "flow-worker-to-redis",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "Job Polling (Redis)" }
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "process-bullmq-worker" },
+            "target": { "id": "actor-external-fcm" },
+            "id": "flow-worker-to-fcm",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "FCM API (TLS)" }
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "source": { "id": "process-wazuh-agent" },
+            "target": { "id": "process-backend-api" },
+            "id": "flow-wazuh-monitor",
+            "z": 3,
+            "attrs": {
+              "text": { "text": "Syscheck / Logs" }
+            }
+          }
+        ]
+      }
+    ],
+    "reviewer": "Security Architecture Team"
+  }
+}
