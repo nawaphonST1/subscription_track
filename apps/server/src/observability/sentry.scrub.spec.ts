@@ -143,6 +143,29 @@ describe('Sentry scrubbing', () => {
     );
   });
 
+  it('3b. redacts JWTs concatenated or prefixed without word boundaries (F7)', () => {
+    const rawJwt =
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+
+    // Underscore prefix (previously failed due to \b across \w characters)
+    expect(scrubString(`failed_token: raw_${rawJwt}`)).toBe(
+      'failed_token: raw_[redacted-jwt]',
+    );
+
+    // Alphanumeric prefix
+    expect(scrubString(`error token=${rawJwt}`)).toBe(
+      'error token=[redacted-jwt]',
+    );
+    expect(scrubString(`prefix${rawJwt}`)).toBe('prefix[redacted-jwt]');
+
+    // Non-JWT strings with eyJ prefix must NOT be redacted
+    expect(scrubString('eyJh_not_a_jwt')).toBe('eyJh_not_a_jwt');
+    expect(scrubString('eyJ1234.onlyonedot')).toBe('eyJ1234.onlyonedot');
+    expect(scrubString('normal.dotted.string.without.eyj')).toBe(
+      'normal.dotted.string.without.eyj',
+    );
+  });
+
   it('4. redacts Authorization-header values while keeping the scheme', () => {
     expect(scrubString('Authorization: Bearer abcdef0123456789')).toBe(
       `Authorization: Bearer ${REDACTED}`,

@@ -127,9 +127,11 @@ const EXTRA_SENSITIVE_WHOLE_KEYS = new Set<string>([
 ]);
 
 /** JSON Web Token: three base64url segments, the first starting with the
- *  `eyJ` that `{"` always encodes to. */
+ *  `eyJ` that `{"` always encodes to.
+ *  F7 fix: Leading \b removed so tokens concatenated with an underscore or
+ *  alphanumeric prefix (e.g. raw_eyJ..., token=eyJ...) are still redacted. */
 const JWT_PATTERN =
-  /\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b/g;
+  /eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b/g;
 
 /** `Bearer <anything>` / `Basic <anything>`, which is how a token most often
  *  appears inside a copied header or a log line.
