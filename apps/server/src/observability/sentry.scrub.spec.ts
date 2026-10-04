@@ -103,6 +103,38 @@ describe('Sentry scrubbing', () => {
     expect(scrubbed.extra.new_pin).toBe(REDACTED);
   });
 
+  it('2e. redacts unboundaried PIN compounds without regressing on false-positives (F2-NEW-2)', () => {
+    // Unboundaried compounds (F2-NEW-2)
+    expect(isSensitiveKey('pincode')).toBe(true);
+    expect(isSensitiveKey('pin1')).toBe(true);
+    expect(isSensitiveKey('pin2')).toBe(true);
+    expect(isSensitiveKey('pin3')).toBe(true);
+    expect(isSensitiveKey('oldpincode')).toBe(true);
+    expect(isSensitiveKey('newpincode')).toBe(true);
+    expect(isSensitiveKey('confirmpin')).toBe(true);
+    expect(isSensitiveKey('userpin')).toBe(true);
+
+    // False positives protection (-pping / -ping words must stay unredacted)
+    expect(isSensitiveKey('mapping')).toBe(false);
+    expect(isSensitiveKey('dropping')).toBe(false);
+    expect(isSensitiveKey('shipping')).toBe(false);
+
+    // Real field names in this codebase
+    expect(isSensitiveKey('current_pin')).toBe(true);
+    expect(isSensitiveKey('new_pin')).toBe(true);
+    expect(isSensitiveKey('security_pin')).toBe(true);
+    expect(isSensitiveKey('currentPin')).toBe(true);
+    expect(isSensitiveKey('newPin')).toBe(true);
+    expect(isSensitiveKey('securityPinHash')).toBe(true);
+    expect(isSensitiveKey('security_pin_hash')).toBe(true);
+    expect(isSensitiveKey('isPinValid')).toBe(true);
+
+    // Standard acronym forms
+    expect(isSensitiveKey('verifyPIN')).toBe(true);
+    expect(isSensitiveKey('oldPIN')).toBe(true);
+    expect(isSensitiveKey('newPIN')).toBe(true);
+  });
+
   it('3. redacts a JWT anywhere in a free-text string', () => {
     const jwt =
       'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk';

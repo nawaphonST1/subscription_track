@@ -90,14 +90,41 @@ function toWords(key: string): string[] {
     .filter((word) => word.length > 0);
 }
 
-/** Kept as a second line of defense alongside the word-split match above,
- *  for any single-token spelling of "pin" this project might one day use
- *  that `toWords` would not separate out on its own (there are none in the
- *  codebase today — verified by grepping apps/server/src for every
- *  `pin`-containing identifier). Entries here are compared against the
- *  SAME normalized (lowercase, separator-stripped) form `isSensitiveKey`
- *  already computes. */
-const EXTRA_SENSITIVE_WHOLE_KEYS = new Set<string>([]);
+/** Manually-maintained denylist of known-risk, unboundaried PIN compounds
+ *  (F2-NEW-2: e.g. "pincode", "pin2", "oldpincode") where no delimiter or
+ *  camelCase boundary exists for `toWords` to tokenize on.
+ *
+ *  WHY AN EXPLICIT ALLOWLIST INSTEAD OF A BROAD REGEX:
+ *  A generic substring match or greedy regex (e.g. `.*pin.*`) reintroduces
+ *  the severe false-positive flaw that redacts legitimate non-sensitive
+ *  English words like "mapping", "shipping", "dropping", "bookkeeping", etc.
+ *  Because the family of "-pping"/ "-ping" words cannot be enumerated
+ *  exhaustively as exceptions, we maintain this curated list of specific
+ *  unboundaried PIN compounds.
+ *
+ *  MAINTENANCE NOTE FOR REVIEWERS:
+ *  Any NEW field name introduced into the codebase that contains a PIN
+ *  concept without camelCase or snake_case separators (e.g., lowercase run-together
+ *  or trailing digits) MUST be checked against this list and added here at review time.
+ *  Entries are stored in normalized form (lowercase, `_` and `-` stripped).
+ */
+const EXTRA_SENSITIVE_WHOLE_KEYS = new Set<string>([
+  'pincode',
+  'pin1',
+  'pin2',
+  'pin3',
+  'oldpincode',
+  'newpincode',
+  'confirmpin',
+  'userpin',
+  'atmpin',
+  'temppin',
+  'resetpin',
+  'backuppin',
+  'cardpin',
+  'loginpin',
+  'authpin',
+]);
 
 /** JSON Web Token: three base64url segments, the first starting with the
  *  `eyJ` that `{"` always encodes to. */
