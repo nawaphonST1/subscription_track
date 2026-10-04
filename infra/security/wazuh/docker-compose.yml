@@ -1,0 +1,146 @@
+# Wazuh single-node SIEM — DP-505.
+#
+# WHERE THIS RUNS: the developer workstation, and only while preparing for or
+# giving the demo. Not on the Azure production VM (4 GiB total; the indexer
+# alone wants more than that) and not on the lecturer's VM.
+#
+# Derived from the official wazuh-docker single-node compose at tag v4.14.8
+# (https://github.com/wazuh/wazuh-docker/blob/v4.14.8/single-node/docker-compose.yml).
+# What was changed, and why:
+#
+#   1. NO DEFAULT PASSWORDS. Upstream ships SecretPassword / kibanaserver /
+#      MyS3cr37P450r.*- inline. All five credentials come from .env here and
+#      compose refuses to start without them.
+#   2. PORT BINDING. Upstream publishes 1514/1515/514/55000/9200/443 on every
+#      interface. Here:
+#        - 1514/1515 bind $WAZUH_BIND_ADDR, which must be the host's TAILSCALE
+#          address. The agent on Azure reaches the manager over Tailscale and
+#          over nothing else; these ports are never on the public internet.
+#        - 55000 (manager API) and 5601 (dashboard) bind 127.0.0.1. Reach the
+#          dashboard at https://127.0.0.1:8443 on this machine.
+#        - 9200 (indexer) is not published at all. Only the manager and the
+#          dashboard talk to it, over the Compose network.
+#        - 514/udp (remote syslog) is dropped entirely. Nothing in this project
+#          sends syslog, and an open UDP 514 is a reflection amplifier.
+#   3. mem_limit on every service, and `restart: unless-stopped` rather than
+#      `always`, so a stopped stack stays stopped after a reboot of a laptop
+#      that is not meant to run a SIEM full time.
+#
+# Memory: roughly 4 GiB with these limits (indexer 2048 + manager 1024 +
+# dashboard 1024). The 512 MiB budget in the DP-5 operating rules applies to
+# the PRODUCTION agent stack on the Azure VM, not to this one.
+#
+# BEFORE THE FIRST `up`: the certificates and the upstream config files are not
+# in this repository and have to be generated. See README.md §2 — the stack
+# will not start without them.
+name: subscription-wazuh
+
+services:
+  wazuh.manager:
+    image: wazuh/wazuh-manager:4.14.8
+    hostname: wazuh.manager
+    restart: unless-stopped
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 655360, hard: 655360 }
+    ports:
+      # Agent data and agent enrollment — Tailscale interface only.
+      - "${WAZUH_BIND_ADDR:?set WAZUH_BIND_ADDR to this host's Tailscale IP in infra/security/wazuh/.env}:1514:1514"
+      - "${WAZUH_BIND_ADDR}:1515:1515"
+      # Manager REST API — this machine only.
+      - "127.0.0.1:55000:55000"
+    environment:
+      INDEXER_URL: https://wazuh.indexer:9200
+      INDEXER_USERNAME: admin
+      INDEXER_PASSWORD: ${WAZUH_INDEXER_PASSWORD:?set WAZUH_INDEXER_PASSWORD in infra/security/wazuh/.env}
+      FILEBEAT_SSL_VERIFICATION_MODE: full
+      SSL_CERTIFICATE_AUTHORITIES: /etc/ssl/root-ca.pem
+      SSL_CERTIFICATE: /etc/ssl/filebeat.pem
+      SSL_KEY: /etc/ssl/filebeat.key
+      API_USERNAME: wazuh-wui
+      API_PASSWORD: ${WAZUH_API_PASSWORD:?set WAZUH_API_PASSWORD in infra/security/wazuh/.env}
+    volumes:
+      - wazuh_api_configuration:/var/ossec/api/configuration
+      - wazuh_etc:/var/ossec/etc
+      - wazuh_logs:/var/ossec/logs
+      - wazuh_queue:/var/ossec/queue
+      - wazuh_var_multigroups:/var/ossec/var/multigroups
+      - wazuh_integrations:/var/ossec/integrations
+      - wazuh_active_response:/var/ossec/active-response/bin
+      - wazuh_agentless:/var/ossec/agentless
+      - wazuh_wodles:/var/ossec/wodles
+      - filebeat_etc:/etc/filebeat
+      - filebeat_var:/var/lib/filebeat
+      - ./config/wazuh_indexer_ssl_certs/root-ca-manager.pem:/etc/ssl/root-ca.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.manager.pem:/etc/ssl/filebeat.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.manager-key.pem:/etc/ssl/filebeat.key:ro
+      - ./config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf:ro
+    mem_limit: 1024m
+
+  wazuh.indexer:
+    image: wazuh/wazuh-indexer:4.14.8
+    hostname: wazuh.indexer
+    restart: unless-stopped
+    environment:
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    # No `ports:` — the indexer is reachable only from the manager and the
+    # dashboard, over the Compose network.
+    volumes:
+      - wazuh-indexer-data:/var/lib/wazuh-indexer
+      - ./config/wazuh_indexer_ssl_certs/root-ca.pem:/usr/share/wazuh-indexer/config/certs/root-ca.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.indexer-key.pem:/usr/share/wazuh-indexer/config/certs/wazuh.indexer.key:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.indexer.pem:/usr/share/wazuh-indexer/config/certs/wazuh.indexer.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/admin.pem:/usr/share/wazuh-indexer/config/certs/admin.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/admin-key.pem:/usr/share/wazuh-indexer/config/certs/admin-key.pem:ro
+      - ./config/wazuh_indexer/wazuh.indexer.yml:/usr/share/wazuh-indexer/config/opensearch.yml:ro
+      - ./config/wazuh_indexer/internal_users.yml:/usr/share/wazuh-indexer/config/opensearch-security/internal_users.yml:ro
+    # Xms/Xmx are 1g; the JVM needs headroom above the heap for metaspace,
+    # thread stacks and direct buffers, hence 2048m rather than 1024m.
+    mem_limit: 2048m
+
+  wazuh.dashboard:
+    image: wazuh/wazuh-dashboard:4.14.8
+    hostname: wazuh.dashboard
+    restart: unless-stopped
+    ports:
+      # Upstream publishes 443 on every interface. This is a laptop.
+      - "127.0.0.1:8443:5601"
+    environment:
+      INDEXER_USERNAME: admin
+      INDEXER_PASSWORD: ${WAZUH_INDEXER_PASSWORD}
+      WAZUH_API_URL: https://wazuh.manager
+      DASHBOARD_USERNAME: kibanaserver
+      DASHBOARD_PASSWORD: ${WAZUH_DASHBOARD_PASSWORD:?set WAZUH_DASHBOARD_PASSWORD in infra/security/wazuh/.env}
+      API_USERNAME: wazuh-wui
+      API_PASSWORD: ${WAZUH_API_PASSWORD}
+    volumes:
+      - ./config/wazuh_indexer_ssl_certs/wazuh.dashboard.pem:/usr/share/wazuh-dashboard/certs/wazuh-dashboard.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.dashboard-key.pem:/usr/share/wazuh-dashboard/certs/wazuh-dashboard-key.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/root-ca.pem:/usr/share/wazuh-dashboard/certs/root-ca.pem:ro
+      - ./config/wazuh_dashboard/opensearch_dashboards.yml:/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml:ro
+      - ./config/wazuh_dashboard/wazuh.yml:/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml:ro
+      - wazuh-dashboard-config:/usr/share/wazuh-dashboard/data/wazuh/config
+      - wazuh-dashboard-custom:/usr/share/wazuh-dashboard/plugins/wazuh/public/assets/custom
+    depends_on:
+      - wazuh.indexer
+      - wazuh.manager
+    mem_limit: 1024m
+
+volumes:
+  wazuh_api_configuration:
+  wazuh_etc:
+  wazuh_logs:
+  wazuh_queue:
+  wazuh_var_multigroups:
+  wazuh_integrations:
+  wazuh_active_response:
+  wazuh_agentless:
+  wazuh_wodles:
+  filebeat_etc:
+  filebeat_var:
+  wazuh-indexer-data:
+  wazuh-dashboard-config:
+  wazuh-dashboard-custom:
