@@ -26,9 +26,12 @@ nothing to 9464. `GET /metrics` through the public listener therefore hits the
 API, where it is not a route at all — asserted at
 `test/metrics.integration.spec.ts:120`.
 
-`METRICS_PORT=0` asks the OS for a free ephemeral port. That exists for tests.
-Never use it in production: the port changes on every restart and nothing can
-scrape it.
+`METRICS_PORT=0` asks the OS for a free ephemeral port. That exists for tests,
+and **both schemas reject it when `NODE_ENV=production`**
+(`src/config/metrics-port.validation.ts`): the process would start cleanly and
+then listen on a port that changes on every restart, so nothing could scrape
+it. Leaving the variable unset still gives 9464 everywhere, production
+included.
 
 A failure to bind is logged and swallowed — the process keeps serving
 (`src/metrics/metrics-server.service.ts:110-116`). Running the api and the
@@ -58,16 +61,58 @@ Label value sets:
   or the constant `unmatched` for requests that matched no route
   (`src/metrics/http.metrics.ts:12`). `/health*` and `/metrics*` are excluded
   entirely (`src/metrics/http-metrics.middleware.ts:13`).
-- `status` — the HTTP status code as a string.
+- `status` — the HTTP status code as a string, or the fixed string `aborted`
+  (see below). `aborted` is not a number, so numeric matchers such as
+  `status=~"5.."` can never match it and existing 5xx panels are unaffected.
 - `result` — `success` | `failure`. `method` on `auth_login_total` —
   `password` (`POST /auth/login`) | `pin` (`POST /users/me/pin/verify`)
   (`src/metrics/business.metrics.ts:7-13`).
+
+**The two `method` values do not count failures identically.** The password
+path records `failure` both when the email is unknown and when the password is
+wrong (`src/auth/auth.service.ts`). The PIN path throws `NotFoundException`
+for an unknown user *before* reaching the counter
+(`src/users/users.service.ts`), so such a call is counted as neither success
+nor failure. The path is close to unreachable — `verifyPin` takes its `userId`
+from an already-validated JWT, so the user existed moments earlier — but
+`auth_login_total{method="pin"}` and `{method="password"}` are not directly
+comparable as failure rates.
+
+Neither value distinguishes "no such user" from "wrong credential", which is
+deliberate: a metric that did would let anyone who can read `/metrics`
+enumerate accounts.
 - `window` — the configured window rendered as `"900s"`
   (`src/metrics/active-users.tracker.ts:56`).
 
 `http_request_duration_seconds` buckets (seconds):
 `0.005 0.01 0.025 0.05 0.1 0.25 0.5 1 2.5 5 10`
 (`src/metrics/http.metrics.ts:29-31`).
+
+## Aborted requests
+
+The middleware records on both `finish` and `close`, through one closure
+guarded by a flag, so every request is counted exactly once
+(`src/metrics/http-metrics.middleware.ts`).
+
+- `finish` is the normal path and carries the real status code.
+- a `close` without a preceding `finish` means the client hung up before the
+  response completed. The server still did the work, so the request is
+  recorded with `status="aborted"` rather than dropped.
+
+This matters for reading the dashboards. Before, aborts were invisible, so a
+storm of client timeouts looked like a **drop in traffic** instead of a
+problem, and because aborted requests are disproportionately the slow ones
+their absence biased the `http_request_duration_seconds` p99 optimistically.
+
+To watch for it:
+
+```promql
+rate(http_requests_total{status="aborted"}[5m])
+```
+
+Excluded routes stay excluded when aborted: the guard is set before the
+exclusion check, so an aborted `/health` request is not re-examined by the
+second event.
 
 ## Worker series
 

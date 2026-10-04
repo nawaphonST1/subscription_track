@@ -1,7 +1,12 @@
+import type { Server } from 'node:http';
 import { Registry } from '@prometheus-io/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { MetricsServerService } from './metrics-server.service';
+import {
+  METRICS_HEADERS_TIMEOUT_MS,
+  METRICS_REQUEST_TIMEOUT_MS,
+  MetricsServerService,
+} from './metrics-server.service';
 import { createMetricsRegistry } from './metrics.registry';
 
 import type { ConfigService } from '@nestjs/config';
@@ -86,5 +91,35 @@ describe('Metrics server', () => {
     await expect(blocked.onApplicationBootstrap()).resolves.toBeUndefined();
     expect(blocked.port).toBeUndefined();
     await blocked.onApplicationShutdown();
+  });
+});
+
+/**
+ * Node's defaults (60s headers, 300s request) are far longer than a scrape
+ * needs and let a half-open connection sit on the internal port. These read
+ * the private server handle deliberately: the values are properties of the
+ * listening socket, and there is no behavioural assertion that does not cost
+ * five seconds of wall clock.
+ */
+describe('MetricsServerService socket timeouts', () => {
+  it('applies the header and request timeouts to the listening server', async () => {
+    const registry = new Registry();
+    const service = new MetricsServerService(registry);
+
+    await service.onApplicationBootstrap();
+
+    try {
+      const server = (service as unknown as { server?: Server }).server;
+
+      expect(server).toBeDefined();
+      expect(server?.headersTimeout).toBe(METRICS_HEADERS_TIMEOUT_MS);
+      expect(server?.requestTimeout).toBe(METRICS_REQUEST_TIMEOUT_MS);
+      // requestTimeout must stay above headersTimeout or Node throws.
+      expect(METRICS_REQUEST_TIMEOUT_MS).toBeGreaterThan(
+        METRICS_HEADERS_TIMEOUT_MS,
+      );
+    } finally {
+      await service.onApplicationShutdown();
+    }
   });
 });
