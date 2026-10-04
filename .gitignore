@@ -38,6 +38,7 @@ AGENTS.md
 **/.env *
 !.env.example
 !**/.env.example
+!**/.env.*.example
 
 # ==========================================
 # Frontend: Flutter & Dart (apps/mobile/)
@@ -94,6 +95,12 @@ kubeconfig.txt
 # Secrets & Vault Passwords
 .vault_pass
 *.key
+
+# Cluster Secrets are created out-of-band, never committed: ArgoCD syncs
+# k8s/ with prune+selfHeal, so a Secret here would be reconciled onto the
+# cluster, value and all. Use scripts/bootstrap-secrets.sh.
+# See doc/security/secrets-management.md
+k8s/postgres-secret.yaml
 
 # Terraform Local Cache & State
 **/.terraform/
