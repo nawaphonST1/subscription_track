@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: subscription-track
+    orgId: 1
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      # Mounted read-only from infra/monitoring/grafana/dashboards.
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

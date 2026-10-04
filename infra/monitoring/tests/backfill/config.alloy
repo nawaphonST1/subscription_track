@@ -1,0 +1,59 @@
+// Grafana Alloy — PHASE 1.5 BACKFILL TEST ONLY.
+//
+// This is not the production agent. It exists to answer one question with
+// real data: after a gap in which Prometheus is unreachable, does Alloy's
+// replayed (older-than-head) data get accepted, and does the answer depend on
+// `storage.tsdb.out_of_order_time_window` on the Prometheus side?
+//
+// Everything it produces is labelled job="backfill_test", test="backfill" so
+// it can never be confused with real data.
+//
+// Syntax verified with `alloy validate` on grafana/alloy:v1.20.1, and every
+// argument/block below against that version's component reference.
+
+prometheus.scrape "node" {
+  targets = [
+    {"__address__" = "node-exporter:9100"},
+  ]
+
+  // `job_name` sets the job label; without it the label would be the
+  // component id (prometheus.scrape.node).
+  job_name        = "backfill_test"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.mon.receiver]
+}
+
+prometheus.remote_write "mon" {
+  external_labels = {
+    test = "backfill",
+  }
+
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+
+    queue_config {
+      // Defaults, written out explicitly because they are exactly what the
+      // test is measuring. sample_age_limit = "0s" means Alloy itself never
+      // drops a sample for being old, so anything missing after the gap was
+      // dropped by Alloy's WAL policy or rejected by Prometheus — not aged
+      // out here.
+      sample_age_limit = "0s"
+      max_shards       = 50
+      batch_send_deadline = "5s"
+    }
+  }
+
+  wal {
+    // Defaults for v1.20.1, again written out because they bound how much
+    // history can survive an outage:
+    //   truncate_frequency: every 2h the lower two-thirds of the WAL is
+    //     dropped and can no longer be sent.
+    //   min_keepalive_time: samples are never removed before this age.
+    //   max_keepalive_time: samples older than this are removed regardless.
+    // A 3-minute outage sits far inside these bounds, so the WAL should not
+    // be the thing that loses data in this test.
+    truncate_frequency = "2h"
+    min_keepalive_time = "5m"
+    max_keepalive_time = "8h"
+  }
+}

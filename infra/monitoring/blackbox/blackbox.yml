@@ -1,0 +1,12 @@
+# Blackbox exporter modules.
+# Shape verified against the prometheus/blackbox_exporter v0.28.0 example.yml.
+modules:
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      # Empty list means "any 2xx", per the upstream example.
+      valid_status_codes: []
+      follow_redirects: true
+      preferred_ip_protocol: ip4

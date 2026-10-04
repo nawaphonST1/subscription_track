@@ -1,0 +1,44 @@
+# Loki configuration — single-binary, filesystem storage, 7-day retention.
+# Field names verified against the grafana/loki v3.5.10 configuration
+# reference and its own cmd/loki/loki-docker-config.yaml.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+
+schema_config:
+  configs:
+    - from: "2024-04-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 7 days. Only takes effect because compactor.retention_enabled is true.
+  retention_period: 168h
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  # Required once retention is enabled; must match the object store above.
+  delete_request_store: filesystem
+
+analytics:
+  # This host reaches the internet only behind a captive portal; no outbound
+  # usage reporting.
+  reporting_enabled: false

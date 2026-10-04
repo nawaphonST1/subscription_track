@@ -1,0 +1,59 @@
+# Prometheus configuration — monitoring VM, DP-5 phase 1.
+# Verified against the prom/prometheus v3.5.5 configuration reference.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    # Distinguishes series collected here from series pushed in by the
+    # production VM (phase 3), which carry their own labels from Alloy.
+    site: monitoring-vm
+
+storage:
+  tsdb:
+    # STATUS: UNDER TEST — do not treat this as settled either way.
+    # When the reverse SSH tunnel drops (the university captive-portal session
+    # lasts ~1 day), Alloy on the production VM buffers samples and replays
+    # them once the tunnel is back. Those replayed samples are older than the
+    # head's max time; whether Prometheus accepts them without this setting is
+    # exactly what ../tests/backfill measures (phase 1.5: one round with this
+    # window, one round without). 1h is a starting value that covers a
+    # realistic outage without materially growing the head block. Keep or drop
+    # it once the A/B numbers exist, then confirm again over the real tunnel
+    # in phase 3.
+    out_of_order_time_window: 1h
+
+scrape_configs:
+  # Prometheus' own health and performance.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # The monitoring VM itself. See the node-exporter note in docker-compose.yml:
+  # node_network_* here describes the exporter's container namespace.
+  - job_name: monitoring-host
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Proves the blackbox exporter is wired up correctly while production does
+  # not exist yet, by probing a target that is always reachable from inside
+  # the compose network.
+  # PHASE 3: replace the target with the public production URL
+  # (https://<domain>/health/ready) — the relabel rules below stay as they are.
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://grafana:3000/api/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+# No scrape job points at the production VM on purpose: production pushes to
+# this Prometheus via remote_write through the reverse tunnel (phase 3), so
+# nothing here has to reach out to Azure.
