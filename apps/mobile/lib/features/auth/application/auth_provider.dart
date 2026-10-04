@@ -37,6 +37,23 @@ class AuthNotifier extends _$AuthNotifier {
     );
   }
 
+  Future<void> registerWithEmail({
+    required String email,
+    required String password,
+    String? name,
+  }) async {
+    state = const AsyncValue.loading();
+    final result = await _repository.registerWithEmail(
+      email: email,
+      password: password,
+      name: name,
+    );
+    state = result.fold(
+      (failure) => AsyncValue.error(failure, StackTrace.current),
+      (user) => AsyncValue.data(user),
+    );
+  }
+
   Future<void> logout() async {
     state = const AsyncValue.loading();
     final result = await _repository.logout();
