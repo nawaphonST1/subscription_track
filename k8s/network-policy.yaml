@@ -1,0 +1,94 @@
+# ==============================================================================
+# 1. Default Deny All Ingress (กฎเริ่มต้น: บล็อกทราฟฟิกขาเข้าทั้งหมด)
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    app.kubernetes.io/name: default-deny-ingress
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# ==============================================================================
+# 2. PostgreSQL Policy: อนุญาตเฉพาะ Backend API และ Backup CronJob เข้าถึงได้
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-network-policy
+  labels:
+    app.kubernetes.io/name: postgres-network-policy
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: subtracker-api
+        - podSelector:
+            matchLabels:
+              app: postgres-backup
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# ==============================================================================
+# 3. Redis Policy: อนุญาตเฉพาะ Backend API เข้าถึง Cache/Queue ได้
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  labels:
+    app.kubernetes.io/name: redis-network-policy
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: subtracker-api
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+# ==============================================================================
+# 4. Backend API Policy: อนุญาตให้ Traefik Ingress ส่ง Request เข้ามาได้
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-network-policy
+  labels:
+    app.kubernetes.io/name: api-network-policy
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  podSelector:
+    matchLabels:
+      app: subtracker-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # อนุญาตทราฟฟิกจาก Traefik Ingress Controller
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8080

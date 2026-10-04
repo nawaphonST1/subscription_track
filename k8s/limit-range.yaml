@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: subtracker-limit-range
+  labels:
+    app.kubernetes.io/name: subtracker-limit-range
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  limits:
+    - type: Container
+      # ขนาดสูงสุดที่ 1 Container จะขอได้ (ห้ามเกิน 1 vCPU / 1GB RAM ต่อตัว)
+      max:
+        cpu: "1"
+        memory: 1Gi
+      
+      # ขนาดต่ำสุดที่ต้องขอ
+      min:
+        cpu: 50m
+        memory: 64Mi
+      
+      # ค่า Default Limit (ใส่ให้อัตโนมัติถ้าลืมกำหนด limits)
+      default:
+        cpu: 500m
+        memory: 512Mi
+      
+      # ค่า Default Request (ใส่ให้อัตโนมัติถ้าลืมกำหนด requests)
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
