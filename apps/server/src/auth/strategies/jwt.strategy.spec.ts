@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JwtPayload, JwtStrategy } from './jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
@@ -142,5 +143,37 @@ describe('JwtStrategy', () => {
     expect(callArgs.select.password_hash).toBeUndefined();
     expect(callArgs.select.security_pin_hash).toBeUndefined();
     expect(callArgs.select.monthly_income).toBeUndefined();
+  });
+
+  it('serves cached user identity without querying database on subsequent requests', async () => {
+    const mockCache = new CacheService();
+    const strategyWithCache = new JwtStrategy(
+      prismaService as unknown as PrismaService,
+      configService as unknown as ConfigService,
+      undefined,
+      mockCache,
+    );
+
+    const mockUser = {
+      id: 'cached-user-id',
+      email: 'cached@example.com',
+      name: 'Cached User',
+    };
+    prismaService.user.findUnique.mockResolvedValue(mockUser);
+
+    const payload: JwtPayload = {
+      sub: 'cached-user-id',
+      email: 'cached@example.com',
+    };
+
+    // First request: Cache Miss -> queries Prisma
+    const firstResult = await strategyWithCache.validate(payload);
+    expect(firstResult).toEqual(mockUser);
+    expect(prismaService.user.findUnique).toHaveBeenCalledTimes(1);
+
+    // Second request: Cache Hit -> returns from Cache directly, Prisma NOT called again
+    const secondResult = await strategyWithCache.validate(payload);
+    expect(secondResult).toEqual(mockUser);
+    expect(prismaService.user.findUnique).toHaveBeenCalledTimes(1);
   });
 });

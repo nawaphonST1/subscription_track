@@ -4,10 +4,15 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { LinkMockCardDto } from './dto/link-mock-card.dto';
 import { BillingCycle, NotificationType, UsageStatus } from '@prisma/client';
+import { CacheService } from '../cache/cache.service';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class PaymentCardsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
 
   async findAll(userId: string) {
     const cards = await this.prisma.paymentCard.findMany({
@@ -100,7 +105,7 @@ export class PaymentCardsService {
 
     const makeDefault = dto.is_default ?? existingCount === 0;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (makeDefault) {
         await tx.paymentCard.updateMany({
           where: { user_id: userId, is_default: true },
@@ -127,6 +132,12 @@ export class PaymentCardsService {
         balance: Number(card.balance),
       };
     });
+
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
+    return result;
   }
 
   async update(userId: string, cardId: string, dto: UpdateCardDto) {
@@ -138,7 +149,7 @@ export class PaymentCardsService {
       throw new NotFoundException(`Payment card with ID ${cardId} not found`);
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (dto.is_default) {
         await tx.paymentCard.updateMany({
           where: { user_id: userId, is_default: true },
@@ -160,6 +171,12 @@ export class PaymentCardsService {
         balance: Number(updated.balance),
       };
     });
+
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
+    return result;
   }
 
   async remove(userId: string, cardId: string) {
@@ -175,6 +192,10 @@ export class PaymentCardsService {
       where: { id: cardId },
       data: { is_active: false, is_default: false },
     });
+
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
 
     return { message: 'Payment card deactivated successfully' };
   }
@@ -235,7 +256,7 @@ export class PaymentCardsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const activeCardsCount = await tx.paymentCard.count({
         where: { user_id: userId, is_active: true },
       });
@@ -326,5 +347,11 @@ export class PaymentCardsService {
         imported_subscriptions: importedSubscriptions,
       };
     });
+
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
+    return result;
   }
 }

@@ -2,18 +2,44 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 import { QueryPackageDto } from './dto/query-package.dto';
 
+export interface PackageItem {
+  id: string;
+  name: string;
+  category: string;
+  default_price: number;
+  billing_cycle: string;
+  brand_color: string;
+  icon_url: string | null;
+  description: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
 @Injectable()
 export class PackagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
 
-  async findAll(query?: QueryPackageDto) {
+  async findAll(query?: QueryPackageDto): Promise<PackageItem[]> {
+    const cacheKey = `cache:packages:list:${query?.category ?? 'all'}:${query?.search ?? 'all'}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<PackageItem[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const where: Prisma.SubscriptionPresetWhereInput = {};
 
     if (query?.category) {
@@ -35,10 +61,24 @@ export class PackagesService {
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
 
-    return presets.map((p) => this.formatPackage(p));
+    const result = presets.map((p) => this.formatPackage(p));
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 86400);
+    }
+
+    return result;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<PackageItem> {
+    const cacheKey = `cache:packages:item:${id}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<PackageItem>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const preset = await this.prisma.subscriptionPreset.findUnique({
       where: { id },
     });
@@ -47,7 +87,13 @@ export class PackagesService {
       throw new NotFoundException(`Package with ID ${id} not found`);
     }
 
-    return this.formatPackage(preset);
+    const result = this.formatPackage(preset);
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 86400);
+    }
+
+    return result;
   }
 
   async create(dto: CreatePackageDto) {
@@ -72,6 +118,8 @@ export class PackagesService {
         description: dto.description,
       },
     });
+
+    await this.evictPackageCaches();
 
     return this.formatPackage(created);
   }
@@ -110,6 +158,8 @@ export class PackagesService {
       },
     });
 
+    await this.evictPackageCaches();
+
     return this.formatPackage(updated);
   }
 
@@ -126,6 +176,8 @@ export class PackagesService {
       where: { id },
     });
 
+    await this.evictPackageCaches();
+
     return {
       message: 'Package deleted successfully',
       id,
@@ -141,10 +193,19 @@ export class PackagesService {
       throw new NotFoundException(`Package with ID ${id} not found`);
     }
 
+    await this.evictPackageCaches();
+
     return {
       ...this.formatPackage(existing),
       isActive: false,
     };
+  }
+
+  private async evictPackageCaches() {
+    if (this.cacheService) {
+      await this.cacheService.delByPattern('cache:packages:*');
+      await this.cacheService.del('cache:subscriptions:presets');
+    }
   }
 
   private formatPackage(p: {
@@ -158,7 +219,7 @@ export class PackagesService {
     description: string | null;
     created_at: Date;
     updated_at: Date;
-  }) {
+  }): PackageItem {
     return {
       id: p.id,
       name: p.name,

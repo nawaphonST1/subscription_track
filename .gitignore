@@ -121,5 +121,4 @@ k8s/postgres-secret.yaml
 # reverse tunnel to the production VM. Created by hand on the monitoring VM.
 infra/monitoring/secrets/
 
-# Local-only loop verification log (not meant to be shared/tracked).
-docs/dp5-loop-verification.md
+**/doc/

@@ -1,0 +1,68 @@
+# ==============================================================================
+# Traefik Ingress Controller - Helm Chart Values Configuration
+# Covers: DP-300 (Helm Deployment & Secure Dashboard) & DP-301 (Auto SSL/TLS ACME)
+# ==============================================================================
+
+# กำหนด Replica ของ Traefik Controller
+deployment:
+  replicas: 1
+
+# จุดเชื่อมต่อพอร์ต (EntryPoints)
+ports:
+  web:
+    port: 8000
+    expose:
+      default: true
+    exposedPort: 80
+    # บังคับ Redirect จาก HTTP ไป HTTPS อัตโนมัติ
+    redirectTo:
+      port: websecure
+      priority: 10
+
+  websecure:
+    port: 8443
+    expose:
+      default: true
+    exposedPort: 443
+    tls:
+      enabled: true
+      certResolver: letsencrypt
+
+# ------------------------------------------------------------------------------
+# [DP-300] Secure Dashboard Setup
+# ------------------------------------------------------------------------------
+ingressRoute:
+  dashboard:
+    enabled: true
+    # เปิด Dashboard ภายใต้ Host ที่ปลอดภัย
+    matchRule: Host(`traefik.subtracker.local`)
+    entryPoints: ["websecure"]
+
+# ------------------------------------------------------------------------------
+# [DP-301] Automated SSL/TLS Certificate Management (Let's Encrypt ACME)
+# ------------------------------------------------------------------------------
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@subtracker.local
+      storage: /data/acme.json
+      # ใช้ HTTP Challenge หรือ TLS Challenge ในการยืนยันความเป็นเจ้าของโดเมน
+      httpChallenge:
+        entryPoint: web
+
+# จัดเก็บไฟล์ acme.json ลงใน Persistent Disk (เพื่อไม่ให้ใบรับรอง SSL หายเวลารีสตาร์ต)
+persistence:
+  enabled: true
+  name: data
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  path: /data
+
+# จัดสรรทรัพยากรสำหรับ Traefik Pod
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "300m"
+    memory: "256Mi"

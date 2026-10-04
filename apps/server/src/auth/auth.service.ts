@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { SocialLoginDto } from './dto/social-login.dto';
 import { NotificationType } from '@prisma/client';
 import { BusinessMetrics } from '../metrics/business.metrics';
 
@@ -106,6 +107,69 @@ export class AuthService {
         name: user.name,
         monthly_income: Number(user.monthly_income),
         created_at: user.created_at,
+      },
+    };
+  }
+
+  async socialLogin(dto: SocialLoginDto) {
+    const email = dto.email.toLowerCase();
+
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        monthly_income: true,
+        created_at: true,
+      },
+    });
+
+    if (!user) {
+      const saltRounds = 10;
+      const randomPassword = Math.random().toString(36).slice(-12);
+      const passwordHash = await bcrypt.hash(randomPassword, saltRounds);
+      const securityPinHash = await bcrypt.hash('111111', saltRounds);
+
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          password_hash: passwordHash,
+          name:
+            dto.name ??
+            (dto.provider === 'google' ? 'Google User' : 'Apple User'),
+          monthly_income: 0,
+          security_pin_hash: securityPinHash,
+          notifications: {
+            create: {
+              title: 'Welcome to SubTracker',
+              message: `Your account has been connected with ${dto.provider === 'google' ? 'Google' : 'Apple'}.`,
+              type: NotificationType.SECURITY_ALERT,
+            },
+          },
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          monthly_income: true,
+          created_at: true,
+        },
+      });
+    }
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+    });
+
+    this.metrics?.recordLogin('success', 'password');
+
+    return {
+      token,
+      user: {
+        ...user,
+        monthly_income: Number(user.monthly_income),
       },
     };
   }

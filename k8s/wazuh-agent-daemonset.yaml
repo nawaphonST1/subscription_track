@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wazuh-agent-config
+  labels:
+    app: wazuh-agent
+    app.kubernetes.io/part-of: subscription-track
+data:
+  ossec.conf: |
+    <ossec_config>
+      <client>
+        <server>
+          <address>wazuh-manager.default.svc.cluster.local</address>
+          <port>1514</port>
+          <protocol>tcp</protocol>
+        </server>
+        <config-profile>ubuntu, ubuntu22.04</config-profile>
+        <notify_time>10</notify_time>
+        <time-reconnect>60</time-reconnect>
+        <auto_restart>yes</auto_restart>
+      </client>
+
+      <!-- ตรวจสอบการแก้ไขไฟล์ระบบ (File Integrity Monitoring - FIM) -->
+      <syscheck>
+        <disabled>no</disabled>
+        <frequency>43200</frequency>
+        <scan_on_start>yes</scan_on_start>
+        <directories check_all="yes" report_changes="yes" realtime="yes">/host/etc,/host/usr/bin,/host/usr/sbin</directories>
+        <ignore>/etc/mtab</ignore>
+        <ignore>/etc/hosts.deny</ignore>
+      </syscheck>
+
+      <!-- ตรวจจับ Rootkit และ Anomaly -->
+      <rootcheck>
+        <disabled>no</disabled>
+        <check_files>yes</check_files>
+        <check_trojans>yes</check_trojans>
+        <check_dev>yes</check_dev>
+        <check_sys>yes</check_sys>
+        <check_pids>yes</check_pids>
+        <check_ports>yes</check_ports>
+        <check_interfaces>yes</check_interfaces>
+      </rootcheck>
+
+      <!-- ดึง Security Logs จาก Host -->
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>/host/var/log/syslog</location>
+      </localfile>
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>/host/var/log/auth.log</location>
+      </localfile>
+    </ossec_config>
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wazuh-agent
+  labels:
+    app: wazuh-agent
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  selector:
+    matchLabels:
+      app: wazuh-agent
+  template:
+    metadata:
+      labels:
+        app: wazuh-agent
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: wazuh-agent
+          image: wazuh/wazuh-agent:4.8.0
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: WAZUH_MANAGER
+              value: "wazuh-manager.default.svc.cluster.local"
+            - name: WAZUH_AGENT_GROUP
+              value: "k8s-nodes"
+          volumeMounts:
+            - name: config
+              mountPath: /var/ossec/etc/ossec.conf
+              subPath: ossec.conf
+            - name: host-var-log
+              mountPath: /host/var/log
+              readOnly: true
+            - name: host-etc
+              mountPath: /host/etc
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: wazuh-agent-config
+        - name: host-var-log
+          hostPath:
+            path: /var/log
+        - name: host-etc
+          hostPath:
+            path: /etc

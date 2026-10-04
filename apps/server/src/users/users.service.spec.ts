@@ -202,6 +202,35 @@ describe('UsersService', () => {
         service.updateProfile('non-existent', { name: 'Test' }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('should evict auth user cache when name is updated and creep score when monthly_income is updated', async () => {
+      const mockCache = { del: vi.fn().mockResolvedValue(true) };
+      const serviceWithCache = new UsersService(
+        prismaMock,
+        undefined,
+        mockCache as any,
+      );
+
+      prismaMock.user.update.mockResolvedValue({
+        id: 'user-1',
+        email: 'user@example.com',
+        name: 'New Name',
+        monthly_income: 80000,
+        security_pin_hash: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      await serviceWithCache.updateProfile('user-1', {
+        name: 'New Name',
+        monthly_income: 80000,
+      });
+
+      expect(mockCache.del).toHaveBeenCalledWith('auth:user:user-1');
+      expect(mockCache.del).toHaveBeenCalledWith(
+        'cache:user:user-1:creep-score',
+      );
+    });
   });
 
   describe('verifyPin', () => {
@@ -239,6 +268,22 @@ describe('UsersService', () => {
 
       const result = await service.changePin('user-1', '123456', '654321');
       expect(result.message).toBe('Security PIN changed successfully');
+    });
+
+    it('should evict auth user cache when PIN is changed', async () => {
+      const mockCache = { del: vi.fn().mockResolvedValue(true) };
+      const serviceWithCache = new UsersService(
+        prismaMock,
+        undefined,
+        mockCache as any,
+      );
+
+      const hash = await bcrypt.hash('123456', 10);
+      prismaMock.user.findUnique.mockResolvedValue({ security_pin_hash: hash });
+      prismaMock.user.update.mockResolvedValue({ id: 'user-1' });
+
+      await serviceWithCache.changePin('user-1', '123456', '654321');
+      expect(mockCache.del).toHaveBeenCalledWith('auth:user:user-1');
     });
   });
 });

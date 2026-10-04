@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: subtracker-resource-quota
+  labels:
+    app.kubernetes.io/name: subtracker-resource-quota
+    app.kubernetes.io/part-of: subscription-track
+spec:
+  hard:
+    # ทรัพยากรขั้นต่ำที่ต้องมีให้ทั้งระบบ (Requests)
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    
+    # เพดานทรัพยากรสูงสุดห้ามเกินนี้เด็ดขาด (Limits) ป้องกันกินแรมจน VM ดับ
+    limits.cpu: "4"
+    limits.memory: 8Gi
+    
+    # จำกัดจำนวน Pod ทั้งหมดในระบบไม่ให้เกิน 20 ตัว
+    pods: "20"
+    
+    # จำกัด Persistent Volume Claims (Disk ฐานข้อมูล) ไม่เกิน 5 ตัว
+    persistentvolumeclaims: "5"
+    
+    # จำกัด Services ชนิด LoadBalancer
+    services.loadbalancers: "1"

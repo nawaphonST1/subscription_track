@@ -5,15 +5,26 @@ metadata:
   namespace: default
   labels:
     app: subtracker-api
+    app.kubernetes.io/part-of: subscription-track
 spec:
   entryPoints:
     - web
     - websecure
   routes:
+    # กฎที่ 1: บล็อก Bad Bots / Scanners ทันที (Priority สูงสุด)
+    - match: (Host(`api.subtracker.local`) || PathPrefix(`/api`)) && HeadersRegexp(`User-Agent`, `(?i)(sqlmap|nikto|wpscan|nmap|masscan|dirbuster|acunetix|nessus|gobuster|hydra)`)
+      kind: Rule
+      priority: 100
+      services:
+        - name: no-op
+          kind: TraefikService
+
+    # กฎที่ 2: อนุญาตทราฟฟิกผู้ใช้ปกติผ่านตัวกรอง Middlewares
     - match: Host(`api.subtracker.local`) || PathPrefix(`/api`) || PathPrefix(`/health`)
       kind: Rule
+      priority: 10
       services:
-        - name: taskflow
+        - name: subtracker-api
           port: 8080
       middlewares:
         - name: subtracker-security-headers

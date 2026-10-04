@@ -15,12 +15,14 @@ import {
   SubscriptionStatus,
   UsageStatus,
 } from '@prisma/client';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly metrics?: BusinessMetrics,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async findAll(userId: string, query: QuerySubscriptionDto) {
@@ -118,11 +120,19 @@ export class SubscriptionsService {
   }
 
   async listPresets() {
+    const cacheKey = 'cache:subscriptions:presets';
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const presets = await this.prisma.subscriptionPreset.findMany({
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
 
-    return presets.map((p) => ({
+    const result = presets.map((p) => ({
       id: p.id,
       name: p.name,
       category: p.category,
@@ -132,6 +142,12 @@ export class SubscriptionsService {
       icon_url: p.icon_url,
       description: p.description,
     }));
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 86400);
+    }
+
+    return result;
   }
 
   async findOne(userId: string, id: string) {
@@ -225,6 +241,10 @@ export class SubscriptionsService {
 
     this.metrics?.recordSubscriptionCreated();
 
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
     return {
       ...sub,
       price: Number(sub.price),
@@ -272,6 +292,10 @@ export class SubscriptionsService {
 
     this.metrics?.recordSubscriptionUpdated();
 
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
     return {
       ...updated,
       price: Number(updated.price),
@@ -292,6 +316,10 @@ export class SubscriptionsService {
     });
 
     this.metrics?.recordSubscriptionDeleted();
+
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
 
     return { message: 'Subscription deleted successfully' };
   }
