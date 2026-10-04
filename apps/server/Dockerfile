@@ -60,8 +60,9 @@ USER node
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=node:node prisma ./prisma
-RUN pnpm install --prod --frozen-lockfile \
-    && pnpm prisma:generate
+RUN pnpm install --frozen-lockfile \
+    && pnpm prisma:generate \
+    && pnpm prune --prod
 
 FROM ${NODE_IMAGE} AS runtime
 

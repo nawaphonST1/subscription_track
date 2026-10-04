@@ -159,6 +159,7 @@ model UserSubscription {
   user              User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
   payment_card      PaymentCard         @relation(fields: [payment_card_id], references: [id], onDelete: Restrict)
   preset            SubscriptionPreset? @relation(fields: [preset_id], references: [id], onDelete: SetNull)
+  notifications     Notification[]
 
   @@index([user_id])
   @@index([payment_card_id])
@@ -185,16 +186,19 @@ model SavingsCancellationLog {
 }
 
 model Notification {
-  id         String           @id @default(uuid())
-  user_id    String
-  title      String
-  message    String
-  type       NotificationType
-  is_read    Boolean          @default(false)
-  created_at DateTime         @default(now())
-  updated_at DateTime         @updatedAt
+  id              String            @id @default(uuid())
+  user_id         String
+  title           String
+  message         String
+  type            NotificationType
+  is_read         Boolean           @default(false)
+  subscription_id String?
+  dedupe_key      String?           @unique
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
 
-  user       User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subscription    UserSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
 
   @@index([user_id, is_read])
   @@index([created_at])

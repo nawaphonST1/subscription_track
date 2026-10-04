@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup-script
+  labels:
+    app: postgres-backup
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -euo pipefail
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_DIR="/tmp/backups"
+    mkdir -p "${BACKUP_DIR}"
+
+    BACKUP_FILE="${BACKUP_DIR}/${POSTGRES_DB}_backup_${TIMESTAMP}.dump.gz"
+    CHECKSUM_FILE="${BACKUP_FILE}.sha256"
+
+    echo "==> [$(date)] Starting backup for ${POSTGRES_DB} on ${DB_HOST}:${DB_PORT}..."
+    export PGPASSWORD="${POSTGRES_PASSWORD}"
+
+    pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -Fc | gzip -c > "${BACKUP_FILE}"
+    sha256sum "${BACKUP_FILE}" > "${CHECKSUM_FILE}"
+
+    BLOB_PATH="${AZURE_BACKUP_PREFIX:-backups}/$(basename "${BACKUP_FILE}")"
+    CHECKSUM_PATH="${AZURE_BACKUP_PREFIX:-backups}/$(basename "${CHECKSUM_FILE}")"
+    BLOB_BASE_URL="https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}"
+
+    echo "==> Uploading backup to Azure Blob Storage: ${BLOB_BASE_URL}/${BLOB_PATH}..."
+    export AZCOPY_ACCOUNT_KEY="${AZURE_STORAGE_KEY:-}"
+    SAS_SUFFIX=""
+    if [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
+        SAS_TOKEN_CLEAN=$(echo "${AZURE_STORAGE_SAS_TOKEN}" | sed 's/^[?]*//')
+        SAS_SUFFIX="?${SAS_TOKEN_CLEAN}"
+    fi
+
+    azcopy copy "${BACKUP_FILE}" "${BLOB_BASE_URL}/${BLOB_PATH}${SAS_SUFFIX}" --overwrite=true
+    azcopy copy "${CHECKSUM_FILE}" "${BLOB_BASE_URL}/${CHECKSUM_PATH}${SAS_SUFFIX}" --overwrite=true
+
+    rm -rf "${BACKUP_DIR}"
+    echo "✅ Backup completed and verified successfully on Azure Blob Storage."
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  labels:
+    app: postgres-backup
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup-runner
+              image: alpine:3.20
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  apk update && apk add --no-cache postgresql16-client bash gzip curl ca-certificates
+                  curl -sSL https://aka.ms/downloadazcopy-v10-linux | tar -xz -C /tmp --strip-components=1 && mv /tmp/azcopy /usr/local/bin/azcopy && chmod +x /usr/local/bin/azcopy
+                  /scripts/backup.sh
+              env:
+                - name: DB_HOST
+                  value: "postgres"
+                - name: DB_PORT
+                  value: "5432"
+                - name: POSTGRES_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_DB
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_USER
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_PASSWORD
+                - name: AZURE_STORAGE_ACCOUNT
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_ACCOUNT
+                - name: AZURE_STORAGE_CONTAINER
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_CONTAINER
+                - name: AZURE_STORAGE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_KEY
+                      optional: true
+                - name: AZURE_STORAGE_SAS_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-azure-secret
+                      key: AZURE_STORAGE_SAS_TOKEN
+                      optional: true
+              volumeMounts:
+                - name: script-volume
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: script-volume
+              configMap:
+                name: postgres-backup-script
+                defaultMode: 0755
+

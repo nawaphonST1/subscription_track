@@ -1,3 +1,6 @@
 
 # FVM Version Cache
 .fvm/
+
+# Local ChromeDriver binary (downloaded dev tool, not project source)
+chromedriver/

@@ -98,6 +98,65 @@ Never point `BE401_REAL_DATABASE_URL` at a development, shared, staging, or
 production database. The test refuses production mode and database names that
 do not clearly identify a test database.
 
+## Worker runtime (BE-403)
+
+Renewal reminders run in a **separate Worker runtime** (`src/worker.ts`),
+started via `NestFactory.createApplicationContext`. It shares the same
+codebase and modules as the API but never binds an HTTP port and never loads
+Swagger — it is not a microservice.
+
+The Worker requires Redis (BullMQ's backing store):
+
+```bash
+# development, with live reload
+$ pnpm run start:worker:dev
+
+# production-style, from a built dist/
+$ pnpm run start:worker
+```
+
+Worker-only environment variables (validated separately from the API's own
+`env.validation.ts`; the API does not need any of these to start):
+
+- `REDIS_HOST` (default `localhost`), `REDIS_PORT` (default `6379`)
+- `PUSH_PROVIDER` — required, either `stub` or `fcm`, no default and no
+  silent fallback
+  - `stub`: for local development and automated tests only. Never contacts a
+    real push service.
+  - `fcm`: dispatches real push notifications via Firebase Cloud Messaging
+    and requires `FCM_SERVICE_ACCOUNT_JSON` (the full service-account JSON as
+    a single-line string). The Worker fails fast at startup if
+    `PUSH_PROVIDER=fcm` is set without valid credentials.
+
+Reminder policy (MVP, fixed for all users/subscriptions until a real
+reminder-preference schema exists):
+
+- Lead time: **3 days** before `next_renewal_date`
+- All calculations use **UTC** calendar days; there is no per-user timezone
+  subsystem
+- The discovery schedule runs **daily at 00:00 UTC**
+- **Catch-up**: a renewal stays eligible for a reminder from 3 days out
+  through the renewal day itself, so a missed scheduler run can still send
+  before the renewal happens. Renewals already in the past are not sent.
+
+Real Redis/BullMQ BE-403 integration tests are opt-in and use a Redis
+instance/queue-prefix unique to the test run (never `FLUSHALL`/`FLUSHDB`):
+
+```bash
+RUN_REDIS_INTEGRATION=1 \
+BE403_REAL_REDIS_URL="redis://localhost:56381" \
+pnpm vitest run test/renewal-reminder.redis.integration.spec.ts
+```
+
+Real PostgreSQL BE-403 integration tests follow the same opt-in convention as
+BE-401's, against a dedicated test database whose name ends with `_test`:
+
+```bash
+RUN_DB_INTEGRATION=1 \
+BE403_REAL_DATABASE_URL="postgresql://postgres:postgres@localhost:55432/subscription_track_be403_test" \
+pnpm vitest run test/renewal-reminder.postgres.integration.spec.ts
+```
+
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
 If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:

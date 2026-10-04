@@ -14,8 +14,6 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-password123}
       DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-subtracker_db}?schema=public"
       JWT_SECRET: ${JWT_SECRET:-dev-only-local-secret-not-for-production-min-32-chars-long}
-    ports:
-      - "8080:8080"
     volumes:
       - ./apps/server/src:/app/src
       - ./apps/server/prisma:/app/prisma
@@ -23,6 +21,18 @@ services:
       postgres:
         condition: service_healthy
     init: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   postgres:
     image: postgres:16-alpine
@@ -42,25 +52,62 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis remains disabled until ADD-ASYNC-01 introduces its configuration
-  # contract and client dependencies.
-  # redis:
-  #   image: redis:<pinned-version>
+  redis:
+    image: redis:7-alpine
+    container_name: subtracker_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  # The worker remains disabled until BullMQ worker bootstrap is implemented.
-  # worker:
-  #   build:
-  #     context: ./apps/server
-  #     target: runtime
-  #   command: ["node", "dist/worker.js"]
+  worker:
+    build:
+      context: ./apps/server
+      target: development
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-subtracker_db}?schema=public"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # 'stub' is for local development/automated tests only: it never
+      # contacts a real push provider. Set PUSH_PROVIDER=fcm with
+      # FCM_SERVICE_ACCOUNT_JSON for real delivery; there is no silent
+      # fallback if PUSH_PROVIDER is unset or fcm credentials are missing.
+      PUSH_PROVIDER: stub
+    # Migration ownership: the `api` service's development-stage image already
+    # runs `pnpm prisma:migrate:deploy` on startup (see apps/server/Dockerfile
+    # `development` target CMD), so the worker does not run it again here to
+    # avoid two long-running services independently owning migration
+    # execution. On a fresh `docker compose up` there is a small local-dev-only
+    # race window where the worker can start querying before `api` finishes
+    # migrating; this is an accepted, documented tradeoff rather than added
+    # orchestration, since `api` has no healthcheck this compose file can wait
+    # on. Restart the worker if it logs schema errors on a first-ever `up`.
+    command: ["pnpm", "start:worker:dev"]
+    volumes:
+      - ./apps/server/src:/app/src
+      - ./apps/server/prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    init: true
 
-  # Nginx remains disabled until its reviewed configuration exists. When it is
-  # enabled, it will publish 3000:8080 and the API `ports` mapping will be
-  # removed so API traffic stays on the Compose network.
-  # nginx:
-  #   image: nginx:<pinned-version>
-  #   ports:
-  #     - "3000:8080"
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "3000:8080"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:

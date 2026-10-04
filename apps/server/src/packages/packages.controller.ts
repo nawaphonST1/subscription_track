@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -54,5 +55,21 @@ export class PackagesController {
   @ApiResponse({ status: 409, description: 'Package name already exists' })
   async update(@Param('id') id: string, @Body() dto: UpdatePackageDto) {
     return this.packagesService.update(id, dto);
+  }
+
+  @Patch(':id/disable')
+  @ApiOperation({ summary: 'Admin disable a preset package (BE-305)' })
+  @ApiResponse({ status: 200, description: 'Package disabled successfully' })
+  @ApiResponse({ status: 404, description: 'Package not found' })
+  async disable(@Param('id') id: string) {
+    return this.packagesService.disable(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Admin delete a preset package (BE-305)' })
+  @ApiResponse({ status: 200, description: 'Package deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Package not found' })
+  async remove(@Param('id') id: string) {
+    return this.packagesService.delete(id);
   }
 }

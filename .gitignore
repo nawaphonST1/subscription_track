@@ -24,6 +24,11 @@ migrate_working_dir/
 
 # Private & Secrets
 **/.private/
+agent.md
+agents.md
+AGENTS.md
+**/vault.yml
+.agents/
 .agents/skills.json
 .env
 .env.*
@@ -79,3 +84,28 @@ lerna-debug.log*
 # ==========================================
 infra/postgres/data/
 infra/redis/data/
+
+# Local CLI Binaries & Cluster Configs
+*.exe
+scripts/bin/
+*.jks
+kubeconfig.txt
+
+# Secrets & Vault Passwords
+.vault_pass
+*.key
+
+# Terraform Local Cache & State
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Test Artifacts & Coverage Reports
+**/playwright-report/
+**/test-results/
+**/reports/
+
+# Cache directories & scanner databases
+.cache/
+**/.cache/

@@ -1,0 +1,51 @@
+#!/bin/sh
+# ==============================================================================
+# Git Pre-commit Hook: Gitleaks Secret Detection
+# ==============================================================================
+# Scans staged changes for secrets before commit, shifting security left to the local workstation.
+# ==============================================================================
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+CONFIG_FILE="${REPO_ROOT}/.gitleaks.toml"
+
+GITLEAKS_BIN=""
+if command -v gitleaks >/dev/null 2>&1; then
+    GITLEAKS_BIN="gitleaks"
+elif [ -x "${REPO_ROOT}/scripts/bin/gitleaks" ]; then
+    GITLEAKS_BIN="${REPO_ROOT}/scripts/bin/gitleaks"
+elif [ -x "${REPO_ROOT}/scripts/bin/gitleaks.exe" ]; then
+    GITLEAKS_BIN="${REPO_ROOT}/scripts/bin/gitleaks.exe"
+fi
+
+echo "🔍 [Security Baseline] Running Gitleaks secret detection on staged files..."
+
+if [ -z "${GITLEAKS_BIN}" ]; then
+    echo "⚠️  [WARNING] Gitleaks binary was not found in PATH or scripts/bin/."
+    echo "    Please install Gitleaks to enforce local secrets protection:"
+    echo "      - Windows: winget install Gitleaks.Gitleaks  (or scoop install gitleaks)"
+    echo "      - macOS:   brew install gitleaks"
+    echo "      - Linux:   https://github.com/gitleaks/gitleaks/releases"
+    echo "    Proceeding with commit without local secret scan..."
+    exit 0
+fi
+
+if [ -f "${CONFIG_FILE}" ]; then
+    "${GITLEAKS_BIN}" protect --staged --verbose --config "${CONFIG_FILE}"
+else
+    "${GITLEAKS_BIN}" protect --staged --verbose
+fi
+
+EXIT_CODE=$?
+
+if [ ${EXIT_CODE} -ne 0 ]; then
+    echo ""
+    echo "❌ [SECURITY ALERT] Gitleaks detected potential secret(s) in staged changes!"
+    echo "   Commit has been blocked to prevent sensitive data exposure."
+    echo "   If this is a known test mock, verify it is allowed in .gitleaks.toml."
+    exit 1
+fi
+
+echo "✅ [Security Baseline] No secrets detected in staged files. Pre-commit check passed."
+exit 0

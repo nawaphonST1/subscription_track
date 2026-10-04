@@ -4,7 +4,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.13.3-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Riverpod](https://img.shields.io/badge/State_Management-Riverpod_3-black)](https://riverpod.dev)
 [![FVM](https://img.shields.io/badge/Version_Management-FVM-4.3.1-58CDFA)](https://fvm.app)
-[![Architecture](https://img.shields.io/badge/Architecture-Feature--First_Clean_Arch-brightgreen)](doc/architecture/feature_first_architecture.md)
+![Architecture](https://img.shields.io/badge/Architecture-Feature--First_Clean_Arch-brightgreen)
 [![Status](https://img.shields.io/badge/Frontend_MVP-43%2F43_Tests_Passing-success)](apps/mobile)
 
 ระบบตรวจจับและประเมินค่าบริการสมาชิกรายเดือน/รายปี (Subscription Tracker & Analytics System) ที่มาพร้อมกับระบบคำนวณ **Subscription Creep Score** เพื่อประเมินความเสี่ยงทางการเงินจากการสมัครบริการซ้ำซ้อนหรือไม่ได้ใช้งาน พร้อมทั้งระบบจำลองการประหยัดค่าใช้จ่าย (Savings Simulation)
@@ -29,24 +29,11 @@ subscription_track/
 │
 ├── scripts/             # สคริปต์อัตโนมัติสำหรับการพัฒนาและทดสอบระดับ Monorepo
 │
-├── doc/                 # เอกสารข้อกำหนดระบบ สถาปัตยกรรม และการจัดสรรงาน
-│   ├── architecture/    # Feature-First & Riverpod State Management Guides
-│   ├── frontend/        # UI Screen Specifications & Component Matrix
-│   ├── backend/         # Backend Modular Monolith Specifications (Phase 2)
-│   ├── devops/          # Infrastructure & Deployment Specifications (Phase 2)
-│   ├── task/            # Developer Task Allocations & Work Breakdown
-│   └── Subscription_Track_PRD.md # Product Requirement Document
-│
-├── .agents/             # Antigravity AI Agent Skills & Repository Knowledge
-│   ├── skills/          # clean-code, tree-repo, dart & flutter skills
-│   └── tree_repo/       # ผังไฟล์และคำอธิบายสถาปัตยกรรมระดับ Repository
-│
+├── agent.md             # กฎและแนวทางการทำงานร่วมกับ AI Agent
+├── SYSTEM_OVERVIEW.md   # ภาพรวมสถาปัตยกรรมและรายละเอียดทางเทคนิคของระบบ
 ├── .github/             # GitHub Actions CI/CD Workflows
-├── .gitignore           # กฎการละเว้นไฟล์ระดับ Full-Stack Monorepo
-└── skills-lock.json     # Locked configuration for agent skills
+└── .gitignore           # กฎการละเว้นไฟล์ระดับ Full-Stack Monorepo
 ```
-
-> 📖 ดูโครงสร้างไฟล์อย่างละเอียดพร้อมคำอธิบายรายไฟล์ได้ที่: **[Repository Tree Overview](.agents/tree_repo/tree_repo.md)**
 
 ---
 
@@ -132,7 +119,6 @@ fvm flutter run -d chrome
 - **สถานะ:** Scaffold ตั้งต้น NestJS Modular Monolith เรียบร้อยแล้ว (พร้อมสำหรับ Phase 1 Foundation & Configuration)
 - **สถาปัตยกรรม:** **NestJS Modular Monolith** (`src/main.ts` สำหรับ HTTP API และ `src/worker.ts` สำหรับ Worker boundary)
 - **เทคโนโลยีหลัก:** TypeScript, NestJS 12, PostgreSQL 17, TypeORM, Redis, BullMQ
-- ดูรายละเอียดข้อกำหนดระบบ Backend ได้ที่ [doc/Subscription_Track_PRD.md](doc/Subscription_Track_PRD.md)
 
 ### คำสั่งสำหรับติดตั้งและทดสอบ (`apps/server/`):
 
@@ -202,7 +188,7 @@ API รับการเชื่อมต่อที่ `http://localhost:300
 docker compose --env-file apps/server/.env down
 ```
 
-ใช้ `docker compose --env-file apps/server/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx ยังเป็น commented future drafts และไม่ได้เปิดใช้งานใน BE-004
+ใช้ `docker compose --env-file apps/server/.env down -v` เฉพาะเมื่อต้องการลบ development database data โดยตั้งใจ Redis, Worker และ Nginx เปิดใช้งานแล้วใน `docker-compose.yml` (Nginx reverse proxy ฟัง `http://localhost:3000` → `api:8080`) ดูวิธี deploy ขึ้น production VM ได้ที่หัวข้อ [🏭 Production Deployment (VM)](#-production-deployment-vm) ด้านล่าง
 
 ---
 
@@ -217,16 +203,70 @@ docker compose --env-file apps/server/.env down
 
 ---
 
+## 🤖 ภาพรวมระบบและคู่มือการทำงาน (System & Agent Reference)
+## 🏭 Production Deployment (VM)
+
+สำหรับทดสอบ deploy ขึ้นเครื่อง VM จริง (ไม่ใช่เครื่อง dev) ใช้ไฟล์ `docker-compose-prosuction.yml` ที่ root ของ repo — เป็น production variant ของ `docker-compose.yml` เดิม (service เดียวกัน: `api`, `postgres`, `redis`, `worker`, `nginx`) แต่ปิดช่องโหว่ที่ไม่ควรมีใน production:
+
+- `postgres`/`redis` **ไม่เปิด host port** (เข้าถึงได้เฉพาะในวง Compose network ผ่าน `api`/`worker`)
+- **ไม่มี default secret** ฝังในไฟล์ — ทุกค่า secret อ่านจาก `apps/server/.env.production` ผ่าน `env_file:` ถ้าไฟล์นี้ไม่มี `docker compose` จะ error ทันที ไม่ fallback ไปใช้ค่า dev
+- `api`/`worker` build จาก Dockerfile target `runtime` (production image, non-root user) ไม่ใช่ `development` ที่ bind-mount source
+- Migration แยกเป็น job `migrate` ต่างหาก ไม่รันอัตโนมัติตอน `up` (กัน container หลายตัวรัน migration ซ้ำกัน)
+
+> [!WARNING]
+> **ยังไม่มี HTTPS** — `infra/nginx/nginx.conf` ยังเป็น HTTP ล้วน ไฟล์นี้จึงเหมาะสำหรับทดสอบว่า stack รันได้จริงบน VM เท่านั้น **ห้ามเปิดพอร์ตนี้สู่อินเทอร์เน็ตสาธารณะ** จนกว่าจะมี TLS termination (เช่น Let's Encrypt/Certbot หรือ reverse proxy อื่นที่ทำ HTTPS ให้) ซึ่งยังไม่ได้ implement ใน repo นี้
+
+### ขั้นตอน Deploy
+
+**1) Clone repo ขึ้น VM และติดตั้ง Docker + Docker Compose v2** (ถ้ายังไม่มี)
+
+**2) ตั้งค่า secrets** (ไฟล์นี้ gitignore อยู่แล้ว ไม่ถูก commit แน่นอน):
+```bash
+cp apps/server/.env.production.example apps/server/.env.production
+# แก้ไข apps/server/.env.production ด้วยค่าจริง:
+# - POSTGRES_DB/USER/PASSWORD ต้องตรงกับ DB_NAME/DB_USER/DB_PASSWORD
+# - DATABASE_URL ต้อง sync กับค่าด้านบน
+# - JWT_SECRET ต้องสุ่มด้วย CSPRNG อย่างน้อย 32 ตัวอักษร
+```
+
+**3) ตรวจสอบว่า compose ไฟล์ถูกต้องและ secrets ครบ:**
+```bash
+docker compose -f docker-compose-prosuction.yml config
+```
+
+**4) รัน database migration ครั้งแรก (ก่อน `up` เสมอ):**
+```bash
+docker compose -f docker-compose-prosuction.yml run --rm migrate
+```
+
+**5) ขึ้นระบบทั้งหมด:**
+```bash
+docker compose -f docker-compose-prosuction.yml up -d --build
+```
+
+**6) ตรวจสอบสถานะและทดสอบ end-to-end:**
+```bash
+docker compose -f docker-compose-prosuction.yml ps
+curl -i http://localhost/health
+```
+ควรได้ `HTTP/1.1 200 OK` พร้อม `"status":"ok","checks":{"database":"ok"}` ที่ผ่านเส้นทาง Nginx (พอร์ต 80) → `api:8080` → PostgreSQL
+
+**7) หยุดระบบ (เก็บข้อมูลไว้ใน volume):**
+```bash
+docker compose -f docker-compose-prosuction.yml down
+```
+ใช้ `down -v` เฉพาะเมื่อต้องการลบข้อมูล PostgreSQL โดยตั้งใจเท่านั้น
+
+> มี production compose อีกไฟล์ที่ `apps/server/docker-compose-prosuction.yml` สำหรับกรณีต้องการ deploy เฉพาะ backend scope แยกจาก root — ใช้ไฟล์ secrets ร่วมกัน (`apps/server/.env.production`) แต่สำหรับการใช้งานทั่วไปแนะนำไฟล์ root ด้านบนเพราะรวม Nginx reverse proxy ไว้ให้แล้ว
+
+---
+
 ## 📚 เอกสารอ้างอิงของโปรเจกต์ (Documentation Matrix)
 
-| เอกสาร | รายละเอียดและขอบเขตเนื้อหา |
+| ข้อมูล / เอกสาร | รายละเอียดและขอบเขตเนื้อหา |
 |---|---|
-| 📄 **[Product Requirement Document (PRD)](doc/Subscription_Track_PRD.md)** | เอกสารข้อกำหนดผลิตภัณฑ์, User Persona, MVP Feature Matrix, และ Roadmaps |
-| 📱 **[Frontend Screen Specifications](doc/frontend/subscription_track_frontend_screens.md)** | รายละเอียดหน้าจอทั้ง 5 แท็บ, Design Tokens, Color Palette, และ State Mapping |
-| 🏛️ **[Feature-First Architecture Guide](doc/architecture/feature_first_architecture.md)** | สถาปัตยกรรม Feature-First, โครงสร้าง 4 เลเยอร์, และเกณฑ์การตรวจสอบโค้ด |
-| ⚡ **[Riverpod State Management Guide](doc/architecture/riverpod_architecture_guide.md)** | แผนผัง Controller และ Provider ทั้งหมดในแอปพลิเคชัน พร้อมคู่มือการใช้งาน |
-| 👥 **[Team Task Allocation & Schedule](doc/task/team_task_allocation.md)** | การจัดสรรงานของทีมพัฒนา (Person 1, 2, 3), สถานะงาน, และแผนการส่งมอบ |
-| 🌳 **[Repository Tree Overview](.agents/tree_repo/tree_repo.md)** | ผังไดเรกทอรีโปรเจกต์ฉบับเต็ม พร้อมคำอธิบายหน้าที่ของแต่ละไฟล์ |
+| 🌐 **[System Overview](SYSTEM_OVERVIEW.md)** | เอกสารสรุปภาพรวมทางเทคนิคและสถาปัตยกรรมทั้งระบบ (Frontend, Backend, Deploy & Infra) |
+| 📋 **[Agent Instructions & Operational Rules](agent.md)** | กฎระเบียบและแนวทางการทำงานร่วมกับ AI Agent ภายในโปรเจกต์ |
 
 ---
 

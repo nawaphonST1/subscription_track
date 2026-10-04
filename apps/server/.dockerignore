@@ -14,5 +14,10 @@ coverage
 .DS_Store
 .idea
 .vscode
+.next
+playwright-report
+test-results
+reports
+*.tsbuildinfo
 
 README.md

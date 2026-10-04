@@ -1,0 +1,70 @@
+services:
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: subtracker_postgres_test
+    restart: "no"
+    environment:
+      POSTGRES_DB: subtracker_test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d subtracker_test_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test_network
+
+  redis_test:
+    image: redis:7-alpine
+    container_name: subtracker_redis_test
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test_network
+
+  test_runner:
+    build:
+      context: ./apps/server
+      target: development
+    container_name: subtracker_test_runner
+    restart: "no"
+    environment:
+      NODE_ENV: test
+      APP_HOST: 0.0.0.0
+      PORT: 8080
+      DB_HOST: postgres_test
+      DB_PORT: 5432
+      DB_NAME: subtracker_test_db
+      DB_USER: postgres
+      DB_PASSWORD: password123
+      DATABASE_URL: "postgresql://postgres:password123@postgres_test:5432/subtracker_test_db?schema=public"
+      REDIS_HOST: redis_test
+      REDIS_PORT: 6379
+      JWT_SECRET: "integration-test-secret-at-least-32-characters-entropy"
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+      redis_test:
+        condition: service_healthy
+    command: >
+      sh -c "pnpm prisma:migrate:deploy &&
+             pnpm vitest run src test/*.integration.spec.ts --coverage &&
+             pnpm vitest run test/auth.e2e.spec.ts"
+    volumes:
+      - ./apps/server/src:/app/src:ro
+      - ./apps/server/test:/app/test:ro
+      - ./apps/server/prisma:/app/prisma:ro
+      - /app/node_modules
+    networks:
+      - test_network
+
+networks:
+  test_network:
+    driver: bridge

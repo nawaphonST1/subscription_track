@@ -79,7 +79,10 @@ export class SubscriptionsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update subscription details' })
   @ApiResponse({ status: 200, description: 'Subscription updated' })
-  @ApiResponse({ status: 400, description: 'Bad request or invalid payment card' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request or invalid payment card',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   async update(

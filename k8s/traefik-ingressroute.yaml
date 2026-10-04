@@ -1,0 +1,53 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: subtracker-api-ingressroute
+  namespace: default
+  labels:
+    app: subtracker-api
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`api.subtracker.local`) || PathPrefix(`/api`) || PathPrefix(`/health`)
+      kind: Rule
+      services:
+        - name: taskflow
+          port: 8080
+      middlewares:
+        - name: subtracker-security-headers
+        - name: subtracker-ratelimit
+        - name: subtracker-compress
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: subtracker-security-headers
+  namespace: default
+spec:
+  headers:
+    customResponseHeaders:
+      X-Frame-Options: "DENY"
+      X-Content-Type-Options: "nosniff"
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Content-Security-Policy: "default-src 'self'"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: subtracker-ratelimit
+  namespace: default
+spec:
+  rateLimit:
+    average: 100
+    burst: 50
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: subtracker-compress
+  namespace: default
+spec:
+  compress: {}

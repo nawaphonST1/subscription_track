@@ -1,0 +1,25 @@
+# ==============================================================================
+# Ansible Vault Template: Production Secrets Schema
+# ==============================================================================
+# Copy this file to infra/ansible/vars/vault.yml and encrypt it using:
+#   ansible-vault encrypt infra/ansible/vars/vault.yml
+# NEVER commit unencrypted vault.yml or .vault_pass to version control.
+# ==============================================================================
+
+# Database Credentials
+vault_postgres_db: "subtracker_db"
+vault_postgres_user: "postgres"
+vault_postgres_password: "replace-with-a-secure-production-db-password"
+
+# Application Authentication Secrets (Minimum 32 characters, 256-bit entropy)
+vault_jwt_secret: "replace-with-a-cryptographically-random-secret-at-least-32-chars"
+
+# Redis Cache Credentials
+vault_redis_password: ""
+
+# Azure Blob Storage Backup Credentials (for DP-103)
+vault_azure_storage_account: "subtrackerbackups"
+vault_azure_storage_container: "postgres"
+vault_azure_storage_key: "replace-with-azure-storage-account-key"
+vault_azure_storage_sas_token: ""  # Optional SAS token (if authenticating via SAS instead of account key)
+
