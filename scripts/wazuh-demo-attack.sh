@@ -107,6 +107,9 @@ case "$HTTP_PROBES" in (*[!0-9]*|'') die "--http-probes must be a number";; esac
 
 # --- 0. hard-coded denylist — raw input, before anything else runs --------
 lower_target="$(printf '%s' "$TARGET" | tr '[:upper:]' '[:lower:]')"
+while [[ "$lower_target" == *. ]]; do
+  lower_target="${lower_target%.}"
+done
 for denied in $HARD_DENY_HOSTNAMES; do
   [ "$lower_target" = "$denied" ] && die "$TARGET is a hard-coded protected host (the lecturer's monitoring VM or a known alias). This cannot be overridden by any flag or environment variable."
 done
