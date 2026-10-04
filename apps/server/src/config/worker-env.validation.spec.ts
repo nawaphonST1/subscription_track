@@ -104,4 +104,40 @@ describe('validateWorkerEnvironment', () => {
       }),
     ).toThrowError(expect.not.stringContaining(sensitiveKey));
   });
+
+  it('defaults METRICS_PORT to the internal Prometheus port', () => {
+    expect(validateWorkerEnvironment(validStubEnvironment).METRICS_PORT).toBe(
+      9464,
+    );
+  });
+
+  it('accepts an explicit METRICS_PORT, including 0 outside production', () => {
+    expect(
+      validateWorkerEnvironment({
+        ...validStubEnvironment,
+        METRICS_PORT: '9465',
+      }).METRICS_PORT,
+    ).toBe(9465);
+    expect(
+      validateWorkerEnvironment({
+        ...validStubEnvironment,
+        METRICS_PORT: '0',
+      }).METRICS_PORT,
+    ).toBe(0);
+  });
+
+  it('rejects a METRICS_PORT outside the valid range', () => {
+    expect(() =>
+      validateWorkerEnvironment({
+        ...validStubEnvironment,
+        METRICS_PORT: '70000',
+      }),
+    ).toThrow(/METRICS_PORT/);
+    expect(() =>
+      validateWorkerEnvironment({
+        ...validStubEnvironment,
+        METRICS_PORT: '-1',
+      }),
+    ).toThrow(/METRICS_PORT/);
+  });
 });

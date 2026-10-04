@@ -137,3 +137,90 @@ describe('Queue metrics collector', () => {
     });
   });
 });
+
+/**
+ * The state label set is a contract with the dashboards and with
+ * docs/metrics.md. The expected list is spelled out literally rather than
+ * derived from QUEUE_STATES, so that dropping a state from the source array
+ * fails this test instead of quietly rewriting both sides of the comparison.
+ */
+describe('worker_queue_jobs state label set', () => {
+  const DOCUMENTED_STATES = [
+    'active',
+    'completed',
+    'delayed',
+    'failed',
+    'paused',
+    'waiting',
+  ];
+
+  it('exposes exactly the documented states', async () => {
+    const registry = new Registry();
+    const getJobCounts = vi.fn().mockResolvedValue(COUNTS);
+    const collector = new QueueMetricsCollector(registry, {
+      getJobCounts,
+    } as unknown as Queue);
+
+    await collector.refresh();
+    const body = await registry.metrics();
+
+    const states = [
+      ...new Set(
+        [...body.matchAll(/^worker_queue_jobs\{[^}]*state="([^"]+)"/gm)].map(
+          (match) => match[1],
+        ),
+      ),
+    ].sort();
+
+    expect(states).toEqual(DOCUMENTED_STATES);
+    expect([...QUEUE_STATES].sort()).toEqual(DOCUMENTED_STATES);
+  });
+});
+
+/**
+ * Timer hygiene inside withTimeout. Both properties are invisible to the
+ * other tests: dropping the clearTimeout or the unref leaves every assertion
+ * in this file green while the worker accumulates pending timers or keeps the
+ * event loop alive on shutdown.
+ */
+describe('withTimeout timer hygiene', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('leaves no pending timer after the operation succeeds', async () => {
+    vi.useFakeTimers();
+
+    await withTimeout(Promise.resolve('ok'), QUEUE_SCRAPE_TIMEOUT_MS);
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('leaves no pending timer after the operation rejects', async () => {
+    vi.useFakeTimers();
+
+    await expect(
+      withTimeout(Promise.reject(new Error('redis down')), 2000),
+    ).rejects.toThrow('redis down');
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('unrefs the timeout timer so it never holds the process open', async () => {
+    const unref = vi.fn();
+    const realSetTimeout = globalThis.setTimeout;
+
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(
+      (handler: () => void, timeout?: number) => {
+        const timer = realSetTimeout(handler, timeout);
+        timer.unref = unref;
+        return timer;
+      },
+    );
+
+    await withTimeout(Promise.resolve('ok'), QUEUE_SCRAPE_TIMEOUT_MS);
+
+    expect(unref).toHaveBeenCalledTimes(1);
+  });
+});
