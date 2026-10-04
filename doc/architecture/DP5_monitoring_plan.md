@@ -12,10 +12,10 @@
 
 | เรื่อง | สถานะ | รายละเอียด |
 |---|---|---|
-| VM Azure `subscription-track-dev` | VERIFIED | 2 vCPU / 4 GiB, Ubuntu 24.04, Malaysia West, IP `85.211.231.93`, ล็อกอินด้วย SSH key เท่านั้น |
+| VM Azure `<AZURE_VM_NAME>` | VERIFIED | 2 vCPU / 4 GiB, Ubuntu 24.04, Malaysia West, IP `<AZURE_VM_PUBLIC_IP>`, ล็อกอินด้วย SSH key เท่านั้น |
 | VM อาจารย์ `mob07-mob` | VERIFIED | 4 vCPU / 5.8 GiB, ดิสก์ว่าง ~37 GB, ไม่มี swap, `sudo` + `docker` ใช้ได้ |
 | ของเก่าบน VM อาจารย์ | VERIFIED | โปรเจกต์ `flash-sale-system` (path `/srv/project_backend/FlashSaleSystem`) มี Prometheus 3.5 / Grafana 12.1 / node-exporter รันอยู่ — **ใช้ config เป็นต้นแบบได้ แต่ห้ามลบก่อนสำรอง** |
-| VM อาจารย์ → Azure SSH (พอร์ต 22) | VERIFIED | เข้าได้ด้วย key `~/.ssh/id_azure_tunnel` (NSG อนุญาต `122.154.60.137/32`) |
+| VM อาจารย์ → Azure SSH (พอร์ต 22) | VERIFIED | เข้าได้ด้วย key `~/.ssh/id_azure_tunnel` (NSG อนุญาต `<UNIVERSITY_EGRESS_IP>/32`) |
 | VM อาจารย์ออกเน็ต | VERIFIED (มีเงื่อนไข) | ต้องล็อกอิน captive portal ของ ม. ด้วยตัวเอง (พิมพ์ user/password เอง) session อยู่ได้ ~1 วัน |
 | ผู้ชม demo เข้า prod ได้ | ASSUMED | prod อยู่ Azure มี IP สาธารณะ → เปิดได้จากทุกเครือข่าย |
 | Public IP ของ Azure เป็น static | ASSUMED | ตรวจด้วย `az network public-ip show` (ดูเฟส 0) |
@@ -75,7 +75,7 @@
 **User `tunnel` บน Azure** (ไม่มี sudo ไม่มี shell) `authorized_keys`:
 
 ```
-restrict,port-forwarding,permitlisten="127.0.0.1:3100",permitlisten="127.0.0.1:9090" ssh-ed25519 <public key ของ monitoring-tunnel> monitoring-tunnel
+restrict,port-forwarding,permitlisten="127.0.0.1:3100",permitlisten="127.0.0.1:9090" ssh-ed25519 <public key ของ <TUNNEL_KEY_COMMENT>> <TUNNEL_KEY_COMMENT>
 ```
 
 **tunnel container บน VM อาจารย์** (autossh, อยู่ใน compose network เดียวกับ prometheus/loki):
@@ -86,7 +86,7 @@ autossh -M 0 -N \
   -i /keys/id_azure_tunnel \
   -R 127.0.0.1:9090:prometheus:9090 \
   -R 127.0.0.1:3100:loki:3100 \
-  tunnel@85.211.231.93
+  <TUNNEL_USER>@<AZURE_VM_PUBLIC_IP>
 ```
 `restart: unless-stopped`; mount private key แบบ read-only จากไฟล์ที่ไม่อยู่ใน git; ถ้า `permitlisten` ไม่ match ให้ดู `/var/log/auth.log` บน Azure และปรับตามนั้น
 
@@ -112,9 +112,9 @@ autossh -M 0 -N \
 
 | งาน | ที่ไหน |
 |---|---|
-| สร้าง user `tunnel` + จำกัด key ตามข้อ 3 แล้วลบบรรทัด `monitoring-tunnel` ออกจาก `authorized_keys` ของ `nedev` | Azure |
-| ตรวจ Public IP: `az network public-ip show -g vm-subscription-track-dev_group -n pip-subscription-track-dev --query "{ip:ipAddress, alloc:publicIPAllocationMethod, sku:sku.name}" -o table` ต้องเป็น Static/Standard | Cloud Shell |
-| ตั้ง DNS name label (เช่น `subscription-track-dev`) → ได้โดเมน `*.malaysiawest.cloudapp.azure.com` | Portal |
+| สร้าง user `<TUNNEL_USER>` + จำกัด key ตามข้อ 3 แล้วลบบรรทัด `<TUNNEL_KEY_COMMENT>` ออกจาก `authorized_keys` ของ `<VM_ADMIN_USER>` | Azure |
+| ตรวจ Public IP: `az network public-ip show -g <RESOURCE_GROUP> -n <PUBLIC_IP_RESOURCE> --query "{ip:ipAddress, alloc:publicIPAllocationMethod, sku:sku.name}" -o table` ต้องเป็น Static/Standard | Cloud Shell |
+| ตั้ง DNS name label (เช่น `<AZURE_DNS_LABEL>`) → ได้โดเมน `*.malaysiawest.cloudapp.azure.com` | Portal |
 | NSG: เปิด 80/443 สาธารณะ; พอร์ต 22 จำกัด IP; **ห้ามเปิด 9090/3100/3000** | Portal |
 | สำรอง config เก่า: `cp -r /srv/project_backend/FlashSaleSystem ~/flash-sale-backup` (ไม่ลบอะไร) | VM อาจารย์ |
 | `docker stop flash-sale-system-nginx-1` (รีสตาร์ทวนเพราะ upstream `api-3` หาย) | VM อาจารย์ |
