@@ -184,9 +184,18 @@ loki.process "pipeline" {
     // matches a known API prefix (e.g. /subscriptions), any path with an
     // uncollapsed non-numeric/non-UUID segment or unknown subroute collapses
     // to "other". Only valid route shapes and templated :id forms are kept.
+    //
+    // Kept in sync with the real NestJS controllers (grep every @Controller/
+    // @Get/@Post/@Patch/@Delete under apps/server/src), with one deliberate
+    // exception: health(/(live|ready))? has no controller route yet — it
+    // anticipates the liveness/readiness split planned in
+    // doc/architecture/DP5_monitoring_plan.md ("5. Health: แยก /health/live
+    // และ /health/ready"). Until that ships, these two subpaths simply never
+    // appear in real traffic, so keeping them costs nothing; remove them if
+    // the plan changes.
     stage.template {
       source   = "route"
-      template = "{{ if eq .route \"/\" }}/{{ else if regexMatch \"^/(admin/packages(/:id(/(disable|enable|status))?)?|auth/(login|register)|cards(/(total-balance|mock|link|:id))?|creep-score|device-registrations|health(/(live|ready))?|metrics|notifications(/(read-all|:id/read))?|packages(/:id(/(disable|offers))?)?|savings/(optimizer|batch-cancel|logs)|subscriptions(/(upcoming|presets|:id))?|users(/(me|income|verify-pin|pin|me/pin))?)$\" .route }}{{ .route }}{{ else }}other{{ end }}"
+      template = "{{ if eq .route \"/\" }}/{{ else if regexMatch \"^/(admin/packages(/:id(/(disable|enable|status))?)?|auth/(login|register)|cards(/(total-balance|mock|link|:id))?|creep-score|device-registrations|health(/(live|ready))?|metrics|notifications(/(read-all|:id/read))?|packages(/:id(/(disable|offers))?)?|savings/(optimizer|batch-cancel|logs)|subscriptions(/(upcoming|presets|:id))?|users(/(me|income|verify-pin|pin))?)$\" .route }}{{ .route }}{{ else }}other{{ end }}"
     }
 
     // Bounded label sets only.
