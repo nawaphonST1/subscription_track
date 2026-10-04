@@ -1,0 +1,146 @@
+# Production Compose for the backend (apps/server).
+#
+# Secrets live ONLY in apps/server/.env.production (never committed — copy
+# apps/server/.env.production.example and fill in real values). Every
+# secret-bearing service loads it via `env_file:`, resolved relative to THIS
+# file's directory — so, unlike `--env-file`/the auto-loaded `.env`, it does
+# not depend on your current directory or on remembering a flag. If
+# .env.production is missing, `docker compose` refuses to start instead of
+# silently falling back to whatever `.env` happens to be nearby.
+#
+# Usage (from anywhere, no --env-file needed):
+#   docker compose -f apps/server/docker-compose-prosuction.yml config         # validate
+#   docker compose -f apps/server/docker-compose-prosuction.yml run --rm migrate   # once, before first `up`
+#   docker compose -f apps/server/docker-compose-prosuction.yml up -d
+#
+# Hardening vs. the local dev compose (repo-root docker-compose.yml):
+#   - PostgreSQL and Redis publish NO host ports — reachable only on the
+#     Compose network, from api/worker/migrate.
+#   - All secrets come from apps/server/.env.production via `env_file:`, never
+#     hardcoded or defaulted in this file (no `password123`-style fallback).
+#   - api/worker build the `runtime` target (compiled dist/ + pruned prod
+#     node_modules, non-root `node` user) — not `development` with bind-mounted
+#     source and auto-seed.
+#   - Migrations are a separate one-off `migrate` job (profile-gated, never
+#     started by `up`), not run automatically on every container start, so
+#     scaling api/worker never causes two containers to race a migration.
+#
+# NOT done here (ask before adding):
+#   - HTTPS/TLS — infra/nginx/nginx.conf is still HTTP-only, so Nginx answers
+#     plain HTTP on the host port below. Do not expose this to the public
+#     internet as-is; put it behind a TLS terminator (or add real certs to
+#     Nginx) before treating this as internet-facing production traffic.
+#   - A registry image reference — api/worker build from local source via
+#     Buildx; swap `build:` for `image: <registry>/subscription-track-api:<tag>`
+#     once images are actually pushed somewhere.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.production # must define POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # No `ports:` — database stays internal to the Compose network.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No `ports:` — cache/queue stays internal to the Compose network.
+
+  # One-off migration job. The `runtime` image prunes devDependencies
+  # (including the `prisma` CLI), so migrations run from the `deps` stage,
+  # which still has it. Not started by `up` — run explicitly:
+  #   docker compose -f docker-compose-prosuction.yml run --rm migrate
+  migrate:
+    build:
+      context: .
+      target: deps
+    env_file:
+      - .env.production # must define DATABASE_URL
+    command: ["pnpm", "prisma:migrate:deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - migrate
+
+  api:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_HOST: 0.0.0.0
+      PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+    env_file:
+      - .env.production # must define DB_NAME, DB_USER, DB_PASSWORD, DATABASE_URL, JWT_SECRET
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    # No `ports:` — only Nginx is host-facing; reach the API via the
+    # `api:8080` Compose DNS name, or through Nginx on the host.
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    env_file:
+      # Must define DATABASE_URL. Also defines PUSH_PROVIDER: 'stub' never
+      # contacts a real push service; set PUSH_PROVIDER=fcm with
+      # FCM_SERVICE_ACCOUNT_JSON for real delivery — no silent fallback to fcm.
+      - .env.production
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    volumes:
+      - ../../infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
