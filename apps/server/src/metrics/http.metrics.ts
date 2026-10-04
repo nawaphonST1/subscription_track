@@ -14,6 +14,19 @@ export const UNMATCHED_ROUTE = 'unmatched';
 /** Method label used for anything outside the known HTTP verb set. */
 export const OTHER_METHOD = 'OTHER';
 
+/**
+ * Status label for a request the client aborted before the response finished.
+ * A fixed constant, so the label stays bounded, and deliberately not a number:
+ * the server did the work but never produced a status code, and recording the
+ * placeholder `res.statusCode` (usually 200) would claim a success that never
+ * reached anyone. Numeric-status queries such as `status=~"5.."` are therefore
+ * unaffected by aborts.
+ */
+export const ABORTED_STATUS = 'aborted';
+
+/** Either an HTTP status code or the `aborted` sentinel above. */
+export type StatusLabel = number | typeof ABORTED_STATUS;
+
 const KNOWN_METHODS = new Set([
   'GET',
   'POST',
@@ -39,7 +52,7 @@ export function normalizeMethod(method: string | undefined): string {
  * HTTP request metrics. Every label has a bounded value set:
  *   method — the seven known verbs, or OTHER
  *   route  — a route pattern registered by this app, or `unmatched`
- *   status — an HTTP status code
+ *   status — an HTTP status code, or `aborted` when the client hung up
  * No user id, email, IP, query string or raw path is ever used as a label.
  */
 @Injectable()
@@ -50,7 +63,7 @@ export class HttpMetrics {
   constructor(@Inject(METRICS_REGISTRY) registry: Registry) {
     this.requests = new Counter({
       name: 'http_requests_total',
-      help: 'Total HTTP requests handled, by method, route pattern and status code',
+      help: 'Total HTTP requests handled, by method, route pattern and status code (`aborted` when the client hung up)',
       labelNames: ['method', 'route', 'status'] as const,
       registers: [registry],
     });
@@ -67,7 +80,7 @@ export class HttpMetrics {
   record(
     method: string | undefined,
     route: string,
-    status: number,
+    status: StatusLabel,
     durationSeconds: number,
   ): void {
     const labels = {

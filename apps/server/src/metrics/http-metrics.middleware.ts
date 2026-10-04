@@ -1,7 +1,12 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 
-import { HttpMetrics, UNMATCHED_ROUTE } from './http.metrics';
+import {
+  ABORTED_STATUS,
+  HttpMetrics,
+  UNMATCHED_ROUTE,
+  type StatusLabel,
+} from './http.metrics';
 
 /**
  * Route patterns excluded from HTTP metrics: health probes are polled by
@@ -65,8 +70,17 @@ export function isExcludedRoute(route: string): boolean {
  * scans are visible; an interceptor could not do that, because Nest never
  * runs interceptors for requests that match no handler.
  *
- * There is no I/O on the request path: the work happens on the `finish`
- * event, after the response has been written.
+ * There is no I/O on the request path: the work happens on a response event,
+ * after the response has been written or the socket has gone away.
+ *
+ * Both `finish` and `close` are observed. `finish` is the normal path and
+ * carries the real status code. `close` fires for every response, so a guard
+ * flag keeps the recording to exactly one per request; when `close` arrives
+ * without a preceding `finish` the client hung up mid-flight, and the request
+ * is recorded as `aborted` rather than dropped. Listening to `finish` alone
+ * lost that case entirely, which made an abort storm look like a drop in
+ * traffic and biased the latency histogram — aborted requests are
+ * disproportionately the slow ones.
  */
 @Injectable()
 export class HttpMetricsMiddleware implements NestMiddleware {
@@ -74,8 +88,16 @@ export class HttpMetricsMiddleware implements NestMiddleware {
 
   use(request: Request, response: Response, next: NextFunction): void {
     const startedAt = process.hrtime.bigint();
+    // Set before any early return, so an excluded route is not re-examined by
+    // the second event and mistaken for an abort.
+    let recorded = false;
 
-    response.once('finish', () => {
+    const record = (status: StatusLabel): void => {
+      if (recorded) {
+        return;
+      }
+      recorded = true;
+
       // A failure here must never surface to the client: the response has
       // already been sent, and a broken metric is not worth an error log per
       // request.
@@ -84,8 +106,9 @@ export class HttpMetricsMiddleware implements NestMiddleware {
           Number(process.hrtime.bigint() - startedAt) / 1e9;
 
         // `route` is only populated once Express has matched a handler, which
-        // has happened by the time `finish` fires. Unmatched requests keep it
-        // undefined — exactly the case that must collapse to one label value.
+        // has happened by the time either event fires. Unmatched requests keep
+        // it undefined — exactly the case that must collapse to one label
+        // value.
         const matched = joinRoutePattern(
           request.baseUrl,
           extractRoutePath(request),
@@ -96,16 +119,14 @@ export class HttpMetricsMiddleware implements NestMiddleware {
           return;
         }
 
-        this.metrics.record(
-          request.method,
-          route,
-          response.statusCode,
-          durationSeconds,
-        );
+        this.metrics.record(request.method, route, status, durationSeconds);
       } catch {
         // Intentionally silent, see above.
       }
-    });
+    };
+
+    response.once('finish', () => record(response.statusCode));
+    response.once('close', () => record(ABORTED_STATUS));
 
     next();
   }
