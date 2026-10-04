@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AdminPackagesModule } from './admin/packages/admin-packages.module';
 import { DeviceRegistrationsModule } from './device-registrations/device-registrations.module';
 import { PackagesModule } from './packages/packages.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -30,6 +31,9 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
       validate: validateEnvironment,
     }),
     PrismaModule,
+    // Registers the HTTP metrics middleware for every route and starts the
+    // internal metrics server; adds no route to the public API surface.
+    MetricsModule,
     HealthModule,
     AuthModule,
     UsersModule,

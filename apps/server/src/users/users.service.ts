@@ -2,16 +2,21 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { BusinessMetrics } from '../metrics/business.metrics';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly metrics?: BusinessMetrics,
+  ) {}
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -130,6 +135,8 @@ export class UsersService {
     }
 
     const isValid = await bcrypt.compare(pin, user.security_pin_hash);
+    this.metrics?.recordLogin(isValid ? 'success' : 'failure', 'pin');
+
     return { valid: isValid };
   }
 
