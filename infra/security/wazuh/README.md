@@ -170,9 +170,17 @@ link-local และ **ช่วง Tailscale/CGNAT 100.64/10** (กันยิ
 
 ## 7. ข้อจำกัดที่รู้อยู่
 
-- Wazuh server กินทรัพยากรมาก (ประมาณ 4 GiB ตาม mem_limit) **รันบนเครื่อง dev เท่านั้น**
-  ไม่ใช่บน Azure 4 GiB และไม่ใช่ VM อาจารย์
-- manager เห็น agent เฉพาะตอนเครื่อง dev เปิดและ Tailscale ขึ้น — agent จะ buffer event
+- **Vulnerability Detection ปิดไว้ตั้งใจ** (`<vulnerability-detection><enabled>no</enabled>` ใน
+  `config/wazuh_cluster/wazuh_manager.conf`) image ของ manager แถมไฟล์ CVE มาเป็น `.tar.xz`
+  ~410 MB และทุกครั้งที่ **สร้าง container ใหม่** มันจะแตกไฟล์นั้นเป็น `.tar` ขนาด ~4 GB ลง
+  `/var/ossec/tmp` ซึ่งไม่ใช่ volume จึงกิน writable layer ~4.4 GB ต่อการ `up` หนึ่งครั้ง
+  (วัดจริง: manager โตถึง 5.7 GB ใน ~50 วินาที จนดิสก์เครื่อง dev เต็ม 100%) demo ใช้
+  FIM + SSH `auth.log` + nginx 404 ไม่ได้ใช้ CVE feed — ถ้าดิสก์ ≥ 64 GB เปิดกลับได้ด้วย
+  `./scripts/wazuh-server-bootstrap.sh --vd on`
+- ทรัพยากรที่ต้องใช้ (วัดจาก stack ที่รันจริง): RAM ~2.2 GiB ตอนทำงาน เพดาน 4 GiB ตาม
+  `mem_limit` และ indexer ตรึง heap ไว้ที่ `-Xms1g -Xmx1g` → **2 vCPU / 8 GiB พอ** ส่วนดิสก์
+  ควรมี ≥ 64 GB ถ้าจะเปิด VD **อย่ารันบน VM production ตัวเดียวกับแอป** (4 GiB จะ OOM)
+- manager เห็น agent เฉพาะตอนที่ host ของ Wazuh เปิดอยู่ — agent จะ buffer event
   (`client_buffer` ใน ossec-agent.conf) แล้วส่งตามเมื่อกลับมาเชื่อมได้
 - active response ปิดไว้ตั้งใจ: ไม่อยากให้ auto-block ตัดเว็บตอน demo (ดูคอมเมนต์ใน
   `ossec-agent.conf.example`)

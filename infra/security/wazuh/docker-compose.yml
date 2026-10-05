@@ -1,8 +1,10 @@
 # Wazuh single-node SIEM — DP-505.
 #
-# WHERE THIS RUNS: the developer workstation, and only while preparing for or
-# giving the demo. Not on the Azure production VM (4 GiB total; the indexer
-# alone wants more than that) and not on the lecturer's VM.
+# WHERE THIS RUNS: any host dedicated to the SIEM — a developer workstation while
+# preparing the demo, or a dedicated VM. NOT on the Azure production VM that runs
+# the app (4 GiB total; the indexer alone wants more than that) and not on the
+# lecturer's VM. Measured footprint of the running stack: ~2.2 GiB RAM, capped at
+# 4 GiB by the mem_limit values below, so 2 vCPU / 8 GiB is enough.
 #
 # Derived from the official wazuh-docker single-node compose at tag v4.14.8
 # (https://github.com/wazuh/wazuh-docker/blob/v4.14.8/single-node/docker-compose.yml).
@@ -13,26 +15,29 @@
 #      compose refuses to start without them.
 #   2. PORT BINDING. Upstream publishes 1514/1515/514/55000/9200/443 on every
 #      interface. Here:
-#        - 1514/1515 bind $WAZUH_BIND_ADDR, which must be the host's TAILSCALE
-#          address. The agent on Azure reaches the manager over Tailscale and
-#          over nothing else; these ports are never on the public internet.
-#        - 55000 (manager API) and 5601 (dashboard) bind 127.0.0.1. Reach the
-#          dashboard at https://127.0.0.1:8443 on this machine.
+#        - 1514/1515 bind $WAZUH_BIND_ADDR, which is whichever private address
+#          the agents reach this host on: a Tailscale address on a workstation,
+#          or the private VNet address on a dedicated VM (restrict the source to
+#          the app VM with an NSG rule). Never a public interface.
+#        - 55000 (manager API) and 5601 (dashboard) bind 127.0.0.1 — loopback
+#          only. Locally that is https://127.0.0.1:8443 in the browser; on a
+#          remote host, reach the same URL through `ssh -L 8443:127.0.0.1:8443`.
 #        - 9200 (indexer) is not published at all. Only the manager and the
 #          dashboard talk to it, over the Compose network.
 #        - 514/udp (remote syslog) is dropped entirely. Nothing in this project
 #          sends syslog, and an open UDP 514 is a reflection amplifier.
 #   3. mem_limit on every service, and `restart: unless-stopped` rather than
-#      `always`, so a stopped stack stays stopped after a reboot of a laptop
-#      that is not meant to run a SIEM full time.
+#      `always`, so a stopped stack stays stopped after a reboot of a host that
+#      is not meant to run a SIEM full time.
 #
 # Memory: roughly 4 GiB with these limits (indexer 2048 + manager 1024 +
 # dashboard 1024). The 512 MiB budget in the DP-5 operating rules applies to
 # the PRODUCTION agent stack on the Azure VM, not to this one.
 #
 # BEFORE THE FIRST `up`: the certificates and the upstream config files are not
-# in this repository and have to be generated. See README.md §2 — the stack
-# will not start without them.
+# in this repository and have to be generated. Run
+# ../../../scripts/wazuh-server-bootstrap.sh (see README.md §2) — the stack will
+# not start without them.
 name: subscription-wazuh
 
 services:
