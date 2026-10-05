@@ -110,12 +110,24 @@ ports ที่เปิด (ยืนยันด้วย `docker compose port
 
 ## 4. ตั้งรหัส enrollment (authd) บน manager
 
-agent enroll ด้วยรหัส ตั้งให้ตรงกับ `WAZUH_REGISTRATION_PASSWORD` ใน `.env`:
+agent enroll ด้วยรหัส ตั้งให้ตรงกับ `WAZUH_REGISTRATION_PASSWORD` ใน `.env`
+
+**ต้อง source `.env` เข้า shell ก่อน** — `docker compose` อ่าน `.env` ให้เฉพาะตัวมันเอง ไม่ได้ใส่
+ตัวแปรเข้า shell ของเรา ถ้าข้ามขั้นนี้ `$WAZUH_REGISTRATION_PASSWORD` จะเป็นค่าว่าง แล้วคำสั่ง
+ข้างล่างจะเขียน `authd.pass` เป็น **ไฟล์เปล่า** — enroll ไม่ผ่าน แต่คำสั่งดูเหมือนสำเร็จ
 
 ```bash
-docker compose exec wazuh.manager bash -c '
-  echo "'"$WAZUH_REGISTRATION_PASSWORD"'" > /var/ossec/etc/authd.pass &&
+cd infra/security/wazuh
+set -a; . ./.env; set +a
+: "${WAZUH_REGISTRATION_PASSWORD:?ยังไม่ได้ source .env — หยุดก่อน อย่ารันต่อ}"
+
+docker compose exec -T -e PW="$WAZUH_REGISTRATION_PASSWORD" wazuh.manager bash -c '
+  printf "%s\n" "$PW" > /var/ossec/etc/authd.pass &&
+  chmod 640 /var/ossec/etc/authd.pass &&
   /var/ossec/bin/wazuh-control restart'
+
+# ยืนยันว่าไม่ใช่ไฟล์เปล่า (ขนาดต้อง > 1)
+docker compose exec -T wazuh.manager stat -c '%s %n' /var/ossec/etc/authd.pass
 ```
 
 ## 5. ติดตั้ง agent บน Azure
