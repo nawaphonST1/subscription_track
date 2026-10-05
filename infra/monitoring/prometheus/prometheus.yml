@@ -36,18 +36,27 @@ scrape_configs:
       - target_label: site
         replacement: monitoring-vm
 
-  # Proves the blackbox exporter is wired up correctly while production does
-  # not exist yet, by probing a target that is always reachable from inside
-  # the compose network.
-  # PHASE 3: replace the target with the public production URL
-  # (https://<domain>/health/ready) — the relabel rules below stay as they are.
+  # DP-507. Phase 3: probes the real public production endpoint instead of
+  # the internal placeholder.
+  #
+  # CHANGE_ME_DOMAIN must be replaced with the real public domain before this
+  # takes effect — do not guess one. Until it's replaced, this target fails
+  # DNS resolution, probe_success is correctly 0, and dp5-api-down fires;
+  # that is the intended behavior for an unconfigured placeholder, not a bug.
+  #
+  # Target is /health, not /health/ready: apps/server/src/health/ only
+  # exposes a single GET /health today (no live/ready split — see
+  # config.alloy's note on the same gap for the Loki route-collapse regex).
+  # Point this at /health/ready instead once that split ships; probing a
+  # route that 404s would make dp5-api-down fire permanently, which is worse
+  # than the current single endpoint.
   - job_name: blackbox-http
     metrics_path: /probe
     params:
       module: [http_2xx]
     static_configs:
       - targets:
-          - http://grafana:3000/api/health
+          - https://CHANGE_ME_DOMAIN/health
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

@@ -146,10 +146,11 @@ loki.process "pipeline" {
 
   // --- nginx access log.
   //
-  // infra/nginx/nginx.conf is owned by another team member and sets no
-  // log_format, so nginx writes its built-in `combined` format, which has no
-  // $request_time. The regex therefore makes request_time optional: it is
-  // captured if and only if the proposed log_format in the README is adopted.
+  // infra/nginx/nginx.conf now ships the `combined_rt` log_format
+  // (combined plus a trailing $request_time), so this field is populated in
+  // practice. The capture group is left optional rather than tightened to
+  // required, since that costs nothing and keeps this regex from breaking if
+  // nginx's format ever reverts to bare `combined` for any reason.
   stage.match {
     selector = "{service=\"nginx\"}"
 
