@@ -106,8 +106,11 @@ services:
         condition: service_healthy
     init: true
 
+  # DP-508. 1.27-alpine is EOL (Docker Hub stopped rebuilding that tag in
+  # 2025); 1.30-alpine is the actively-maintained stable branch, same tag
+  # already adopted for production in docker-compose-prosuction.yml.
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.30-alpine
     ports:
       - "3000:8080"
     volumes:
