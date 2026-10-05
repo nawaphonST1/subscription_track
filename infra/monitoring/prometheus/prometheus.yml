@@ -8,44 +8,55 @@ global:
     # production VM (phase 3), which carry their own labels from Alloy.
     site: monitoring-vm
 
-storage:
-  tsdb:
-    # STATUS: UNDER TEST — do not treat this as settled either way.
-    # When the reverse SSH tunnel drops (the university captive-portal session
-    # lasts ~1 day), Alloy on the production VM buffers samples and replays
-    # them once the tunnel is back. Those replayed samples are older than the
-    # head's max time; whether Prometheus accepts them without this setting is
-    # exactly what ../tests/backfill measures (phase 1.5: one round with this
-    # window, one round without). 1h is a starting value that covers a
-    # realistic outage without materially growing the head block. Keep or drop
-    # it once the A/B numbers exist, then confirm again over the real tunnel
-    # in phase 3.
-    out_of_order_time_window: 1h
+# No `storage:` block. The phase-1.5 backfill A/B test
+# (infra/monitoring/tests/backfill/) measured a round WITH
+# `out_of_order_time_window: 1h` against a round WITHOUT it and got identical
+# results — S1/S2 (tunnel-style outage) 100% recovered either way, S3 (outage
+# plus a simultaneous Alloy restart) 66.7% either way — with Prometheus'
+# out-of-order counters at 0 in every run. Samples lost in S3 never reached
+# Prometheus at all, so no storage setting could have saved them. The window
+# was therefore removed rather than kept "just in case": it only widens the
+# head block. S3 stays a documented KNOWN-LIMITATION, not a config problem.
 
 scrape_configs:
   # Prometheus' own health and performance.
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
+    relabel_configs:
+      - target_label: site
+        replacement: monitoring-vm
 
   # The monitoring VM itself. See the node-exporter note in docker-compose.yml:
   # node_network_* here describes the exporter's container namespace.
   - job_name: monitoring-host
     static_configs:
       - targets: ["node-exporter:9100"]
+    relabel_configs:
+      - target_label: site
+        replacement: monitoring-vm
 
-  # Proves the blackbox exporter is wired up correctly while production does
-  # not exist yet, by probing a target that is always reachable from inside
-  # the compose network.
-  # PHASE 3: replace the target with the public production URL
-  # (https://<domain>/health/ready) — the relabel rules below stay as they are.
+  # DP-507. Phase 3: probes the real public production endpoint instead of
+  # the internal placeholder.
+  #
+  # CHANGE_ME_DOMAIN must be replaced with the real public domain before this
+  # takes effect — do not guess one. Until it's replaced, this target fails
+  # DNS resolution, probe_success is correctly 0, and dp5-api-down fires;
+  # that is the intended behavior for an unconfigured placeholder, not a bug.
+  #
+  # Target is /health, not /health/ready: apps/server/src/health/ only
+  # exposes a single GET /health today (no live/ready split — see
+  # config.alloy's note on the same gap for the Loki route-collapse regex).
+  # Point this at /health/ready instead once that split ships; probing a
+  # route that 404s would make dp5-api-down fire permanently, which is worse
+  # than the current single endpoint.
   - job_name: blackbox-http
     metrics_path: /probe
     params:
       module: [http_2xx]
     static_configs:
       - targets:
-          - http://grafana:3000/api/health
+          - https://CHANGE_ME_DOMAIN/health
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -53,6 +64,8 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: blackbox:9115
+      - target_label: site
+        replacement: monitoring-vm
 
 # No scrape job points at the production VM on purpose: production pushes to
 # this Prometheus via remote_write through the reverse tunnel (phase 3), so
