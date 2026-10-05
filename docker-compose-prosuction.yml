@@ -36,6 +36,16 @@
 #     Buildx; swap `build:` for `image: <registry>/subscription-track-api:<tag>`
 #     once images are actually pushed somewhere.
 
+# DP-510. Explicit project name, distinct from docker-compose.yml's
+# subscription-track-dev, so the two can never collide on container/network/
+# volume names if ever run on the same host. Volumes below are NOT pinned to
+# explicit names (unlike the dev file): this stack has never actually been
+# deployed anywhere (confirmed — no running containers on the Azure VM prior
+# to this change, and the DP-5 monitoring plan lists this stack's deployment
+# as still TODO), so there is no existing data under the old implicit name to
+# preserve. They will simply be created as subscription-track-prod_*.
+name: subscription-track-prod
+
 services:
   api:
     build:

@@ -1,3 +1,15 @@
+name: subscription-track-dev
+
+# The two named volumes below are pinned to their pre-existing literal names
+# (subscription_track_postgres_data, subscription_track_redis_data) so this
+# rename doesn't orphan local dev data created before this change. Verified
+# by recreating the postgres container against an existing volume: Compose
+# prints a one-time warning ("already exists but was created for project
+# \"subscription_track\" (expected \"subscription-track-dev\")") because the
+# volume's project label predates this rename, but it attaches to the same
+# volume regardless — confirmed real data (all app tables) survived the
+# recreation. The warning is cosmetic and expected on any host with a
+# volume from before this change; a fresh clone never sees it.
 services:
   api:
     build:
@@ -121,4 +133,6 @@ services:
 
 volumes:
   postgres_data:
+    name: subscription_track_postgres_data
   redis_data:
+    name: subscription_track_redis_data
