@@ -41,22 +41,54 @@ echo 'vm.max_map_count=262144' | sudo tee /etc/sysctl.d/99-wazuh.conf
 > (`[boot] command = sysctl -w vm.max_map_count=262144`) หรือ `%UserProfile%\.wslconfig`
 > แล้ว `wsl --shutdown` ก่อน ถ้า indexer ขึ้นแล้วตายเงียบ ให้ดูค่านี้เป็นอย่างแรก
 
-## 2. สร้าง cert และดึง config ของ upstream (ครั้งเดียว)
+## 2. เตรียม cert + config (ครั้งเดียวต่อเครื่อง)
 
 cert และไฟล์ config (`config/wazuh_cluster/`, `config/wazuh_indexer/`, `config/wazuh_dashboard/`)
-**ไม่ได้อยู่ใน repo นี้** (เป็น generated + มี secret) ดึงจาก upstream tag เดียวกันแล้วสร้าง cert:
+**ไม่ได้อยู่ใน repo นี้** — เป็นของ generated และมี bcrypt hash กับรหัส API จริงอยู่ข้างใน
+ทั้ง `config/` และ `upstream/` อยู่ใน `.gitignore` แล้ว **ห้าม commit**
+
+### วิธีที่แนะนำ — ใช้สคริปต์
+
+```bash
+cd infra/security/wazuh
+cp .env.example .env            # แล้วใส่ค่าจริง (ดู §3 เรื่องการสุ่มรหัส)
+git clone --depth 1 -b v4.14.8 https://github.com/wazuh/wazuh-docker.git upstream
+
+cd "$(git rev-parse --show-toplevel)"
+./scripts/wazuh-server-bootstrap.sh --dry-run    # ดูก่อนว่าจะทำอะไร
+./scripts/wazuh-server-bootstrap.sh
+```
+
+สคริปต์ idempotent รันซ้ำได้ ไม่แตะของที่ถูกต้องอยู่แล้ว และทำให้ครบทั้ง 4 อย่างที่เคยพลาด
+ตอนทำมือ: generate cert ลงที่ถูก, ตรวจว่าได้ 12 ไฟล์จริง, หมุน bcrypt hash ของ `admin` +
+`kibanaserver` ให้ตรง `.env`, แทนรหัส API default ของ upstream ใน `wazuh_dashboard/wazuh.yml`
+และตั้ง Vulnerability Detection (ดู §7)
+
+### ถ้าอยากทำมือ
 
 ```bash
 cd infra/security/wazuh
 git clone --depth 1 -b v4.14.8 https://github.com/wazuh/wazuh-docker.git upstream
 cp -r upstream/single-node/config ./config          # config ที่ compose mount เข้าไป
-docker compose -f upstream/single-node/generate-indexer-certs.yml run --rm generator
+# --project-directory . สำคัญ: ถ้าไม่ใส่ compose จะคิด path ./config/ เทียบกับโฟลเดอร์ของ
+# ไฟล์ -f (upstream/single-node/) แล้ว cert จะไปตกที่ upstream/single-node/config/ แทน
+# พอ up ขึ้นมา docker จะสร้าง ./config/wazuh_indexer_ssl_certs/*.pem เป็น "โฟลเดอร์เปล่า" ให้แทน
+docker compose -f upstream/single-node/generate-indexer-certs.yml --project-directory . run --rm generator
 # cert จะไปอยู่ ./config/wazuh_indexer_ssl_certs/ (git-ignored แล้ว)
+ls -l config/wazuh_indexer_ssl_certs/   # ต้องเห็น 12 ไฟล์ .pem/.key ไม่ใช่โฟลเดอร์
 ```
 
-> `config/` ของ upstream มี default password ฝังอยู่ (`internal_users.yml` ฯลฯ)
-> เปลี่ยนให้ตรงกับ `.env` ของเราก่อนขึ้นจริง — สำหรับ demo ภายในที่ bind 127.0.0.1/Tailscale
-> ความเสี่ยงต่ำ แต่ **อย่า commit โฟลเดอร์ `config/` และ `upstream/`** (อยู่ใน `.gitignore` แล้ว)
+แล้วต้องทำต่อเองอีก 3 อย่าง ไม่งั้น stack จะขึ้นแต่ auth ไม่ผ่าน (401 ทุกทาง):
+
+1. `config/wazuh_indexer/internal_users.yml` — หมุน `hash:` ของ `admin` และ `kibanaserver`
+   ให้เป็น bcrypt ของรหัสใน `.env` (ใช้ `hash.sh` ใน image ของ indexer)
+2. `config/wazuh_dashboard/wazuh.yml` — แทน `password:` ที่ยังเป็น default ของ upstream
+   ด้วย `WAZUH_API_PASSWORD`
+3. `config/wazuh_cluster/wazuh_manager.conf` — ตั้ง `<vulnerability-detection>` ตามดิสก์ที่มี (§7)
+
+> ถ้า indexer เคย `up` ไปแล้วด้วยรหัสเก่า การแก้ `internal_users.yml` เฉย ๆ จะไม่มีผล เพราะ
+> indexer อ่านไฟล์นี้แค่ตอนสร้าง `.opendistro_security` ครั้งแรก ต้องดันเข้าไปด้วย
+> `./scripts/wazuh-server-bootstrap.sh --rotate --apply-security`
 
 ## 3. เปิด stack
 
