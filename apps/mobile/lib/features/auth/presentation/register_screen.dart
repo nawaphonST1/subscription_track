@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
+import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
@@ -48,7 +49,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     // ดักจับเมื่อสมัครสำเร็จหรือเกิดข้อผิดพลาด
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       if (next is AsyncError) {
-        final errorText = next.error?.toString() ?? 'การสมัครสมาชิกล้มเหลว';
+        final error = next.error;
+        final errorText = error is Failure
+            ? error.displayMessage
+            : (error?.toString() ?? 'การสมัครสมาชิกล้มเหลว');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorText),
