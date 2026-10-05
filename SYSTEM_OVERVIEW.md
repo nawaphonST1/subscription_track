@@ -58,12 +58,16 @@ subscription_track/
 - **สถาปัตยกรรม:** **Feature-First Clean Architecture**
   - แบ่งโครงสร้างโค้ดตามฟีเจอร์ (`lib/features/<feature_name>/`)
   - แต่ละฟีเจอร์แยก Layer เคร่งครัด: `domain` -> `data` -> `application` -> `presentation`
+- **รูปแบบการทำงานและความปลอดภัย (Connectivity & Security Model):** **Online-Only & Server-Authoritative**
+  - บังคับเชื่อมต่ออินเทอร์เน็ตในการเรียกดูและทำธุรกรรมทุกรายการ **ไม่ใช้ระบบ Offline-First (Local Sync)** เพื่อป้องกันความเสี่ยงด้านความปลอดภัยจากการดัดแปลงข้อมูลในเครื่อง (Anti-Data Tampering) และป้องกันความคลาดเคลื่อนของรอบบิล/ยอดเงิน
+  - ระบบยึดถือเซิร์ฟเวอร์กลาง (NestJS + PostgreSQL) เป็น **Single Source of Truth** ข้อมูลและผลการคำนวณ Creep Score จะถูก Validate ซ้ำที่ Server เสมอ
+  - จัดเก็บเฉพาะ Authentication Token ใน Encrypted Storage (Keystore/Keychain) สำหรับระบุตัวตนผู้ใช้
 - **การจัดการสถานะ (State Management):** **Riverpod (Riverpod 3 / Riverpod Annotation)** ทำงานร่วมกับ Code Generation (`build_runner`)
 - **การจัดเส้นทาง (Navigation):** **GoRouter** แบบ Declarative Routing
 - **สถานะปัจจุบัน:**
-  - UI ครบทุก Flow ทั้ง 5 แท็บหลัก
-  - ใช้ `InMemorySubscriptionRepository` เป็น Data Source ในระดับ MVP Client ทำให้รันแบบ Standalone ได้ทันที
-  - มีชุดทดสอบ Unit Tests และ Widget Tests ผ่านครบ **43/43 tests passing**
+  - UI ครบทุก Flow ทั้ง 5 แท็บหลัก พร้อมโมดูล In-App Version Checker & Force Update
+  - ใช้ `InMemorySubscriptionRepository` เป็น Data Source ชั่วคราวสำหรับการพัฒนา Client Standalone
+  - มีชุดทดสอบ Unit Tests และ Widget Tests ผ่านครบ **61/61 tests passing**
 
 ### แผนผังหน้าจอและแท็บหลัก (Screens & Tabs)
 | แท็บ / หน้าจอ | ที่ตั้งโค้ด | หน้าที่และความสามารถ |
