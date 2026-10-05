@@ -9,6 +9,11 @@ abstract interface class AuthRepository {
     String? name,
   });
 
+  Future<Either<Failure, User>> loginWithEmail({
+    required String email,
+    required String password,
+  });
+
   Future<Either<Failure, User>> loginWithGoogle();
 
   Future<Either<Failure, User>> loginWithApple();
