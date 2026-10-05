@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingCycle, SubscriptionStatus } from '@prisma/client';
+import { CacheService } from '../cache/cache.service';
 
 export type RiskLevel = 'SAFE' | 'CAUTION' | 'HIGH_RISK';
 
 @Injectable()
 export class CreepScoreService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
 
   normalizeMonthlyCost(price: number, cycle: BillingCycle): number {
     switch (cycle) {
@@ -31,6 +35,14 @@ export class CreepScoreService {
   }
 
   async getCreepScore(userId: string) {
+    const cacheKey = `cache:user:${userId}:creep-score`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { monthly_income: true },
@@ -140,7 +152,7 @@ export class CreepScoreService {
       }),
     );
 
-    return {
+    const result = {
       monthly_total: Number(totalMonthlyExpenses.toFixed(2)),
       creep_score: creepScore,
       risk_level: riskLevel,
@@ -151,5 +163,11 @@ export class CreepScoreService {
       category_breakdown: categoryBreakdown,
       upcoming_renewals: upcomingRenewals,
     };
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 900);
+    }
+
+    return result;
   }
 }

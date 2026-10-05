@@ -1,0 +1,230 @@
+// Grafana Alloy — production VM (Azure) agent. DP-5 phase 3a.
+//
+// WHERE THIS RUNS: the Azure production VM, next to the app. It is the only
+// process on that host that talks to the monitoring VM, and it does so
+// outbound-only, through the reverse SSH tunnel whose loopback ends are
+// 127.0.0.1:9090 (Prometheus remote-write receiver) and 127.0.0.1:3100 (Loki).
+//
+// Validate before shipping:
+//   docker run --rm -v "$PWD/infra/monitoring/prod-agent:/etc/alloy:ro" \
+//     grafana/alloy:v1.20.1 validate /etc/alloy/config.alloy
+//
+// Every metric name forwarded from here is one the dashboards and alert rules
+// already reference; see apps/server/docs/metrics.md for the app contract.
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ---------------------------------------------------------------------------
+// Metrics: scrape locally, push through the tunnel.
+// ---------------------------------------------------------------------------
+
+// The tunnel is the only egress. When it is down (the university captive-portal
+// session lasts ~1 day) remote_write retries and the samples sit in the WAL
+// under --storage.path, which is a named volume — see docker-compose.yml.
+prometheus.remote_write "tunnel" {
+  endpoint {
+    url = "http://127.0.0.1:9090/api/v1/write"
+
+    queue_config {
+      // Small: this host is a 2 vCPU / 4 GiB burstable B2als v2 and the
+      // receiver is on the far side of a single SSH connection.
+      capacity             = 10000
+      min_shards           = 1
+      max_shards           = 3
+      max_samples_per_send = 2000
+      batch_send_deadline  = "5s"
+      retry_on_http_429    = true
+    }
+  }
+
+  // Distinguishes these series from the ones the monitoring VM scrapes about
+  // itself (prometheus.yml sets site: monitoring-vm there).
+  external_labels = {
+    site = "prod",
+  }
+}
+
+// The app's own /metrics. Both processes listen on METRICS_PORT inside their
+// container; docker-compose.app-metrics.override.yml publishes them on the
+// host loopback so this agent can reach them without joining the app network
+// (it runs with network_mode: host — see the README).
+prometheus.scrape "app" {
+  targets = [
+    { __address__ = "127.0.0.1:9464", job = "subscription-api", instance = "prod-api" },
+    { __address__ = "127.0.0.1:9465", job = "subscription-worker", instance = "prod-worker" },
+  ]
+  forward_to      = [prometheus.remote_write.tunnel.receiver]
+  scrape_interval = "15s"
+  scrape_timeout  = "10s"
+}
+
+// Host, container, database and cache exporters. 30s rather than 15s: cAdvisor
+// is by far the largest series producer here and this host is burstable.
+prometheus.scrape "exporters" {
+  targets = [
+    { __address__ = "127.0.0.1:9100", job = "node", instance = "prod-host" },
+    { __address__ = "127.0.0.1:8081", job = "cadvisor", instance = "prod-host" },
+    { __address__ = "127.0.0.1:9187", job = "postgres", instance = "prod-postgres" },
+    { __address__ = "127.0.0.1:9121", job = "redis", instance = "prod-redis" },
+  ]
+  forward_to      = [prometheus.remote_write.tunnel.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "20s"
+}
+
+// Alloy's own health, so a silent agent is distinguishable from a silent host.
+prometheus.exporter.self "alloy" {}
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.tunnel.receiver]
+  scrape_interval = "60s"
+}
+
+// ---------------------------------------------------------------------------
+// Logs: every container's stdout/stderr, through the same tunnel.
+// ---------------------------------------------------------------------------
+
+discovery.docker "containers" {
+  // Read-only socket mount; Alloy only lists containers and reads log streams.
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "30s"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  // /subscription-track-api-1 -> subscription-track-api-1
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  // The Compose service name ("api", "worker", "nginx", "postgres", "redis")
+  // is the stable identity across redeploys; `container` carries the replica
+  // suffix. Dashboards and the nginx parsing stage below key off `service`.
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+}
+
+loki.source.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.containers.output
+  labels           = { site = "prod" }
+  forward_to       = [loki.process.pipeline.receiver]
+  refresh_interval = "30s"
+}
+
+loki.process "pipeline" {
+  forward_to = [loki.write.tunnel.receiver]
+
+  // --- Nest's console logger: pull the level out so the Logs dashboard can
+  // filter on it. The app does not emit JSON logs yet (DP-5 phase 2d is
+  // deferred pending team sign-off), so this is a token match, not a parser.
+  stage.match {
+    selector = "{service=~\"api|worker\"}"
+
+    stage.regex {
+      expression = "\\s(?P<level>LOG|ERROR|WARN|DEBUG|VERBOSE|FATAL)\\s"
+    }
+
+    stage.labels {
+      values = { level = "" }
+    }
+  }
+
+  // --- nginx access log.
+  //
+  // infra/nginx/nginx.conf is owned by another team member and sets no
+  // log_format, so nginx writes its built-in `combined` format, which has no
+  // $request_time. The regex therefore makes request_time optional: it is
+  // captured if and only if the proposed log_format in the README is adopted.
+  stage.match {
+    selector = "{service=\"nginx\"}"
+
+    stage.regex {
+      expression = "^(?P<remote_addr>\\S+) \\S+ \\S+ \\[(?P<time_local>[^\\]]+)\\] \"(?P<method>[A-Z]+) (?P<path>[^ ?\"]*)[^\"]*\" (?P<status>\\d{3}) (?P<body_bytes_sent>\\d+) \"[^\"]*\" \"[^\"]*\"(?: (?P<request_time>[0-9.]+))?"
+    }
+
+    // route = path with ids collapsed, so /subscriptions/42 and
+    // /subscriptions/43 are one series — the same route-template rule the API
+    // metrics follow (apps/server/docs/metrics.md, "Cardinality rules").
+    stage.template {
+      source   = "route"
+      template = "{{ .path }}"
+    }
+
+    stage.template {
+      source   = "route"
+      template = "{{ regexReplaceAll \"/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\" .route \"/:id\" }}"
+    }
+
+    stage.template {
+      source   = "route"
+      template = "{{ regexReplaceAll \"/[0-9]+\" .route \"/:id\" }}"
+    }
+
+    // The path is attacker-controlled: a vulnerability scanner would otherwise
+    // mint one Loki stream per probed URL. Anything outside the app's own
+    // route table collapses onto `other`, so scans show up as a spike on one
+    // series instead of an index explosion.
+    //
+    // F3 (HIGH) fix: Invert the collapse logic. Even if the top-level prefix
+    // matches a known API prefix (e.g. /subscriptions), any path with an
+    // uncollapsed non-numeric/non-UUID segment or unknown subroute collapses
+    // to "other". Only valid route shapes and templated :id forms are kept.
+    //
+    // Kept in sync with the real NestJS controllers (grep every @Controller/
+    // @Get/@Post/@Patch/@Delete under apps/server/src), with one deliberate
+    // exception: health(/(live|ready))? has no controller route yet — it
+    // anticipates the liveness/readiness split planned in
+    // doc/architecture/DP5_monitoring_plan.md ("5. Health: แยก /health/live
+    // และ /health/ready"). Until that ships, these two subpaths simply never
+    // appear in real traffic, so keeping them costs nothing; remove them if
+    // the plan changes.
+    stage.template {
+      source   = "route"
+      template = "{{ if eq .route \"/\" }}/{{ else if regexMatch \"^/(admin/packages(/:id(/(disable|enable|status))?)?|auth/(login|register)|cards(/(total-balance|mock|link|:id))?|creep-score|device-registrations|health(/(live|ready))?|metrics|notifications(/(read-all|:id/read))?|packages(/:id(/(disable|offers))?)?|savings/(optimizer|batch-cancel|logs)|subscriptions(/(upcoming|presets|:id))?|users(/(me|income|verify-pin|pin))?)$\" .route }}{{ .route }}{{ else }}other{{ end }}"
+    }
+
+    // Bounded label sets only.
+    stage.labels {
+      values = {
+        method = "",
+        route  = "",
+        status = "",
+      }
+    }
+
+    // remote_addr and request_time are per-request values: as labels they
+    // would be unbounded (§5.3). Structured metadata keeps them queryable
+    // (`| remote_addr = "..."`) without touching the stream index.
+    stage.structured_metadata {
+      values = {
+        remote_addr  = "",
+        request_time = "",
+      }
+    }
+  }
+}
+
+loki.write "tunnel" {
+  endpoint {
+    url = "http://127.0.0.1:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    site = "prod",
+  }
+}

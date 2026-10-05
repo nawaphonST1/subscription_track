@@ -1,0 +1,144 @@
+<!--
+  Wazuh agent configuration for the Azure PRODUCTION VM (Ubuntu 24.04).
+
+  Copy to /var/ossec/etc/ossec.conf on that VM — scripts/wazuh-agent-bootstrap.sh
+  installs this for you and substitutes WAZUH_MANAGER. It is an EXAMPLE here
+  because the manager address is a Tailscale IP, which belongs in .env and not
+  in git.
+
+  What it watches, and why each one earns its place on a 2 vCPU / 4 GiB host:
+
+    - /etc/ssh, /etc, /srv, and the compose directories: file integrity. If
+      someone changes sshd_config or a compose file, that is either us
+      deploying or somebody else, and both are worth an alert.
+    - /var/log/auth.log: SSH authentication. The brute-force demo case.
+    - the Docker json-file logs: nginx access and the app's own output. This is
+      how a path-scan shows up in Wazuh as well as in Loki.
+    - journald for the Docker daemon itself.
+
+  NOT enabled, deliberately:
+    - `syscheck` realtime on /srv — inotify watches on a bind-mounted source
+      tree cost more than they are worth here; the scheduled scan is enough.
+    - vulnerability-detector and the CIS-CAT / osquery wodles — each is a
+      recurring scan on a burstable VM that is also serving the demo.
+-->
+<ossec_config>
+
+  <client>
+    <server>
+      <!-- Tailscale IP of the developer workstation running the manager.
+           Substituted by scripts/wazuh-agent-bootstrap.sh from WAZUH_MANAGER. -->
+      <address>WAZUH_MANAGER_ADDRESS</address>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+    </server>
+    <config-profile>ubuntu, ubuntu24, ubuntu24.04</config-profile>
+    <notify_time>30</notify_time>
+    <time-reconnect>120</time-reconnect>
+    <auto_restart>yes</auto_restart>
+    <!-- The agent lives on the public-facing VM; it must never be reachable
+         from outside. Enrollment and data both go out over Tailscale. -->
+    <crypto_method>aes</crypto_method>
+  </client>
+
+  <client_buffer>
+    <!-- Events are queued locally when the manager is unreachable, which on
+         this project is most of the time: the dev workstation only runs during
+         demo preparation. -->
+    <disabled>no</disabled>
+    <queue_size>5000</queue_size>
+    <events_per_second>500</events_per_second>
+  </client_buffer>
+
+  <!-- ===================== File integrity monitoring ===================== -->
+  <syscheck>
+    <disabled>no</disabled>
+    <!-- Every 6 hours. The default 12h is too slow to demo; realtime on all of
+         these would be too expensive on a burstable VM. -->
+    <frequency>21600</frequency>
+    <scan_on_start>yes</scan_on_start>
+
+    <!-- SSH configuration: realtime, because this is the one that matters. -->
+    <directories check_all="yes" realtime="yes">/etc/ssh</directories>
+
+    <!-- Deployment surface. -->
+    <directories check_all="yes">/srv</directories>
+    <directories check_all="yes" realtime="yes">/etc/docker</directories>
+    <directories check_all="yes">/etc/nginx</directories>
+    <directories check_all="yes">/etc/cron.d,/etc/cron.daily,/etc/crontab</directories>
+    <directories check_all="yes">/etc/sudoers,/etc/sudoers.d</directories>
+    <directories check_all="yes">/root/.ssh,/home/*/.ssh</directories>
+
+    <!-- Noise: these change constantly and carry nothing an alert could use. -->
+    <ignore>/srv/**/node_modules</ignore>
+    <ignore>/srv/**/.git</ignore>
+    <ignore type="sregex">\.log$|\.tmp$|\.swp$</ignore>
+
+    <skip_nfs>yes</skip_nfs>
+    <skip_dev>yes</skip_dev>
+    <skip_proc>yes</skip_proc>
+    <skip_sys>yes</skip_sys>
+  </syscheck>
+
+  <!-- ============================ Log sources ============================ -->
+
+  <!-- SSH authentication: the brute-force demo case. -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/auth.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/syslog</location>
+  </localfile>
+
+  <!-- Container stdout/stderr, nginx included. The wildcard covers every
+       container on the host; Docker writes one directory per container and
+       there is no stable per-service path to target instead. -->
+  <localfile>
+    <log_format>json</log_format>
+    <location>/var/lib/docker/containers/*/*-json.log</location>
+  </localfile>
+
+  <!-- The Docker daemon itself: image pulls, container starts, OOM kills. -->
+  <localfile>
+    <log_format>journald</log_format>
+    <location>journald</location>
+    <filter field="_SYSTEMD_UNIT">docker.service</filter>
+  </localfile>
+
+  <!-- ====================== Host-level detections ======================== -->
+
+  <rootcheck>
+    <disabled>no</disabled>
+    <check_files>yes</check_files>
+    <check_trojans>yes</check_trojans>
+    <check_dev>yes</check_dev>
+    <check_sys>yes</check_sys>
+    <check_pids>yes</check_pids>
+    <check_ports>yes</check_ports>
+    <check_if>yes</check_if>
+    <frequency>43200</frequency>
+  </rootcheck>
+
+  <!-- Security Configuration Assessment: the Ubuntu benchmark that ships with
+       the agent. One scan every 12 hours, not on every start. -->
+  <sca>
+    <enabled>yes</enabled>
+    <scan_on_start>no</scan_on_start>
+    <interval>12h</interval>
+  </sca>
+
+  <!-- Active response is OFF. On a demo VM, an automatic firewall-drop rule
+       triggered by our own load test or our own scan script would take the
+       site down in front of the audience. Detection only. -->
+  <active-response>
+    <disabled>yes</disabled>
+  </active-response>
+
+  <logging>
+    <log_format>plain</log_format>
+  </logging>
+
+</ossec_config>

@@ -1,0 +1,152 @@
+# Production-side monitoring agents — DP-5 phase 3a (DP-500 / DP-501).
+#
+# WHERE THIS RUNS: the Azure production VM, alongside the app stack defined by
+# the repository-root `docker-compose-prosuction.yml`. It is NOT the monitoring
+# stack; that one lives in ../docker-compose.yml and runs on the lecturer's VM.
+#
+# Usage (from this directory):
+#   cp .env.example .env && $EDITOR .env        # never committed
+#   docker compose pull
+#   docker compose up -d
+#
+# Design rules (doc/architecture/DP5_monitoring_plan.md §4, operator §5):
+#   - The host is a Standard B2als v2: 2 vCPU / 4 GiB, burstable. Every service
+#     carries a mem_limit and the budget for this whole file is 512 MiB:
+#       node_exporter 32 + redis_exporter 48 + postgres_exporter 64
+#       + cAdvisor 224 + Alloy 128 = 496 MiB.
+#   - Published ports bind 127.0.0.1 only. Nothing here is ever reachable from
+#     the internet; the exporters exist for Alloy, which runs on the host
+#     network and scrapes them over loopback.
+#   - Every host path is mounted read-only. The Docker socket included: Alloy
+#     and cAdvisor only read from it.
+#   - Exact image tags, `restart: unless-stopped`, no `container_name:` and a
+#     distinct project name so nothing can collide with the app stack.
+name: subscription-prod-agent
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # Host CPU / memory / disk / network. Same pattern as the monitoring VM's
+  # node-exporter: no host networking, so the published port is loopback-only
+  # and cannot collide with anything else on the host. `pid: host` plus
+  # --path.rootfs keep the CPU/memory/filesystem figures the host's; only
+  # node_network_* describes the container's own namespace.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    command:
+      - --path.rootfs=/host
+    pid: host
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 32m
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Per-container CPU/memory/network, and the restart counters the dashboards
+  # use. Tuned down hard: the defaults cost more than the app on a 2 vCPU host.
+  #   --docker_only            drop the raw cgroup/system slices; only the
+  #                            containers and the root summary are reported
+  #   --housekeeping_interval  1s by default; 30s is plenty at a 30s scrape
+  #   --store_container_labels every container label would otherwise become a
+  #                            Prometheus label (unbounded cardinality, §5.3)
+  #   --disable_metrics        the default disable list plus the per-disk,
+  #                            per-interface and perf collectors this project
+  #                            has no panel for
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+      - --allow_dynamic_housekeeping=false
+      - --store_container_labels=false
+      - --disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp,percpu,perf_event,disk
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      # Read-only cgroup accounting needs no `privileged: true`; granting the
+      # device explicitly keeps the container unprivileged.
+      - /dev/kmsg:/dev/kmsg:r
+    mem_limit: 224m
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Reaches postgres over the app stack's own Compose network — see `networks:`
+  # at the bottom. DATA_SOURCE_NAME is a connection string with a password in
+  # it, so it comes from .env and never from this file.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:9187:9187"
+    networks:
+      - app
+    mem_limit: 64m
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.93.0
+    environment:
+      REDIS_ADDR: ${REDIS_ADDR:-redis://redis:6379}
+    ports:
+      - "127.0.0.1:9121:9121"
+    networks:
+      - app
+    mem_limit: 48m
+    restart: unless-stopped
+    logging: *default-logging
+
+  # The only service that talks to the monitoring VM.
+  #
+  # `network_mode: host` is deliberate and is the one host-networked service
+  # here. The reverse SSH tunnel terminates on the HOST's loopback
+  # (127.0.0.1:9090 and 127.0.0.1:3100); a container on a bridge network has
+  # its own loopback and cannot reach those, and the tunnel must not be
+  # re-bound to a routable address to work around that. Host networking also
+  # gives Alloy the app's published metrics ports (9464/9465) and the four
+  # exporters above over loopback. Consequence, accepted: Alloy's own HTTP
+  # server would be host-wide, so it is pinned to 127.0.0.1 explicitly below.
+  alloy:
+    image: grafana/alloy:v1.20.1
+    command:
+      - run
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    network_mode: host
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Named volume, not a bind mount: it holds the remote-write WAL and the
+      # log read positions. If this were ephemeral, every restart would start
+      # from an empty WAL and silently drop whatever had not been pushed yet —
+      # exactly the phase-1.5 S3 failure mode. See README "WAL".
+      - alloy-data:/var/lib/alloy/data
+    mem_limit: 128m
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  alloy-data:
+
+networks:
+  # The app stack's network, created by docker-compose-prosuction.yml. Declared
+  # external so this file never creates it and a wrong name fails loudly
+  # instead of silently starting an exporter that can reach nothing.
+  # Find it with: docker network ls --filter name=_default
+  app:
+    external: true
+    name: ${APP_NETWORK:?set APP_NETWORK in infra/monitoring/prod-agent/.env (docker network ls --filter name=_default)}

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { CreepScoreService } from './creep-score.service';
 import { BillingCycle, SubscriptionStatus } from '@prisma/client';
+import { CacheService } from '../cache/cache.service';
 
 describe('CreepScoreService', () => {
   let service: CreepScoreService;
@@ -125,6 +126,26 @@ describe('CreepScoreService', () => {
       expect(result.creep_score).toBe(14.4);
       expect(result.risk_level).toBe('CAUTION');
       expect(result.denominator_used).toBe('total_card_funds');
+    });
+
+    it('returns cached creep score on subsequent requests without querying database', async () => {
+      const mockCache = new CacheService();
+      const serviceWithCache = new CreepScoreService(prismaMock, mockCache);
+
+      const userId = 'cached-creep-user';
+      prismaMock.user.findUnique.mockResolvedValue({ monthly_income: 50000 });
+      prismaMock.userSubscription.findMany.mockResolvedValue([]);
+      prismaMock.paymentCard.findMany.mockResolvedValue([]);
+
+      // First call: Cache miss -> queries prisma
+      const firstResult = await serviceWithCache.getCreepScore(userId);
+      expect(firstResult.creep_score).toBe(0);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
+
+      // Second call: Cache hit -> returns cached, prisma NOT queried again
+      const secondResult = await serviceWithCache.getCreepScore(userId);
+      expect(secondResult.creep_score).toBe(0);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
     });
   });
 });
