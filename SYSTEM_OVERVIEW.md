@@ -29,6 +29,10 @@
    - ระบบ **JWT Authentication & Password Hashing** (ฝั่ง Backend)
 7. **Responsive & Adaptive Shell:**
    - ปรับการแสดงผลอัตโนมัติตามขนาดหน้าจอ: โทรศัพท์มือถือ (Bottom Navigation Bar) และ แท็บเล็ต/เดสก์ท็อป (Navigation Rail ด้านข้าง)
+8. **ระบบ In-App Version Checker & Force Update (Direct APK Sideloading):**
+   - ตรวจจับเวอร์ชันของแอปพลิเคชันแบบไดนามิกผ่าน Manifest JSON (`version.json`) บน Azure Blob Storage
+   - รองรับทั้ง **Optional Update** (แสดงความเปลี่ยนแปลง What's New พร้อมตัวเลือกอัปเดตภายหลัง) และ **Force Update** (ล็อกหน้าจอ ไม่อนุญาตให้ข้าม สำหรับอัปเดตด้านความปลอดภัยหรือ Breaking API)
+   - ดาวน์โหลดและเตรียมติดตั้ง APK แทนที่ของเดิมได้ทันทีโดยคงสถานะและข้อมูลเดิมของผู้ใช้ไว้ครบถ้วน
 
 ---
 
@@ -226,6 +230,7 @@ flowchart LR
 | **Data & Code Gen** | `freezed`, `freezed_annotation`, `json_serializable`, `build_runner` | สร้าง Data Class แบบ Immutable และแปลง JSON อัตโนมัติ |
 | **Functional Tools** | `fpdart` (^1.1.1) | การจัดการผลลัพธ์และข้อผิดพลาดสไตล์ Functional (`Either`, `Option`) |
 | **UI & Assets** | `flutter_launcher_icons`, `flutter_native_splash` | จัดการ Splash Screen และ App Icons ตามมาตรฐานระบบปฏิบัติการ |
+| **In-App Update** | `AppUpdateController`, `AppUpdateDialog` | ตรวจสอบเวอร์ชันผ่าน Remote Manifest บน Azure Blob รองรับทั้ง Optional และ Force Update |
 | **Testing & Quality** | `flutter_test`, `flutter_lints` (^5.0.0), `logger` (^2.5.0) | ทดสอบ Widget/Unit tests และตรวจจับโค้ดตามมาตรฐาน Linter |
 
 ### 🖥️ ฝั่ง Backend (NestJS / TypeScript)
@@ -245,8 +250,9 @@ flowchart LR
 | กลุ่ม / เลเยอร์ | เครื่องมือ / ไลบรารี | เฟสที่ใช้งาน | ประโยชน์และความสำคัญ |
 |---|---|---|---|
 | **CI/CD Orchestration** | **Jenkins** | Build, Test, Release, Deploy | เครื่องมือ Pipeline Orchestrator ควบคุมการสร้าง ทดสอบ และส่งมอบระบบอัตโนมัติ |
-| **Mobile Delivery** | **Flutter SDK & Test** | Build, Test | คอมไพล์และทดสอบโค้ดแอปพลิเคชันมือถือ |
-| **Mobile Delivery** | **Fastlane** | Release, Deploy | จัดการ Code Signing และส่งมอบแอปเข้าสู่ App Store & Play Store |
+| **Mobile Runner** | **Flutter & Android SDK Container** | Build, Test | Docker Agent (`cirruslabs/flutter:stable`) รัน Flutter/Android Build พร้อมแคช |
+| **Mobile Delivery** | **Flutter SDK & Test** | Build, Test | คอมไพล์และทดสอบโค้ดแอปพลิเคชันมือถือ (`flutter test --coverage`) |
+| **Mobile Delivery** | **Fastlane & Azure Blob** | Release, Deploy | คอมไพล์ Signed Release APK, ตรวจสอบลายเซ็น และส่งมอบผ่าน Azure Blob Storage |
 | **Testing & Verification** | **Vitest, Playwright, Docker Compose, k6** | Test | ชุดทดสอบ Unit/Integration API, E2E UI, และ Performance/Load Testing ด้วย k6 จำลองพฤติกรรมผู้ใช้และทดสอบเพดานระบบ |
 | **Container Registry** | **GHCR** (GitHub Container Registry) | Release | คลังจัดเก็บ Production Docker Images อย่างปลอดภัย |
 | **GitOps Delivery** | **ArgoCD** | Deploy | ตรวจจับการเปลี่ยนแปลงของ Manifest และ Sync ขึ้น K8s อัตโนมัติ |
@@ -315,5 +321,6 @@ fvm flutter run -d web-server --web-port 8080
 | **2026-10-03** | **Cloud Provider Migration to Microsoft Azure (Rule 8 Mandate)** | ปรับเปลี่ยนระบบคลาวด์และโครงสร้างพื้นฐานทั้งหมดจาก AWS สู่ Microsoft Azure: ย้ายฐานสำรองข้อมูลและ DR (DP-103) จาก AWS S3 มาเป็น Azure Blob Storage ด้วย AzCopy/Azure CLI, ปรับโครงสร้างความลับ Ansible Vault & Template (DP-102) เป็น `backup-azure-secret`, กำหนด StorageClass สำหรับ StatefulSet บน AKS เป็น `managed-csi`, และอัปเดต Terraform Provider เป็น `hashicorp/azurerm` |
 | **2026-10-04** | **Distributed Caching Layer & Cross-Service Eviction Suite** | ติดตั้ง `CacheModule` / `CacheService` ด้วย Redis 7 + `ioredis` พร้อม In-Memory Graceful Fallback รองรับ 3 จุดสำคัญ: 1) Auth User Identity (`auth:user:{id}`, TTL 180s) 2) Creep Score Analytics (`cache:user:{id}:creep-score`, TTL 900s) 3) Catalog Presets (`cache:packages:*`, TTL 24h) พร้อมเพิ่ม Unit Test Assertion ยืนยันการทำ Event-driven Cross-Service Eviction บน `SubscriptionsService` และ `UsersService` ผ่านการทดสอบ Vitest ครบ 276/276 tests |
 | **2026-10-04** | **k6 Realistic & Ceiling Stress Load Testing Suite** | พัฒนาชุดทดสอบโหลด `scripts/k6/load-test.js` และ `scripts/k6/run-k6.ps1` จำลองพฤติกรรมผู้ใช้จริง (Browse Catalog, Batch Dashboard 5-endpoint fetch, Savings Optimizer, และ Subscription Mutation triggering Eviction) พร้อมโหมด Ceiling Stress ไต่ระดับ 0 ➔ 500 VUs แบบลด Think Time เพื่อค้นหาคอขวด Event Loop, DB Connection Pool, และวัดประสิทธิภาพการบรรเทาภาระของ Redis Cache |
+| **2026-10-06** | **EPICDP 6: Mobile Integration & Direct APK Sideloading Delivery Suite (DP-600 to DP-605)** | ปรับเปลี่ยนยุทธศาสตร์การส่งมอบแอปพลิเคชันมือถือจาก App Store สู่การติดตั้งโดยตรง (Direct APK Sideloading) พร้อมระบบ In-App Update: 1) **DP-600**: ออกแบบ Jenkins Mobile Runner (`Jenkinsfile.mobile`) บน Container `ghcr.io/cirruslabs/flutter:stable` พร้อม Docker volumes สำหรับ `.pub-cache` และ `.gradle` 2) **DP-601**: สร้าง Quality Gate อัตโนมัติ (`flutter analyze` และ `flutter test --coverage`) ผ่านการทดสอบ 61/61 tests 3) **DP-602**: บูรณาการเครื่องมือ Static Security Testing สำหรับ Mobile Binary ด้วย MobSF API (`scripts/cicd/mobsf-scan.sh`) 4) **DP-603**: กำหนด Schema จัดเก็บ Keystore และ Signing Credentials ด้วย Ansible Vault (`vault.example.yml`) ร่วมกับ Gradle Signing Config 5) **DP-604**: พัฒนาระบบ In-App Version Checker & Force Update บน Flutter Client (`AppUpdateController`, `AppUpdateDialog`) ตรวจสอบเวอร์ชันผ่าน Remote Manifest 6) **DP-605**: คอนฟิก Fastlane Lane (`Fastfile`) สำหรับการคอมไพล์ Signed Release APK, ตรวจสอบลายเซ็นใบรับรอง และส่งมอบขึ้น Microsoft Azure Blob Storage พร้อม Manifest `version.json` |
 
 
