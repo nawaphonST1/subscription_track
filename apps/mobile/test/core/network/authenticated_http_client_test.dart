@@ -202,6 +202,89 @@ void main() {
       expect(signals, 0);
     });
 
+    // ครอบ public path ให้ครบทั้ง 3 ตัว ไม่ใช่แค่ /auth/login
+    //
+    // `POST /auth/social` ตอบ 401 ได้จริงเมื่อ Google ID token ไม่ผ่านการตรวจ
+    // (`auth.service.ts` โยน UnauthorizedException) ถ้าสัญญาณยิงตรงนั้น XC-3
+    // จะแปลว่า "ล็อกอินด้วย Google ไม่สำเร็จ" = "คุณถูกเตะออกจากระบบ"
+    for (final path in kPublicAuthPaths) {
+      test('401 จาก $path ไม่ยิงสัญญาณ', () async {
+        final capture = _Capture();
+        var signals = 0;
+        final client = AuthenticatedHttpClient(
+          readToken: () async => null,
+          inner: _mockReturning(401, capture),
+          onUnauthorized: () => signals++,
+        );
+
+        await client.post(Uri.parse('http://localhost:3000$path'));
+
+        expect(signals, 0);
+      });
+    }
+
+    // แยกเหตุผลให้ชัด: ที่ไม่ยิงเพราะ "เป็น public path" ไม่ใช่เพราะ "ไม่มี token"
+    //
+    // เคสจริงที่เกิดได้: ผู้ใช้ยังมี token เก่าค้างอยู่ใน storage แล้วกรอกรหัสผ่าน
+    // ผิดตอน login ใหม่ — ต้องไม่ถูกตีความว่า session หมดอายุ
+    for (final path in kPublicAuthPaths) {
+      test('401 จาก $path ไม่ยิงสัญญาณ แม้จะมี token เก่าค้างอยู่', () async {
+        final capture = _Capture();
+        var signals = 0;
+        final client = AuthenticatedHttpClient(
+          readToken: () async => 'stale-jwt-from-previous-session',
+          inner: _mockReturning(401, capture),
+          onUnauthorized: () => signals++,
+        );
+
+        await client.post(Uri.parse('http://localhost:3000$path'));
+
+        expect(
+          signals,
+          0,
+          reason: 'public path ต้องไม่ยิงสัญญาณไม่ว่าจะมี token หรือไม่',
+        );
+        expect(
+          _authHeaderOf(capture),
+          isNull,
+          reason: 'และต้องไม่แนบ token เก่าไปกับ request ด้วย',
+        );
+      });
+    }
+
+    test('401 จาก path ที่ต้อง auth หลายเส้นทาง ยิงครบทุกเส้น', () async {
+      for (final path in ['/users/me', '/subscriptions', '/cards',
+        '/notifications', '/savings/optimizer', '/creep-score']) {
+        final capture = _Capture();
+        var signals = 0;
+        final client = AuthenticatedHttpClient(
+          readToken: () async => 'expired-jwt',
+          inner: _mockReturning(401, capture),
+          onUnauthorized: () => signals++,
+        );
+
+        await client.get(Uri.parse('http://localhost:3000$path'));
+
+        expect(signals, 1, reason: '401 จาก $path ต้องยิงสัญญาณ');
+      }
+    });
+
+    test('403 จาก path ที่ต้อง auth ไม่ยิงสัญญาณ (PIN ผิด ไม่ใช่ session หมดอายุ)',
+        () async {
+      // `POST /savings/batch-cancel` ตอบ 403 เมื่อ PIN ผิด — ไม่ใช่เรื่อง session
+      final capture = _Capture();
+      var signals = 0;
+      final client = AuthenticatedHttpClient(
+        readToken: () async => 'valid-jwt',
+        inner: _mockReturning(403, capture),
+        onUnauthorized: () => signals++,
+      );
+
+      await client.post(Uri.parse('http://localhost:3000/savings/batch-cancel'));
+
+      expect(signals, 0);
+    });
+
     test('ไม่ยิงสำหรับสถานะอื่น', () async {
       for (final status in [200, 201, 400, 403, 404, 409, 500]) {
         final capture = _Capture();
