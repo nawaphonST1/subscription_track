@@ -74,10 +74,10 @@ Either<Failure, T> unwrapEnvelope<T>(
 /// แปลง error envelope เป็น [Failure] โดยใช้ union เดิมใน `core/errors/failures.dart`
 /// ไม่สร้างชนิด error ตัวที่สอง
 Failure failureFromErrorBody(Map<String, dynamic> body, int statusCode) {
-  // TODO(XC-3/XC-8): `Failure.unauthorized()` มีข้อความตายตัวว่า
-  // "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ซึ่งถูกเฉพาะตอน login ด้วยรหัสผิด
-  // เมื่อใดที่ทำ session restore (XC-3) หรือ refresh token (XC-8) แล้ว 401 จะเริ่ม
-  // เกิดจาก "token หมดอายุระหว่างใช้งาน" ด้วย — ตอนนั้นข้อความนี้จะผิดบริบท
+  // TODO(XC-3/XC-8): confirmed not shown in the XC-3 restore flow; still wrong if login-wrong-password UX changes later.
+  // `Failure.unauthorized()` มีข้อความตายตัวว่า "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  // ใน XC-3 เส้นทาง session restore เมื่อเจอ 401 จะ transition ไป data(null) โดยตรง
+  // ไม่เคยนำ displayMessage ไปแสดง แต่หากในอนาคต UX ฝั่ง login เปลี่ยน หรือทำ XC-8
   // ต้องเพิ่มพารามิเตอร์ข้อความให้ variant นี้ (ต้อง regenerate failures.freezed.dart)
   if (statusCode == 401) return const Failure.unauthorized();
   if (statusCode == 404) return const Failure.notFound();

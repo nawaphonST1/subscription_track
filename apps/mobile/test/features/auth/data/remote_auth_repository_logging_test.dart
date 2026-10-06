@@ -184,6 +184,48 @@ void main() {
 
       expect(lines.join('\n'), isNot(contains(_jwt)));
     });
+
+    test('getCurrentUser: log เห็นแค่ method + path ไม่พ่น token หรือ header ออกมา',
+        () async {
+      final lines = await _capturePrints(() async {
+        final repository = RemoteAuthRepository(
+          baseUrl: _baseUrl,
+          client: MockClient((request) async {
+            expect(request.headers['Authorization'], 'Bearer $_staleJwt');
+            return _envelope({
+              'id': 'user-uuid',
+              'email': 'user@example.com',
+              'name': 'Real User',
+            }, 200);
+          }),
+        );
+        await repository.getCurrentUser();
+      });
+
+      expect(
+        lines.join('\n'),
+        contains('Calling API: GET $_baseUrl/users/me'),
+        reason: 'ต้องดัก log ได้จริง',
+      );
+      _expectNoSecrets(lines);
+    });
+
+    test('getCurrentUser error path: ไม่พ่น token ออกมา', () async {
+      final lines = await _capturePrints(() async {
+        final repository = RemoteAuthRepository(
+          baseUrl: _baseUrl,
+          client: MockClient((_) async => throw const SocketExceptionStub('network fail')),
+        );
+        await repository.getCurrentUser();
+      });
+
+      expect(
+        lines.join('\n'),
+        contains('Error connecting to current-user API'),
+        reason: 'ต้องดัก log error ได้จริง',
+      );
+      _expectNoSecrets(lines);
+    });
   });
 
   group('AuthenticatedHttpClient ไม่ log อะไรเลย', () {
