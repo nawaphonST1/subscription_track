@@ -11,7 +11,7 @@
   "scripts": {
     "build": "nest build",
     "check": "pnpm build && pnpm test && pnpm lint && pnpm format:check",
-    "check:security": "pnpm audit --prod && pnpm audit",
+    "check:security": "pnpm audit --prod --audit-level=high && pnpm audit --audit-level=high",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -51,6 +51,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "firebase-admin": "^13.10.0",
+    "google-auth-library": "^11.1.0",
     "ioredis": "^6.0.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -84,7 +85,10 @@
   },
   "pnpm": {
     "overrides": {
-      "deepmerge-ts": ">=8.0.0"
+      "deepmerge-ts": ">=8.0.0",
+      "proxy-addr": ">=2.0.8",
+      "source-map-js": ">=1.2.2",
+      "fast-uri": ">=3.1.8"
     }
   }
 }

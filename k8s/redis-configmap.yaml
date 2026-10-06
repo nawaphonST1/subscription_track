@@ -32,4 +32,4 @@ data:
     auto-aof-rewrite-percentage 100
     auto-aof-rewrite-min-size 64mb
     maxmemory 256mb
-    maxmemory-policy allkeys-lru
+    maxmemory-policy volatile-lru

@@ -79,11 +79,9 @@ curl -s http://127.0.0.1:12345/metrics | grep prometheus_remote_storage_samples_
 
 ## 4. nginx access log
 
-`infra/nginx/nginx.conf` เป็นไฟล์ของเพื่อนร่วมทีม **เราไม่แก้** nginx จึงใช้ `combined` format ตามค่า default
-ซึ่ง **ไม่มี `$request_time`** `config.alloy` ทำ regex ให้ field นี้เป็น optional: จะมีค่าก็ต่อเมื่อทีมรับข้อเสนอ
-ข้างล่างนี้เข้าไป ถ้าไม่รับ ทุกอย่างที่เหลือยังทำงานปกติ (ได้ `remote_addr`, `method`, `route`, `status`)
-
-**ข้อเสนอถึงเจ้าของไฟล์ (ยังไม่ได้แก้ให้):** เพิ่มใน block `http { ... }`
+**DP-506 — applied.** `infra/nginx/nginx.conf` now ships the `combined_rt` log_format proposed
+below, so `$request_time` is populated. `config.alloy`'s capture group is still optional (costs
+nothing, and keeps the regex from breaking if the format ever reverts to bare `combined`).
 
 ```nginx
 log_format  combined_rt  '$remote_addr - $remote_user [$time_local] '
@@ -94,6 +92,10 @@ access_log  /dev/stdout  combined_rt;
 
 เป็น superset ของ `combined` (ต่อท้ายฟิลด์เดียว) ดังนั้นเครื่องมืออื่นที่อ่าน combined อยู่ไม่พัง
 และ regex ใน `config.alloy` รองรับทั้งสองแบบอยู่แล้ว
+
+Production uses a separate file, `infra/nginx/nginx.prod.conf` (DP-507, TLS termination), which
+carries the same `log_format`/`access_log` lines independently — the dev compose file still mounts
+the plain `nginx.conf` and never needs a certificate.
 
 **label ที่ pipeline สร้าง** — `service`, `container`, `compose_project`, `site` (ทุก container) และเฉพาะ nginx:
 `method`, `route`, `status`

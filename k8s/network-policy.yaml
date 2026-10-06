@@ -42,7 +42,7 @@ spec:
           port: 5432
 ---
 # ==============================================================================
-# 3. Redis Policy: อนุญาตเฉพาะ Backend API เข้าถึง Cache/Queue ได้
+# 3. Redis Policy: อนุญาตให้ Backend API และ Worker เข้าถึง Cache/Queue ได้
 # ==============================================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -62,6 +62,9 @@ spec:
         - podSelector:
             matchLabels:
               app: subtracker-api
+        - podSelector:
+            matchLabels:
+              app: subtracker-worker
       ports:
         - protocol: TCP
           port: 6379
