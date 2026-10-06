@@ -8,11 +8,24 @@ import 'package:subscription_track/features/auth/data/remote_auth_repository.dar
 import 'package:subscription_track/features/auth/domain/auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
+import 'package:http/http.dart' as http;
+import 'package:subscription_track/core/network/authenticated_http_client.dart';
+
 part 'auth_provider.g.dart';
+
+final innerHttpClientProvider = Provider<http.Client?>((ref) => null);
+
+final authenticatedHttpClientProvider = Provider<AuthenticatedHttpClient>(
+  (ref) => AuthenticatedHttpClient(
+    readToken: RemoteAuthRepository.readStoredAuthToken,
+    inner: ref.watch(innerHttpClientProvider),
+    onUnauthorized: () => ref.read(authProvider.notifier).handleSessionExpired(),
+  ),
+);
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => RemoteAuthRepository(
-    onUnauthorized: () => ref.read(authProvider.notifier).handleSessionExpired(),
+    client: ref.watch(authenticatedHttpClientProvider),
   ),
 );
 
