@@ -147,41 +147,21 @@ pipeline {
                     }
                 }
 
-                // Lab 10 Fail-Fast: Unit tests executed in parallel with static analysis
-                stage('DP-403: Automated Unit Testing (Vitest)') {
+                // Lab 10 Fail-Fast: Unit & Integration tests executed in parallel with static analysis
+                stage('DP-403: Automated Testing (Vitest)') {
                     steps {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
-                        echo "==> [${env.APP_NAME}] Executing isolated Vitest unit test suite..."
+                        echo "==> [${env.APP_NAME}] Executing isolated Vitest unit & integration test suite..."
                         dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                             sh '''
                                 if command -v pnpm >/dev/null 2>&1; then
-                                    pnpm test --run src || pnpm test
+                                    pnpm test
                                 else
                                     npm test
                                 fi
                             '''
                         }
                     }
-                }
-            }
-        }
-
-        // DP-403: Automated Testing Orchestration in CI (Vitest & Playwright in Docker Compose)
-        stage('DP-403: Test Orchestration (Compose & Vitest)') {
-            steps {
-                script {
-                    env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Orchestrating test execution via Docker Compose..."
-                    sh '''
-                        if command -v docker >/dev/null 2>&1 && [ -f "docker-compose.test.yml" ]; then
-                            echo "==> Launching test suite in isolated Docker Compose test environment..."
-                            docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test_runner || true
-                            docker compose -f docker-compose.test.yml down -v || true
-                        else
-                            echo "==> Executing unit test suite directly..."
-                            cd apps/server && (pnpm test || npm test)
-                        fi
-                    '''
                 }
             }
         }
