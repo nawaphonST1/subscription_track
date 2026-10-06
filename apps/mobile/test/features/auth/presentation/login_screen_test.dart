@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/presentation/login_screen.dart';
+
+import '../../../support/stub_auth_repository.dart';
 
 void main() {
   Widget createWidgetUnderTest() {
-    return const ProviderScope(
-      child: MaterialApp(
+    return ProviderScope(
+      // กัน AuthNotifier.build() ไปกู้ session ผ่าน repository ตัวจริง
+      // ซึ่งจะเปิด http.Client และแตะ SharedPreferences ที่ไม่มี plugin ในเทสต์
+      overrides: [
+        authRepositoryProvider.overrideWithValue(StubAuthRepository()),
+      ],
+      child: const MaterialApp(
         home: LoginScreen(),
       ),
     );
@@ -20,6 +28,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       // Check title and subtitle
       expect(find.text('ยินดีต้อนรับกลับมา'), findsOneWidget);
@@ -46,6 +55,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       final btn = find.widgetWithText(ElevatedButton, 'เข้าสู่ระบบ');
       await tester.ensureVisible(btn);
@@ -64,6 +74,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       final emailField = find.widgetWithText(TextFormField, 'example@email.com');
       final passwordField = find.widgetWithText(TextFormField, 'กรอกรหัสผ่านของคุณ');
