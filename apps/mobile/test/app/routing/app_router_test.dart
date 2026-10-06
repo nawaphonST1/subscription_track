@@ -21,9 +21,11 @@ import 'package:subscription_track/features/dashboard/data/in_memory_creep_score
 import 'package:subscription_track/features/dashboard/data/remote_creep_score_repository.dart';
 import 'package:subscription_track/features/savings/data/in_memory_savings_repository.dart';
 import 'package:subscription_track/features/savings/data/remote_savings_repository.dart';
+import 'package:subscription_track/features/notifications/application/notification_center_controller.dart';
+import 'package:subscription_track/features/notifications/data/in_memory_notification_repository.dart';
 
 /// Dashboard และ Savings ที่ build ในเทสต์เหล่านี้ต้องไม่ยิง network จริง: ถ้าปล่อยให้
-/// subscriptionRepositoryProvider/paymentCardRepositoryProvider/creepScoreRepositoryProvider/savingsRepositoryProvider
+/// subscriptionRepositoryProvider/paymentCardRepositoryProvider/creepScoreRepositoryProvider/savingsRepositoryProvider/notificationRepositoryProvider
 /// ใช้ default (Remote*Repository) เทสต์จะค้างที่ pumpAndSettle timeout เพราะไม่มี
 /// backend จริงให้ต่อในแซนด์บ็อกซ์เทสต์
 _offlineDataOverrides() => [
@@ -38,6 +40,9 @@ _offlineDataOverrides() => [
       ),
       savingsRepositoryProvider.overrideWithValue(
         InMemorySavingsRepository(ioDelay: Duration.zero),
+      ),
+      notificationRepositoryProvider.overrideWithValue(
+        InMemoryNotificationRepository(ioDelay: Duration.zero),
       ),
     ];
 
