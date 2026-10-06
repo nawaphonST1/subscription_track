@@ -346,4 +346,122 @@ void main() {
       expect(repository.initialToken, isNull);
     });
   });
+
+  group('Mandatory PIN Setup Redirect Guard', () {
+    testWidgets(
+      'authenticated user with unconfigured PIN is redirected to /setup-pin and cannot navigate away',
+      (WidgetTester tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            appFlowProvider.overrideWithValue(
+              const AppFlowState(
+                isInitializing: false,
+                isOnboardingCompleted: true,
+                isAuthenticated: true,
+                isPinSetupCompleted: false,
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const App(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Redirects to setup PIN screen
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsOneWidget);
+        expect(find.byKey(const Key('hero-payout-card')), findsNothing);
+
+        // Attempting to navigate elsewhere is blocked by guard and stays on /setup-pin
+        container.read(appRouterProvider).go(RouteConstants.notifications);
+        await tester.pumpAndSettle();
+
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsOneWidget);
+        expect(find.text('การแจ้งเตือน'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'completing PIN setup unlocks normal navigation to dashboard',
+      (WidgetTester tester) async {
+        final repository = _FakeRestoreAuthRepository(
+          initialToken: 'valid-stored-jwt',
+          userResult: right(const User(
+            id: 'unconfigured-user',
+            email: 'unconfigured@example.com',
+            name: 'Unconfigured User',
+            pinConfigured: false,
+          )),
+          delay: Duration.zero,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(repository),
+            onboardingProvider.overrideWithBuild((ref, _) => true),
+          ],
+        );
+        addTearDown(container.dispose);
+        final sub = container.listen(authProvider, (_, __) {});
+        addTearDown(sub.close);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const App(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // User starts at /setup-pin because pinConfigured is false
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsOneWidget);
+        expect(find.byKey(const Key('hero-payout-card')), findsNothing);
+
+        // User completes PIN setup
+        container.read(authProvider.notifier).markPinConfigured();
+        await tester.pumpAndSettle();
+
+        // Now unlocked, reaches dashboard
+        expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'mockAuthBypassProvider bypasses PIN setup guard and allows direct navigation',
+      (WidgetTester tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            mockAuthBypassProvider.overrideWithBuild((ref, _) => true),
+            onboardingProvider.overrideWithBuild((ref, _) => true),
+            authRepositoryProvider.overrideWithValue(InMemoryAuthRepository()),
+          ],
+        );
+        addTearDown(container.dispose);
+        final sub = container.listen(authProvider, (_, __) {});
+        addTearDown(sub.close);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const App(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Lands on Dashboard by default
+        expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
+
+        // Direct navigation to /setup-pin is allowed and stays there
+        container.read(appRouterProvider).go(RouteConstants.setupPin);
+        await tester.pumpAndSettle();
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsOneWidget);
+      },
+    );
+  });
 }

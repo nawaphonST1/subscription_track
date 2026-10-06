@@ -8,6 +8,7 @@ import 'package:subscription_track/app/presentation/splash_screen.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/features/auth/presentation/login_screen.dart';
 import 'package:subscription_track/features/auth/presentation/register_screen.dart';
+import 'package:subscription_track/features/auth/presentation/setup_pin_screen.dart';
 import 'package:subscription_track/features/notifications/presentation/notification_center_screen.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:subscription_track/features/subscriptions/presentation/add_subscription_screen.dart';
@@ -62,7 +63,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isLoggingIn ? null : RouteConstants.login;
       }
 
-      // 4. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding หรือ Login ให้เปลี่ยนไปหน้า Dashboard
+      // 4. หากล็อกอินแล้วแต่ยังไม่ได้ตั้ง PIN ให้บังคับไปที่หน้า /setup-pin เท่านั้น
+      final isOnSetupPin = location == RouteConstants.setupPin;
+      if (!appFlow.isPinSetupCompleted) {
+        return isOnSetupPin ? null : RouteConstants.setupPin;
+      }
+
+      // หากตั้ง PIN เสร็จแล้วแต่อยู่ในหน้า /setup-pin ให้ไปที่หน้า Dashboard
+      if (isOnSetupPin) {
+        return RouteConstants.dashboard;
+      }
+
+      // 5. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding หรือ Login ให้เปลี่ยนไปหน้า Dashboard
       if (isOnSplash || isOnboarding || isLoggingIn) {
         return RouteConstants.dashboard;
       }
@@ -91,6 +103,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: RouteConstants.setupPin,
+        builder: (context, state) => const SetupPinScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainNavigationShell(

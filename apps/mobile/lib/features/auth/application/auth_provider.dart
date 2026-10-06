@@ -204,4 +204,13 @@ class AuthNotifier extends _$AuthNotifier {
       (_) => const AsyncValue.data(null),
     );
   }
+
+  /// อัปเดตสถานะ pinConfigured ให้เป็น true ใน state หลังตั้งค่า PIN สำเร็จ
+  void markPinConfigured() {
+    state.whenData((user) {
+      if (user != null) {
+        state = AsyncValue.data(user.copyWith(pinConfigured: true));
+      }
+    });
+  }
 }

@@ -256,6 +256,15 @@ class RemoteAuthRepository implements AuthRepository {
     String? fallbackName,
     String provider = 'email',
   }) {
+    final bool pinConfigured;
+    if (json.containsKey('pin_configured')) {
+      pinConfigured = json['pin_configured'] as bool? ?? false;
+    } else if (provider == 'google' || provider == 'apple') {
+      pinConfigured = false;
+    } else {
+      pinConfigured = true;
+    }
+
     return User(
       id: json['id'] as String? ??
           'user-${DateTime.now().millisecondsSinceEpoch}',
@@ -265,6 +274,7 @@ class RemoteAuthRepository implements AuthRepository {
       authProvider: provider,
       currency: 'THB',
       creditCards: const [],
+      pinConfigured: pinConfigured,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
