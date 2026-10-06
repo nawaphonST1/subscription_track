@@ -12,14 +12,20 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BusinessMetrics } from '../metrics/business.metrics';
 import { CacheService } from '../cache/cache.service';
 import { isPinConfigured } from '../common/security/pin.util';
+import { PinRateLimiter } from '../common/security/pin-rate-limiter.service';
 
 @Injectable()
 export class UsersService {
+  private readonly rateLimiter: PinRateLimiter;
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly metrics?: BusinessMetrics,
     @Optional() private readonly cacheService?: CacheService,
-  ) {}
+    @Optional() private readonly pinRateLimiter?: PinRateLimiter,
+  ) {
+    this.rateLimiter = pinRateLimiter ?? new PinRateLimiter();
+  }
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -141,6 +147,8 @@ export class UsersService {
   }
 
   async verifyPin(userId: string, pin: string): Promise<{ valid: boolean }> {
+    this.rateLimiter.checkLockout(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { security_pin_hash: true },
@@ -151,12 +159,20 @@ export class UsersService {
     }
 
     const isValid = await bcrypt.compare(pin, user.security_pin_hash);
+    if (!isValid) {
+      this.rateLimiter.recordFailure(userId);
+    } else {
+      this.rateLimiter.recordSuccess(userId);
+    }
+
     this.metrics?.recordLogin(isValid ? 'success' : 'failure', 'pin');
 
     return { valid: isValid };
   }
 
   async changePin(userId: string, currentPin: string, newPin: string) {
+    this.rateLimiter.checkLockout(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { security_pin_hash: true },
@@ -168,8 +184,11 @@ export class UsersService {
 
     const isValid = await bcrypt.compare(currentPin, user.security_pin_hash);
     if (!isValid) {
+      this.rateLimiter.recordFailure(userId);
       throw new UnauthorizedException('Current security PIN is incorrect');
     }
+
+    this.rateLimiter.recordSuccess(userId);
 
     if (currentPin === newPin) {
       throw new BadRequestException(

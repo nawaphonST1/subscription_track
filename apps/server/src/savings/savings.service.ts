@@ -14,13 +14,19 @@ import {
   SubscriptionStatus,
   UsageStatus,
 } from '@prisma/client';
+import { PinRateLimiter } from '../common/security/pin-rate-limiter.service';
 
 @Injectable()
 export class SavingsService {
+  private readonly rateLimiter: PinRateLimiter;
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly cacheService?: CacheService,
-  ) {}
+    @Optional() private readonly pinRateLimiter?: PinRateLimiter,
+  ) {
+    this.rateLimiter = pinRateLimiter ?? new PinRateLimiter();
+  }
 
   private normalizeMonthlyCost(price: number, cycle: BillingCycle): number {
     switch (cycle) {
@@ -88,6 +94,8 @@ export class SavingsService {
   }
 
   async batchCancel(userId: string, dto: BatchCancelDto) {
+    this.rateLimiter.checkLockout(userId);
+
     // 1. Verify User & Security PIN
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -103,8 +111,11 @@ export class SavingsService {
       user.security_pin_hash,
     );
     if (!isPinValid) {
+      this.rateLimiter.recordFailure(userId);
       throw new ForbiddenException('Invalid 6-digit security PIN');
     }
+
+    this.rateLimiter.recordSuccess(userId);
 
     // 2. Fetch targets
     const subscriptions = await this.prisma.userSubscription.findMany({

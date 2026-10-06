@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import * as bcrypt from 'bcryptjs';
 import {
   BadRequestException,
+  HttpException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -289,6 +290,32 @@ describe('UsersService', () => {
       const result = await service.verifyPin('user-1', '000000');
       expect(result.valid).toBe(false);
     });
+
+    it('should lockout user with 429 Too Many Requests after 5 consecutive failed attempts', async () => {
+      const hash = await bcrypt.hash('123456', 10);
+      prismaMock.user.findUnique.mockResolvedValue({ security_pin_hash: hash });
+
+      // First 5 failed attempts
+      for (let i = 0; i < 5; i++) {
+        const result = await service.verifyPin('user-rate-limited', '000000');
+        expect(result.valid).toBe(false);
+      }
+
+      // 6th attempt is rejected with 429 Too Many Requests
+      await expect(
+        service.verifyPin('user-rate-limited', '000000'),
+      ).rejects.toThrow(HttpException);
+
+      try {
+        await service.verifyPin('user-rate-limited', '000000');
+      } catch (err: any) {
+        expect(err.getStatus()).toBe(429);
+        expect(err.getResponse()).toMatchObject({
+          statusCode: 429,
+          error: 'Too Many Requests',
+        });
+      }
+    });
   });
 
   describe('changePin', () => {
@@ -299,6 +326,22 @@ describe('UsersService', () => {
       await expect(
         service.changePin('user-1', '999999', '654321'),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should lockout user from changePin after repeated failed attempts', async () => {
+      const hash = await bcrypt.hash('123456', 10);
+      prismaMock.user.findUnique.mockResolvedValue({ security_pin_hash: hash });
+
+      for (let i = 0; i < 5; i++) {
+        await expect(
+          service.changePin('user-change-lockout', '000000', '654321'),
+        ).rejects.toThrow(UnauthorizedException);
+      }
+
+      // 6th attempt is blocked by rate limiter with 429
+      await expect(
+        service.changePin('user-change-lockout', '000000', '654321'),
+      ).rejects.toThrow(HttpException);
     });
 
     it('should change PIN and create notification when current PIN is correct', async () => {
