@@ -28,25 +28,26 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
     final response = await _client.get(uri);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
-      final dynamic rawList =
+      final Object? rawData =
           decoded is Map<String, dynamic> ? decoded['data'] : decoded;
-      if (rawList is List) {
-        return rawList.map((item) {
-          final map = item as Map<String, dynamic>;
-          return PaymentCard(
-            id: map['id']?.toString() ?? '',
-            bankName: map['bank_name']?.toString() ??
-                map['card_nickname']?.toString() ??
-                '',
-            last4Digits: map['last_4_digits']?.toString() ?? '',
-            creditLimit: 0,
-            currentBalance: (map['balance'] as num?)?.toDouble() ?? 0,
-            colorHex: '#00A859',
-            detectedSubscriptions: const [],
-          );
-        }).toList();
+      if (rawData is! List) {
+        throw FormatException(
+            'Expected a list of payment cards, got ${rawData.runtimeType}');
       }
-      return const [];
+      return rawData
+          .whereType<Map<String, dynamic>>()
+          .map((map) => PaymentCard(
+                id: map['id']?.toString() ?? '',
+                bankName: map['bank_name']?.toString() ??
+                    map['card_nickname']?.toString() ??
+                    '',
+                last4Digits: map['last_4_digits']?.toString() ?? '',
+                creditLimit: 0,
+                currentBalance: (map['balance'] as num?)?.toDouble() ?? 0,
+                colorHex: '#00A859',
+                detectedSubscriptions: const [],
+              ))
+          .toList();
     }
     throw Exception('Failed to load cards (HTTP ${response.statusCode})');
   }
@@ -57,23 +58,24 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
     final response = await _client.get(uri);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
-      final dynamic rawList =
+      final Object? rawData =
           decoded is Map<String, dynamic> ? decoded['data'] : decoded;
-      if (rawList is List) {
-        return rawList.map((item) {
-          final map = item as Map<String, dynamic>;
-          return PaymentCard(
-            id: map['id']?.toString() ?? '',
-            bankName: map['bank_name']?.toString() ?? '',
-            last4Digits: map['last_4_digits']?.toString() ?? '',
-            creditLimit: 0,
-            currentBalance: (map['balance'] as num?)?.toDouble() ?? 0,
-            colorHex: '#00A859',
-            detectedSubscriptions: const [],
-          );
-        }).toList();
+      if (rawData is! List) {
+        throw FormatException(
+            'Expected a list of payment cards, got ${rawData.runtimeType}');
       }
-      return const [];
+      return rawData
+          .whereType<Map<String, dynamic>>()
+          .map((map) => PaymentCard(
+                id: map['id']?.toString() ?? '',
+                bankName: map['bank_name']?.toString() ?? '',
+                last4Digits: map['last_4_digits']?.toString() ?? '',
+                creditLimit: 0,
+                currentBalance: (map['balance'] as num?)?.toDouble() ?? 0,
+                colorHex: '#00A859',
+                detectedSubscriptions: const [],
+              ))
+          .toList();
     }
     throw Exception('Failed to load mock cards (HTTP ${response.statusCode})');
   }

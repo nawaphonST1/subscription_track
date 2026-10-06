@@ -27,14 +27,16 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
     final response = await _client.get(uri);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
-      final dynamic rawList =
+      final Object? rawData =
           decoded is Map<String, dynamic> ? decoded['data'] : decoded;
-      if (rawList is List) {
-        return rawList
-            .map((item) => Subscription.fromJson(item as Map<String, dynamic>))
-            .toList();
+      if (rawData is! List) {
+        throw FormatException(
+            'Expected a list of subscriptions, got ${rawData.runtimeType}');
       }
-      return const [];
+      return rawData
+          .whereType<Map<String, dynamic>>()
+          .map((item) => Subscription.fromJson(item))
+          .toList();
     }
     throw Exception(
         'Failed to load subscriptions (HTTP ${response.statusCode})');
@@ -46,11 +48,13 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
     final response = await _client.get(uri);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
-      final dynamic data =
+      final Object? data =
           decoded is Map<String, dynamic> ? decoded['data'] : decoded;
-      if (data is Map<String, dynamic>) {
-        return Subscription.fromJson(data);
+      if (data is! Map<String, dynamic>) {
+        throw FormatException(
+            'Expected subscription map, got ${data.runtimeType}');
       }
+      return Subscription.fromJson(data);
     }
     if (response.statusCode == 404) {
       throw SubscriptionNotFoundException(id);
