@@ -110,7 +110,12 @@ subscription_track/
 3. **Preset Packages Catalog Cache (`cache:packages:*` & `cache:subscriptions:presets`):**
    - แคชรายการแพ็กเกจบริการสำเร็จรูปส่วนกลาง (Netflix, Spotify, iCloud ฯลฯ)
    - **TTL:** 86,400 วินาที (24 ชั่วโมง)
-   - **Invalidation:** ลบแคชแบบ Pattern ทันทีเมื่อ Admin ทำ Create/Update/Delete/Disable Package ใน `PackagesService`
+
+4. **Kubernetes Shared Cache & Worker Queue Protection (`volatile-lru` & Zero-Cost):**
+   - ภายในคลัสเตอร์ Kubernetes (AKS / Zero-Cost Self-Hosted) อินสแตนซ์ Redis ให้บริการแบบ Centralized Cache ให้กับทุก Pod Replicas ของ `subtracker-api` และทำหน้าที่เป็น Message Broker ให้กับ BullMQ (`subtracker-worker`)
+   - **Eviction Policy Tuning (`volatile-lru`):** กำหนดผ่าน `k8s/redis-configmap.yaml` (`maxmemory 256mb`) เพื่อการันตีความปลอดภัยของคิวงาน Background Workers (คีย์ที่ไม่มีการตั้ง TTL จะไม่ถูกลบเด็ดขาด) และยินยอมให้ลบเฉพาะแคชที่มี TTL เมื่อหน่วยความจำแตะขีดจำกัด
+   - **Zero-Trust Ingress Security:** ปรับแต่ง `k8s/network-policy.yaml` ให้เปิดรับเฉพาะพ็อด `subtracker-api` และ `subtracker-worker` สู่ Redis (TCP 6379) ป้องกันการเชื่อมต่อที่ไม่ได้รับอนุญาตภายใต้โหมด Default Deny
+   - **Zero-Cost Mandate Compliance (Rule 9):** อาศัย Containerized Redis ภายในคลัสเตอร์โดยไม่มีค่าใช้จ่ายคลาวด์รายเดือนจาก PaaS (เช่น Azure Cache for Redis) คงต้นทุน $0 Out-of-pocket
 
 ### โครงสร้างโมเดลฐานข้อมูล (Prisma Schema Entities)
 - `User`: บัญชีผู้ใช้งาน, รหัสผ่านแฮช, PIN แฮช, รายได้รายเดือน
@@ -315,5 +320,6 @@ fvm flutter run -d web-server --web-port 8080
 | **2026-10-03** | **Cloud Provider Migration to Microsoft Azure (Rule 8 Mandate)** | ปรับเปลี่ยนระบบคลาวด์และโครงสร้างพื้นฐานทั้งหมดจาก AWS สู่ Microsoft Azure: ย้ายฐานสำรองข้อมูลและ DR (DP-103) จาก AWS S3 มาเป็น Azure Blob Storage ด้วย AzCopy/Azure CLI, ปรับโครงสร้างความลับ Ansible Vault & Template (DP-102) เป็น `backup-azure-secret`, กำหนด StorageClass สำหรับ StatefulSet บน AKS เป็น `managed-csi`, และอัปเดต Terraform Provider เป็น `hashicorp/azurerm` |
 | **2026-10-04** | **Distributed Caching Layer & Cross-Service Eviction Suite** | ติดตั้ง `CacheModule` / `CacheService` ด้วย Redis 7 + `ioredis` พร้อม In-Memory Graceful Fallback รองรับ 3 จุดสำคัญ: 1) Auth User Identity (`auth:user:{id}`, TTL 180s) 2) Creep Score Analytics (`cache:user:{id}:creep-score`, TTL 900s) 3) Catalog Presets (`cache:packages:*`, TTL 24h) พร้อมเพิ่ม Unit Test Assertion ยืนยันการทำ Event-driven Cross-Service Eviction บน `SubscriptionsService` และ `UsersService` ผ่านการทดสอบ Vitest ครบ 276/276 tests |
 | **2026-10-04** | **k6 Realistic & Ceiling Stress Load Testing Suite** | พัฒนาชุดทดสอบโหลด `scripts/k6/load-test.js` และ `scripts/k6/run-k6.ps1` จำลองพฤติกรรมผู้ใช้จริง (Browse Catalog, Batch Dashboard 5-endpoint fetch, Savings Optimizer, และ Subscription Mutation triggering Eviction) พร้อมโหมด Ceiling Stress ไต่ระดับ 0 ➔ 500 VUs แบบลด Think Time เพื่อค้นหาคอขวด Event Loop, DB Connection Pool, และวัดประสิทธิภาพการบรรเทาภาระของ Redis Cache |
+| **2026-10-06** | **Kubernetes Zero-Cost Caching & Worker Architecture ($0 Mandate - Rule 9)** | ออกแบบและปรับปรุงคอนฟิก Kubernetes สำหรับระบบ Caching และ Background Worker ให้ปลอดภัย เชื่อถือได้ และไร้ต้นทุน ($0 Out-of-pocket): 1) ปรับ Redis Eviction Policy ใน `k8s/redis-configmap.yaml` เป็น `volatile-lru` ป้องกันไม่ให้ BullMQ Queue Keys (Renewal Reminder Discovery) ถูก Evict ทิ้ง 2) อัปเดต `k8s/network-policy.yaml` ให้ Whitelist พ็อด `subtracker-worker` เข้าถึง Redis พอร์ต 6379 3) สร้าง Kubernetes Deployment & Service Manifests (`k8s/api-deployment.yaml`) รองรับ HPA Auto-scaling ร่วมกับ StatefulSet Redis 4) ทดสอบตรวจสอบ YAML Syntax และรัน Vitest Suite ผ่านครบถ้วน 276/276 tests |
 
 
