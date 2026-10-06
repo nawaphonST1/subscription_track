@@ -3,22 +3,11 @@ import * as bcrypt from 'bcryptjs';
 import { NotificationType } from '@prisma/client';
 import {
   rotateDefaultPins,
-  generateRandomPin,
   DEFAULT_PIN,
 } from './rotate-default-pins';
 import { isPinConfigured } from '../src/common/security/pin.util';
 
 describe('rotate-default-pins', () => {
-  describe('generateRandomPin', () => {
-    it('generates a 6-digit numeric string not equal to the default PIN', () => {
-      for (let i = 0; i < 50; i++) {
-        const pin = generateRandomPin();
-        expect(pin).toHaveLength(6);
-        expect(/^\d{6}$/.test(pin)).toBe(true);
-        expect(pin).not.toBe(DEFAULT_PIN);
-      }
-    });
-  });
 
   describe('rotateDefaultPins logic with mocked Prisma client', () => {
     let mockPrisma: {
@@ -31,9 +20,9 @@ describe('rotate-default-pins', () => {
       };
     };
     let mockLogger: {
-      log: ReturnType<typeof vi.fn>;
-      warn: ReturnType<typeof vi.fn>;
-      error: ReturnType<typeof vi.fn>;
+      log: ReturnType<typeof vi.fn> & ((message: string) => void);
+      warn: ReturnType<typeof vi.fn> & ((message: string) => void);
+      error: ReturnType<typeof vi.fn> & ((message: string) => void);
     };
 
     beforeEach(() => {
@@ -47,9 +36,9 @@ describe('rotate-default-pins', () => {
         },
       };
       mockLogger = {
-        log: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
+        log: vi.fn() as any,
+        warn: vi.fn() as any,
+        error: vi.fn() as any,
       };
     });
 
@@ -165,13 +154,10 @@ describe('rotate-default-pins', () => {
       mockPrisma.user.findMany.mockResolvedValueOnce(mockUsers);
       mockPrisma.user.update.mockResolvedValue({});
 
-      const testGeneratedPin = '482910';
-
       await rotateDefaultPins({
         prisma: mockPrisma as any,
         logger: mockLogger,
         dryRun: false,
-        generatePin: () => testGeneratedPin,
       });
 
       // Notification database write MUST NOT contain any plaintext PIN (H2 fix)
@@ -183,10 +169,10 @@ describe('rotate-default-pins', () => {
         title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
         type: NotificationType.SECURITY_ALERT,
       });
-      // Assert notification title and message NEVER disclose the generated PIN or any 6-digit credential
-      expect(createdNotification.data.message).not.toContain(testGeneratedPin);
+      // Assert notification title and message NEVER disclose any plaintext default PIN or 6-digit credential
       expect(createdNotification.data.message).not.toContain('111111');
-      expect(createdNotification.data.title).not.toContain(testGeneratedPin);
+      expect(createdNotification.data.message).not.toMatch(/\b\d{6}\b/);
+      expect(createdNotification.data.title).not.toMatch(/\b\d{6}\b/);
       expect(createdNotification.data.message).toContain('รหัส PIN ใหม่');
 
       const capturedLogOutput = [
@@ -194,9 +180,6 @@ describe('rotate-default-pins', () => {
         ...(mockLogger.warn?.mock.calls.map((c) => c[0]) ?? []),
         ...(mockLogger.error?.mock.calls.map((c) => c[0]) ?? []),
       ];
-
-      // Format-agnostic check against actual generated PIN value appearing anywhere in console logs
-      expect(capturedLogOutput.join('\n')).not.toContain(testGeneratedPin);
 
       for (const msg of capturedLogOutput) {
         // Must never print a plaintext PIN or mention secrets

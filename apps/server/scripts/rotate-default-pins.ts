@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import * as crypto from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import { PrismaClient, NotificationType } from '@prisma/client';
@@ -14,7 +15,6 @@ export interface RotateDefaultPinsOptions {
     warn?: (message: string) => void;
     error?: (message: string) => void;
   };
-  generatePin?: () => string;
 }
 
 export interface RotationReport {
@@ -25,21 +25,8 @@ export interface RotationReport {
 }
 
 /**
- * Generates a cryptographically secure random 6-digit PIN.
- * Ensures the PIN is strictly 6 digits and not equal to the default PIN ('111111').
- */
-export function generateRandomPin(): string {
-  let pin: string;
-  do {
-    // crypto.randomInt(min, max): min inclusive, max exclusive -> [100000, 999999]
-    pin = crypto.randomInt(100000, 1000000).toString();
-  } while (pin === DEFAULT_PIN);
-  return pin;
-}
-
-/**
  * Scans users with a security_pin_hash, identifies default-PIN accounts ('111111'),
- * generates per-user random PINs, hashes them with bcrypt, and updates the database.
+ * and invalidates them with unguessable reset hashes ($RESET$).
  *
  * Never logs plaintext PINs.
  * Only intended for manual standalone invocation; never run during automated startup.
@@ -51,7 +38,6 @@ export async function rotateDefaultPins(
   const batchSize = options.batchSize ?? 100;
   const dryRun = options.dryRun ?? false;
   const logger = options.logger ?? console;
-  const generatePin = options.generatePin ?? generateRandomPin;
 
   logger.log(
     `[rotate-default-pins] Starting PIN rotation scan (batchSize: ${batchSize}, dryRun: ${dryRun})...`,
