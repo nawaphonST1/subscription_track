@@ -185,3 +185,68 @@ link-local และ **ช่วง Tailscale/CGNAT 100.64/10** (กันยิ
 - active response ปิดไว้ตั้งใจ: ไม่อยากให้ auto-block ตัดเว็บตอน demo (ดูคอมเมนต์ใน
   `ossec-agent.conf.example`)
 - ถ้าเวลาไม่พอ: ทำแค่ agent + log ส่งเข้า Loki ก็ได้ แล้วอธิบายว่า server เต็มรูปเป็นงานต่อยอด
+
+## 8. สถานะงาน (อัปเดต 2026-10-06 ตอน merge เข้า develop)
+
+**merge เข้า develop แล้ว** — ส่วนที่เป็นโค้ด/สคริปต์/เอกสารถือว่าจบ แต่ **ไม่ได้แปลว่า Wazuh
+กำลังทำงานอยู่ที่ไหน** อ่าน §8.2 ก่อนคิดว่าใช้งานได้เลย
+
+### 8.1 ที่เสร็จแล้ว
+
+| ชิ้น | สถานะ |
+|---|---|
+| `docker-compose.yml` (ตัด default password, จำกัด port, ใส่ `mem_limit`) | เข้า develop ตั้งแต่รอบก่อน |
+| `.env.example`, `ossec-agent.conf.example` | เข้า develop ตั้งแต่รอบก่อน |
+| `scripts/wazuh-agent-bootstrap.sh`, `scripts/wazuh-demo-attack.sh`, `scripts/install-wazuh-agent.sh` | เข้า develop ตั้งแต่รอบก่อน |
+| `scripts/dp5/check-wazuh-compose-config.sh`, `check-wazuh-demo-attack-guard.sh` | เข้า develop ตั้งแต่รอบก่อน |
+| **`scripts/wazuh-server-bootstrap.sh`** | **ชิ้นเดียวที่เพิ่งเข้ามารอบนี้** — ทำ 4 ขั้นที่เคยพลาดตอนทำมือให้อัตโนมัติ (§2) |
+| `.gitignore` ขยายเป็น `config/` ทั้งก้อน | รอบนี้ |
+
+flag ที่ `wazuh-server-bootstrap.sh` รองรับจริง: `--dry-run`, `--rotate`, `--apply-security`,
+`--vd on|off` (ค่า default คือ `off`), `-h/--help`
+
+### 8.2 ที่ยัง **ไม่** ได้ทำ — ต้องมีคนไปทำต่อ
+
+1. **ยังไม่มีใครยก stack ขึ้นจาก repo ที่ merge แล้ว** — ที่ทดสอบไว้ก่อนหน้าเป็นการรันบนเครื่อง
+   ตอนพัฒนา ไม่ใช่การรันซ้ำจากสภาพ clean checkout ⇒ ยังไม่ยืนยันว่า `git clone` ใหม่แล้วทำตาม
+   §2-§5 จะผ่านรวดเดียว
+2. **ไม่มี CI แตะ Wazuh เลย** — `scripts/dp5/check-wazuh-*.sh` มีอยู่ แต่ยังไม่ได้ผูกเข้า Jenkins
+   หรือ GitHub Actions ⇒ ถ้า `docker-compose.yml` พังในอนาคตจะไม่มีอะไรจับได้
+3. **Vulnerability Detection ยังปิดอยู่** (§7) — ไม่ใช่ bug แต่เป็นข้อจำกัดด้านดิสก์ที่ยังไม่ถูกแก้
+4. **ยังไม่ได้ตัดสินใจว่าจะรันถาวรที่ไหน** — ตอนนี้ออกแบบเป็น "เปิดเฉพาะช่วง demo บนเครื่อง dev"
+   ถ้าจะให้เก็บ log ต่อเนื่องต้องหา host ที่มี 2 vCPU / 8 GiB / ดิสก์ ≥ 64 GB แยกจาก VM production
+5. **agent บน Azure buffer event ตอน manager ปิด** (§7) — ถ้า manager ปิดนานกว่า buffer จะหาย
+   ยังไม่ได้วัดว่า buffer อยู่ได้นานแค่ไหนจริง
+
+### 8.3 เช็กลิสต์ก่อนรันครั้งถัดไป
+
+```bash
+df -h /                       # ต้องเหลือ >= 6 GB (image + indexer) · ถ้าจะเปิด VD ต้อง >= 64 GB
+free -h                       # indexer ตรึง heap 1g, stack กิน ~2.2 GiB ตอนทำงาน
+sysctl vm.max_map_count       # ต้อง >= 262144 ไม่งั้น indexer ตายเงียบ (§1)
+tailscale status              # agent บน Azure คุยกลับมาได้ทาง Tailscale เท่านั้น
+```
+
+### 8.4 ⚠️ เรื่อง `config/` — อ่านก่อนเผลอ `git add .`
+
+`config/` ถูก generate ขึ้นมาแล้ว**ใส่ค่าจริงลงไป** (bcrypt hash ของ `admin`/`kibanaserver`
+ใน `wazuh_indexer/internal_users.yml` และรหัส API ใน `wazuh_dashboard/wazuh.yml`)
+**ห้ามขึ้น git เด็ดขาด**
+
+ก่อนหน้านี้ `.gitignore` ครอบแค่ `config/wazuh_indexer_ssl_certs/` ⇒ ไฟล์ config อีก 6 ตัว
+โผล่เป็น untracked และอยู่ห่างจากการถูก commit แค่ `git add .` ครั้งเดียว ตอนนี้ขยายเป็น
+`config/` ทั้งก้อนแล้ว
+
+ถ้าต้องการ config ใหม่ **ไม่ต้องไปหาใน git** — generate เองได้ทั้งหมด:
+
+```bash
+./scripts/wazuh-server-bootstrap.sh --dry-run   # ดูก่อน
+./scripts/wazuh-server-bootstrap.sh
+```
+
+ตรวจว่า ignore ทำงานจริงได้ด้วย:
+
+```bash
+git check-ignore -v infra/security/wazuh/config/wazuh_indexer/internal_users.yml
+# ต้องคืน: infra/security/wazuh/.gitignore:5:config/	...
+```
