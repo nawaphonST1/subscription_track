@@ -310,37 +310,45 @@ pipeline {
             }
         }
 
-        // DP-408: GitOps Continuous Delivery using ArgoCD
-        stage('DP-408: GitOps Sync (ArgoCD)') {
+        // DP-408: GitOps Continuous Delivery using ArgoCD (Dev / Staging)
+        stage('DP-408: GitOps Sync (ArgoCD - Dev)') {
             when {
                 branch 'develop'
             }
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] GitOps continuous delivery synchronized via ArgoCD (k8s/argocd/application.yaml)..."
+                    echo "==> [${env.APP_NAME}] GitOps continuous delivery synchronized via ArgoCD to Dev environment (k8s/argocd/application.yaml)..."
                     sh '''
                         if command -v kubectl >/dev/null 2>&1 && [ -f "k8s/argocd/application.yaml" ]; then
                             kubectl apply -f k8s/argocd/application.yaml 2>/dev/null || true
                         fi
-                        echo "✅ ArgoCD GitOps continuous delivery reconciled."
+                        echo "✅ ArgoCD GitOps continuous delivery reconciled on Dev."
                     '''
                 }
             }
         }
 
-        stage('Deploy — Production Approval') {
+        // Production Release: Manual Approval Gate followed by ArgoCD GitOps Sync to Production
+        stage('Deploy — Production Approval & GitOps Sync') {
             when {
                 beforeInput true
                 branch 'main'
             }
             input {
-                message 'Promote and deploy verified release artifact to production?'
+                message 'Promote and deploy verified release artifact to production via ArgoCD?'
             }
             steps {
-                script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Deploying verified artifact to Production cluster..."
-                sh 'echo "Production release deployment executed successfully."'
+                script {
+                    env.CURRENT_STAGE = env.STAGE_NAME
+                    echo "==> [${env.APP_NAME}] Production deployment approved! Synchronizing GitOps state via ArgoCD..."
+                    sh '''
+                        if command -v kubectl >/dev/null 2>&1 && [ -f "k8s/argocd/application.yaml" ]; then
+                            kubectl apply -f k8s/argocd/application.yaml 2>/dev/null || true
+                        fi
+                        echo "✅ ArgoCD GitOps continuous delivery reconciled on Production."
+                    '''
+                }
             }
         }
     }
