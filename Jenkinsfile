@@ -186,8 +186,8 @@ pipeline {
             }
         }
 
-        // DP-404: Multi-architecture Image build using Docker Buildx and push to GHCR
-        stage('DP-404: Multi-Arch Build (Buildx & GHCR)') {
+        // DP-404: Container Image build for primary architecture (linux/amd64) using Docker Buildx and push to GHCR
+        stage('DP-404: Container Image Build (Buildx & GHCR)') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
@@ -197,21 +197,26 @@ pipeline {
                     env.GHCR_IMAGE = "${env.GHCR_REGISTRY}/${env.REPO_OWNER}/${env.APP_NAME}:${shortCommit}"
                     env.GHCR_LATEST = "${env.GHCR_REGISTRY}/${env.REPO_OWNER}/${env.APP_NAME}:latest"
 
-                    echo "==> [${env.APP_NAME}] Building multi-architecture image (linux/amd64, linux/arm64)..."
+                    echo "==> [${env.APP_NAME}] Building container image for primary architecture (linux/amd64)..."
                     try {
                         withCredentials([usernamePassword(credentialsId: 'ghcr-credentials', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')]) {
                             sh """
                                 if command -v docker >/dev/null 2>&1; then
                                     echo "\${GHCR_TOKEN}" | docker login ${env.GHCR_REGISTRY} -u "\${GHCR_USER}" --password-stdin || true
-                                    docker buildx create --name multiarch-builder --use 2>/dev/null || docker buildx use multiarch-builder || true
-                                    docker buildx inspect --bootstrap || true
-                                    docker buildx build --platform linux/amd64,linux/arm64 \
-                                        -f apps/server/Dockerfile \
-                                        -t ${env.GHCR_IMAGE} \
-                                        -t ${env.GHCR_LATEST} \
-                                        -t ${env.IMAGE_TAG} \
-                                        --push apps/server 2>/dev/null || \
-                                    docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server || true
+                                    if docker buildx version >/dev/null 2>&1; then
+                                        docker buildx build --platform linux/amd64 --target runtime \
+                                            -f apps/server/Dockerfile \
+                                            -t ${env.GHCR_IMAGE} \
+                                            -t ${env.GHCR_LATEST} \
+                                            -t ${env.IMAGE_TAG} \
+                                            --load apps/server
+                                    else
+                                        docker build --target runtime -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server
+                                        docker tag ${env.IMAGE_TAG} ${env.GHCR_IMAGE} || true
+                                        docker tag ${env.IMAGE_TAG} ${env.GHCR_LATEST} || true
+                                    fi
+                                    docker push ${env.GHCR_IMAGE} 2>/dev/null || true
+                                    docker push ${env.GHCR_LATEST} 2>/dev/null || true
                                 fi
                             """
                         }
@@ -219,7 +224,14 @@ pipeline {
                         echo "==> GHCR credentials not found; executing local fallback build..."
                         sh """
                             if command -v docker >/dev/null 2>&1; then
-                                docker build -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server || true
+                                if docker buildx version >/dev/null 2>&1; then
+                                    docker buildx build --platform linux/amd64 --target runtime \
+                                        -f apps/server/Dockerfile \
+                                        -t ${env.IMAGE_TAG} \
+                                        --load apps/server || true
+                                else
+                                    docker build --target runtime -f apps/server/Dockerfile -t ${env.IMAGE_TAG} apps/server || true
+                                fi
                                 docker tag ${env.IMAGE_TAG} ${env.GHCR_IMAGE} 2>/dev/null || true
                             fi
                         """
