@@ -200,6 +200,34 @@ class RemoteAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, User>> getCurrentUser() async {
+    // ไม่มี token = ไม่เคย login (หรือ logout ไปแล้ว) ⇒ ตอบทันทีโดยไม่ยิง network
+    // ถ้าปล่อยให้ยิงไป backend จะตอบ 401 อยู่ดี แต่เสียเวลารอเน็ตตอนเปิดแอป
+    final token = await readStoredAuthToken();
+    if (token == null || token.isEmpty) {
+      return left(const Failure.unauthorized());
+    }
+
+    try {
+      final uri = Uri.parse('$_baseUrl/users/me');
+      logger.i('Calling API: GET $uri');
+      // `/users/me` ไม่อยู่ใน kPublicAuthPaths ⇒ _client แนบ Bearer ให้เอง
+      final response = await _client.get(uri);
+
+      // ต่างจาก 3 endpoint ของ auth: `/users/me` คืน user object ไว้ที่ `data`
+      // ตรง ๆ ไม่ได้ซ้อนใต้คีย์ `user` อีกชั้น ⇒ ส่ง _mapJsonToUser เป็น
+      // parseData ได้เลย
+      return unwrapEnvelope<User>(response, (data) => _mapJsonToUser(data));
+    } catch (e, stack) {
+      logger.e('Error connecting to current-user API',
+          error: e, stackTrace: stack);
+      // แยกจาก serverError โดยตั้งใจ: ผู้เรียกใช้สัญญาใน AuthRepository เพื่อ
+      // ตัดสินว่าจะล้าง token หรือไม่ — เคสนี้ต้องไม่ล้าง
+      return left(const Failure.networkError());
+    }
+  }
+
+  @override
   Future<Either<Failure, Unit>> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();

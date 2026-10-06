@@ -141,6 +141,7 @@ class _FakeAuthRepository implements AuthRepository {
   int logoutCalls = 0;
   int registerCalls = 0;
   int emailLoginCalls = 0;
+  int getCurrentUserCalls = 0;
 
   @override
   Future<Either<Failure, User>> loginWithEmail({
@@ -170,6 +171,12 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<Either<Failure, User>> loginWithApple() async {
     return right(const User(id: 'apple-user', email: 'apple@example.com'));
+  }
+
+  @override
+  Future<Either<Failure, User>> getCurrentUser() async {
+    getCurrentUserCalls++;
+    return left(const Failure.unauthorized());
   }
 
   @override
