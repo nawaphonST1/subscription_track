@@ -1,6 +1,7 @@
 import * as crypto from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import { PrismaClient, NotificationType } from '@prisma/client';
+import { RESET_PIN_PREFIX } from '../src/common/security/pin.util';
 
 export const DEFAULT_PIN = '111111';
 
@@ -96,24 +97,32 @@ export async function rotateDefaultPins(
 
       defaultPinCount++;
 
-      // Generate secure random PIN and hash it
-      const newPin = generatePin();
-      const newHash = await bcrypt.hash(newPin, 10);
+      // Invalidate the default PIN with a cryptographically unguessable reset hash
+      // so 111111 can no longer be used, and user must set a new PIN via supported primary auth.
+      const newHash = `${RESET_PIN_PREFIX}${await bcrypt.hash(crypto.randomUUID(), 10)}`;
 
       if (!dryRun) {
-        await (prisma as any).user.update({
+        const updateOp = (prisma as any).user.update({
           where: { id: user.id },
           data: { security_pin_hash: newHash },
         });
 
-        await (prisma as any).notification.create({
+        const notifOp = (prisma as any).notification.create({
           data: {
             user_id: user.id,
             title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
-            message: `ระบบได้เปลี่ยนรหัส PIN ของคุณเป็น ${newPin} เพื่อความปลอดภัย กรุณาเข้าสู่ระบบและเปลี่ยนรหัสนี้ทันที`,
+            message:
+              'รหัสความปลอดภัย (PIN) ของคุณถูกรีเซ็ตเนื่องจากนโยบายความปลอดภัย กรุณาตั้งค่ารหัส PIN ใหม่ของคุณผ่านแอปพลิเคชัน',
             type: NotificationType.SECURITY_ALERT,
           },
         });
+
+        if (typeof (prisma as any).$transaction === 'function') {
+          await (prisma as any).$transaction([updateOp, notifOp]);
+        } else {
+          await updateOp;
+          await notifOp;
+        }
       }
 
       rotatedCount++;

@@ -6,6 +6,7 @@ import {
   generateRandomPin,
   DEFAULT_PIN,
 } from './rotate-default-pins';
+import { isPinConfigured } from '../src/common/security/pin.util';
 
 describe('rotate-default-pins', () => {
   describe('generateRandomPin', () => {
@@ -119,7 +120,7 @@ describe('rotate-default-pins', () => {
         }),
       );
 
-      // Assert that updated hashes are valid and not the default PIN
+      // Assert that updated hashes are valid and not the default PIN, and require PIN configuration
       const call1Hash =
         mockPrisma.user.update.mock.calls[0][0].data.security_pin_hash;
       const call2Hash =
@@ -127,6 +128,8 @@ describe('rotate-default-pins', () => {
 
       expect(await bcrypt.compare('111111', call1Hash)).toBe(false);
       expect(await bcrypt.compare('111111', call2Hash)).toBe(false);
+      expect(await isPinConfigured(call1Hash)).toBe(false);
+      expect(await isPinConfigured(call2Hash)).toBe(false);
       expect(call1Hash).not.toBe(call2Hash);
     });
 
@@ -155,7 +158,7 @@ describe('rotate-default-pins', () => {
       expect(mockPrisma.notification.create).not.toHaveBeenCalled();
     });
 
-    it('creates in-app notification with new PIN while never logging plaintext PINs or sensitive secrets to console', async () => {
+    it('creates in-app security notification WITHOUT disclosing any plaintext PINs while never logging plaintext PINs to console', async () => {
       const defaultHash = await bcrypt.hash('111111', 10);
       const mockUsers = [{ id: 'user-1', security_pin_hash: defaultHash }];
 
@@ -171,16 +174,20 @@ describe('rotate-default-pins', () => {
         generatePin: () => testGeneratedPin,
       });
 
-      // Notification database write DOES contain the new PIN to prevent account lockout
+      // Notification database write MUST NOT contain any plaintext PIN (H2 fix)
       expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.notification.create).toHaveBeenCalledWith({
-        data: {
-          user_id: 'user-1',
-          title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
-          message: `ระบบได้เปลี่ยนรหัส PIN ของคุณเป็น ${testGeneratedPin} เพื่อความปลอดภัย กรุณาเข้าสู่ระบบและเปลี่ยนรหัสนี้ทันที`,
-          type: NotificationType.SECURITY_ALERT,
-        },
+      const createdNotification =
+        mockPrisma.notification.create.mock.calls[0][0];
+      expect(createdNotification.data).toMatchObject({
+        user_id: 'user-1',
+        title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
+        type: NotificationType.SECURITY_ALERT,
       });
+      // Assert notification title and message NEVER disclose the generated PIN or any 6-digit credential
+      expect(createdNotification.data.message).not.toContain(testGeneratedPin);
+      expect(createdNotification.data.message).not.toContain('111111');
+      expect(createdNotification.data.title).not.toContain(testGeneratedPin);
+      expect(createdNotification.data.message).toContain('รหัส PIN ใหม่');
 
       const capturedLogOutput = [
         ...mockLogger.log.mock.calls.map((c) => c[0]),
