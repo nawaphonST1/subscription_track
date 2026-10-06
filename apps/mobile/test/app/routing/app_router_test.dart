@@ -433,6 +433,37 @@ void main() {
     );
 
     testWidgets(
+      'authenticated user using default AppFlowState (omitting isPinSetupCompleted) fails closed to /setup-pin',
+      (WidgetTester tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            appFlowProvider.overrideWithValue(
+              const AppFlowState(
+                isInitializing: false,
+                isOnboardingCompleted: true,
+                isAuthenticated: true,
+                // isPinSetupCompleted omitted -> defaults to false
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const App(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Redirects to setup PIN screen because default is fail-closed (false)
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsOneWidget);
+        expect(find.byKey(const Key('hero-payout-card')), findsNothing);
+      },
+    );
+
+    testWidgets(
       'mockAuthBypassProvider bypasses PIN setup guard and allows direct navigation',
       (WidgetTester tester) async {
         final container = ProviderContainer(

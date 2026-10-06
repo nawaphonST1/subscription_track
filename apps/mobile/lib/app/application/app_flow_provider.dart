@@ -8,7 +8,7 @@ class AppFlowState {
     required this.isInitializing,
     required this.isOnboardingCompleted,
     required this.isAuthenticated,
-    this.isPinSetupCompleted = true,
+    this.isPinSetupCompleted = false,
   });
 
   static const mockDashboard = AppFlowState(
@@ -44,7 +44,7 @@ final appFlowProvider = Provider<AppFlowState>((ref) {
 
   final user = authState.value;
   final isPinSetupCompleted =
-      bypassAuth || (user == null ? true : user.pinConfigured);
+      bypassAuth || (user?.pinConfigured ?? false);
 
   return AppFlowState(
     isInitializing: !bypassAuth && authState.isLoading,
