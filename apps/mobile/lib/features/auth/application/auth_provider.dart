@@ -178,16 +178,6 @@ class AuthNotifier extends _$AuthNotifier {
     );
   }
 
-  Future<void> loginWithApple() async {
-    state = const AsyncValue.loading();
-    final result = await _repository.loginWithApple();
-    if (!ref.mounted) return;
-    state = result.fold(
-      (failure) => AsyncValue.error(failure, StackTrace.current),
-      (user) => AsyncValue.data(user),
-    );
-  }
-
   Future<void> registerWithEmail({
     required String email,
     required String password,

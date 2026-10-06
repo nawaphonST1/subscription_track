@@ -119,29 +119,6 @@ void main() {
     // ignore: avoid_print
     print('======================================================\n');
 
-    // 3. ทดสอบสมัคร/เชื่อมต่อด้วย Apple (Social Auth Mockup)
-    await notifier.loginWithApple();
-    final appleUser = container.read(authProvider).value;
-    expect(appleUser?.authProvider, 'apple');
-
-    // ignore: avoid_print
-    print('======================================================');
-    // ignore: avoid_print
-    print('🎉 [ผลลัพธ์การเชื่อมต่อด้วย Apple ID สำเร็จ]');
-    // ignore: avoid_print
-    print('  - User ID       : ${appleUser?.id}');
-    // ignore: avoid_print
-    print('  - Email         : ${appleUser?.email}');
-    // ignore: avoid_print
-    print('  - Name          : ${appleUser?.name}');
-    // ignore: avoid_print
-    print('  - Auth Provider : ${appleUser?.authProvider}');
-    // ignore: avoid_print
-    print('  - Avatar        : ${appleUser?.avatar}');
-    // ignore: avoid_print
-    print('  - Cards Loaded  : ${appleUser?.creditCards.length} ใบ');
-    // ignore: avoid_print
-    print('======================================================\n');
   });
 }
 
@@ -176,11 +153,6 @@ class _FakeAuthRepository implements AuthRepository {
   Future<Either<Failure, User>> loginWithGoogle() async {
     googleLoginCalls++;
     return right(const User(id: 'test-user', email: 'test@example.com'));
-  }
-
-  @override
-  Future<Either<Failure, User>> loginWithApple() async {
-    return right(const User(id: 'apple-user', email: 'apple@example.com'));
   }
 
   @override

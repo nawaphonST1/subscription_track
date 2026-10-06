@@ -17,7 +17,6 @@ abstract interface class AuthRepository {
 
   Future<Either<Failure, User>> loginWithGoogle();
 
-  Future<Either<Failure, User>> loginWithApple();
 
   /// ดึงผู้ใช้ของ session ปัจจุบัน ใช้ตอนเปิดแอปเพื่อกู้ session คืน
   ///

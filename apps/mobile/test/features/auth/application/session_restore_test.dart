@@ -52,10 +52,6 @@ class _RestoreRepository implements AuthRepository {
   @override
   Future<Either<Failure, User>> loginWithGoogle() async =>
       right(const User(id: 'g', email: 'g@example.com'));
-
-  @override
-  Future<Either<Failure, User>> loginWithApple() async =>
-      right(const User(id: 'a', email: 'a@example.com'));
 }
 
 /// รอให้การกู้ session อัตโนมัติที่ `build()` ยิงไว้ทำงานจนจบ

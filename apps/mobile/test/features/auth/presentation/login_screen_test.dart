@@ -44,7 +44,7 @@ void main() {
       // Check buttons
       expect(find.widgetWithText(ElevatedButton, 'เข้าสู่ระบบ'), findsOneWidget);
       expect(find.text('Google'), findsOneWidget);
-      expect(find.text('Apple'), findsOneWidget);
+      expect(find.text('Apple'), findsNothing);
       expect(find.text('สมัครสมาชิก'), findsOneWidget);
     });
 

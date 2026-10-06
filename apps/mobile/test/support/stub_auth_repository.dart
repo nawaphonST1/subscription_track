@@ -45,8 +45,4 @@ class StubAuthRepository implements AuthRepository {
   @override
   Future<Either<Failure, User>> loginWithGoogle() async =>
       right(const User(id: 'stub-google', email: 'google@example.com'));
-
-  @override
-  Future<Either<Failure, User>> loginWithApple() async =>
-      right(const User(id: 'stub-apple', email: 'apple@example.com'));
 }

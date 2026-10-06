@@ -90,7 +90,7 @@ void main() {
       // Check buttons
       expect(find.byKey(const Key('register_next_button')), findsOneWidget);
       expect(find.text('Google'), findsOneWidget);
-      expect(find.text('Apple'), findsOneWidget);
+      expect(find.text('Apple'), findsNothing);
       expect(find.text('เข้าสู่ระบบ'), findsOneWidget);
     });
 

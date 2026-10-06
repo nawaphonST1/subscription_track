@@ -244,75 +244,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- Social Login (Google & Apple) ---
-                  Row(
-                    children: [
-                      // Google Button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: isLoading
-                              ? null
-                              : () => ref
-                                  .read(authProvider.notifier)
-                                  .loginWithGoogle(),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black87,
-                            side: BorderSide.none,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.g_mobiledata_rounded,
-                                size: 28,
-                                color: Colors.blue,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Google',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ),
+                  // --- Social Login (Google) ---
+                  OutlinedButton(
+                    onPressed: isLoading
+                        ? null
+                        : () => ref.read(authProvider.notifier).loginWithGoogle(),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      side: BorderSide.none,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      // Apple Button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: isLoading
-                              ? null
-                              : () => ref
-                                  .read(authProvider.notifier)
-                                  .loginWithApple(),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFF131C2E),
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFF243049)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.apple_rounded, size: 22),
-                              SizedBox(width: 6),
-                              Text(
-                                'Apple',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.g_mobiledata_rounded,
+                          size: 28,
+                          color: Colors.blue,
                         ),
-                      ),
-                    ],
+                        SizedBox(width: 4),
+                        Text(
+                          'Google',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
                   ),
 
                   // --- Switch to Register Link ---

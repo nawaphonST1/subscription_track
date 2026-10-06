@@ -132,13 +132,18 @@ void main() {
           baseUrl: _baseUrl,
           client: MockClient((_) async => _envelope(_userPayload, 200)),
         );
-        await repository.loginWithApple();
+        await repository.executeSocialLogin(
+          provider: 'google',
+          email: 'user@gmail.com',
+          token: 'mock-social-token',
+          name: 'Jane Doe',
+        );
       });
 
       expect(lines.join('\n'), contains('/auth/social'));
       expect(
         lines.join('\n'),
-        isNot(contains('mock-apple-token')),
+        isNot(contains('mock-social-token')),
         reason: 'token ที่ส่งให้ provider ไม่ควรโผล่ใน log',
       );
       _expectNoSecrets(lines);
