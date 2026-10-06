@@ -30,8 +30,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      /*
-      // --- Full Production Auth & Onboarding Redirect Guards (Commented Out for Dev Flexibility) ---
+      final bypassAuth = ref.read(mockAuthBypassProvider);
+      if (bypassAuth) {
+        // สำหรับการพัฒนาและทดสอบ: เมื่อเปิด mockAuthBypassProvider
+        // เปิดให้เข้าผ่าน URL Path ได้โดยตรงอย่างอิสระทุกหน้า (Direct URL Deep-Linking)
+        // หากเข้าหน้า Root (/) หรือ Splash (/splash) จะส่งไปที่ Dashboard เป็นค่าเริ่มต้น
+        if (location == '/' || location == RouteConstants.splash) {
+          return RouteConstants.dashboard;
+        }
+        return null;
+      }
+
+      // --- Full Production Auth & Onboarding Redirect Guards ---
       final appFlow = ref.read(appFlowProvider);
       final isOnSplash = location == RouteConstants.splash;
       final isOnboarding = location == RouteConstants.onboarding;
@@ -56,12 +66,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (isOnSplash || isOnboarding || isLoggingIn) {
         return RouteConstants.dashboard;
       }
-      */
 
-      // สำหรับการพัฒนาและทดสอบ: เปิดให้เข้าผ่าน URL Path ได้โดยตรงอย่างอิสระทุกหน้า (Direct URL Deep-Linking)
-      // หากเข้าหน้า Root (/) หรือ Splash (/splash) จะส่งไปที่ Dashboard เป็นค่าเริ่มต้น
-      // แต่หากระบุ URL Path อื่นๆ เช่น /login หรือ /onboarding จะเปิดหน้านั้นให้ทันทีโดยไม่สกัดกั้น
-      if (location == '/' || location == RouteConstants.splash) {
+      // หากเข้าหน้า Root (/) ให้ส่งไป Dashboard
+      if (location == '/') {
         return RouteConstants.dashboard;
       }
 
