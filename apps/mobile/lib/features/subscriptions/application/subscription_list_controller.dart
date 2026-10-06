@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
+import 'package:subscription_track/features/subscriptions/data/remote_subscription_repository.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription_repository.dart';
 
 /// จุดสลับ data source ของทั้ง feature และ override เป็น fake/mock ได้ใน test
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>(
-  (ref) => InMemorySubscriptionRepository(),
+  (ref) => RemoteSubscriptionRepository(),
 );
 
 final subscriptionListProvider =
@@ -41,30 +41,6 @@ final class SubscriptionListController
       state = AsyncData<List<Subscription>>([...previous, subscription]);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-  }
-
-  /// นำเข้ารายการที่ตรวจพบจากบัตร โดยข้าม id ที่มีอยู่แล้วเพื่อไม่ให้ข้อมูลซ้ำ
-  Future<int> importSubscriptions(
-    Iterable<Subscription> detectedSubscriptions,
-  ) async {
-    final previous = await future;
-    final existingIds = previous.map((item) => item.id).toSet();
-    final newItems = detectedSubscriptions
-        .where((item) => existingIds.add(item.id))
-        .toList(growable: false);
-    if (newItems.isEmpty) return 0;
-
-    try {
-      for (final subscription in newItems) {
-        await _repository.addSubscription(subscription);
-      }
-      state = AsyncData([...previous, ...newItems]);
-      return newItems.length;
-    } catch (error, stackTrace) {
-      // หาก import หลายรายการสะดุด ให้ reload จาก repository ตามข้อมูลจริง
-      state = await AsyncValue.guard(_repository.getSubscriptions);
       Error.throwWithStackTrace(error, stackTrace);
     }
   }

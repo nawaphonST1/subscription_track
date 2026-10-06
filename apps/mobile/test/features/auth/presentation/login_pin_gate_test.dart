@@ -13,6 +13,10 @@ import 'package:subscription_track/features/auth/data/remote_auth_repository.dar
 import 'package:subscription_track/features/auth/domain/user.dart';
 import 'package:subscription_track/features/auth/presentation/setup_pin_screen.dart';
 import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
+import 'package:subscription_track/features/profile/data/in_memory_payment_card_repository.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
 
 class _TestRemoteAuthRepository extends RemoteAuthRepository {
   _TestRemoteAuthRepository({
@@ -47,6 +51,14 @@ void main() {
             client: client,
             baseUrl: 'http://localhost:3000',
           ),
+        ),
+        // Dashboard ที่ต่อจากการ login สำเร็จไม่ควรยิง network จริงสำหรับ
+        // subscriptions/cards ในเทสต์ชุดนี้ — เทสต์นี้สนใจแค่ PIN gate
+        subscriptionRepositoryProvider.overrideWithValue(
+          InMemorySubscriptionRepository(ioDelay: Duration.zero),
+        ),
+        paymentCardRepositoryProvider.overrideWithValue(
+          InMemoryPaymentCardRepository(ioDelay: Duration.zero),
         ),
       ],
       child: const App(),

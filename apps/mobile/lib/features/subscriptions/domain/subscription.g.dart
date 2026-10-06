@@ -18,6 +18,7 @@ _Subscription _$SubscriptionFromJson(Map<String, dynamic> json) =>
           : DateTime.parse(json['nextBillingDate'] as String),
       usageStatus: json['usageStatus'] as String? ?? 'moderate',
       confidence: (json['confidence'] as num?)?.toInt() ?? 50,
+      paymentCardId: json['paymentCardId'] as String?,
       isSelected: json['isSelected'] as bool? ?? false,
       customFields:
           (json['customFields'] as List<dynamic>?)
@@ -43,6 +44,7 @@ Map<String, dynamic> _$SubscriptionToJson(_Subscription instance) =>
       'nextBillingDate': instance.nextBillingDate?.toIso8601String(),
       'usageStatus': instance.usageStatus,
       'confidence': instance.confidence,
+      'paymentCardId': instance.paymentCardId,
       'isSelected': instance.isSelected,
       'customFields': instance.customFields,
       'reminderEnabled': instance.reminderEnabled,
