@@ -133,6 +133,13 @@ class SubscriptionsTab extends ConsumerWidget {
     );
     if (!shouldDelete || !context.mounted) return;
 
+    // SECURITY NOTE (XC-5 / F6 Finding):
+    // Client-side PIN verification is currently the only layer of protection here
+    // (defense-in-depth), because single-subscription deletion is not yet wired to a
+    // real network call (it mutates local in-memory state via InMemorySubscriptionRepository).
+    // When subscription deletion is wired to the backend (DELETE /subscriptions/:id),
+    // server-side PIN enforcement must be added to achieve security parity with batch-cancel
+    // (POST /savings/batch-cancel).
     final pinVerified = await PinVerificationDialog.show(
       context: context,
       title: 'ยืนยันการลบบริการ',
