@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/presentation/register_screen.dart';
+
+import '../../../support/stub_auth_repository.dart';
 
 void main() {
   Widget createWidgetUnderTest() {
-    return const ProviderScope(
-      child: MaterialApp(
+    return ProviderScope(
+      // กัน AuthNotifier.build() ไปกู้ session ผ่าน repository ตัวจริง
+      // ซึ่งจะเปิด http.Client และแตะ SharedPreferences ที่ไม่มี plugin ในเทสต์
+      overrides: [
+        authRepositoryProvider.overrideWithValue(StubAuthRepository()),
+      ],
+      child: const MaterialApp(
         home: RegisterScreen(),
       ),
     );
@@ -20,6 +28,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       // Check title and subtitle
       expect(find.text('สร้างบัญชีใหม่'), findsOneWidget);
@@ -48,6 +57,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       final btn = find.widgetWithText(ElevatedButton, 'สมัครสมาชิก');
       await tester.ensureVisible(btn);
@@ -67,6 +77,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       final textFields = find.byType(TextFormField);
       await tester.enterText(textFields.at(0), 'สมชาย ใจดี');
@@ -89,6 +100,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
 
       final textFields = find.byType(TextFormField);
       await tester.enterText(textFields.at(0), 'สมชาย ใจดี');

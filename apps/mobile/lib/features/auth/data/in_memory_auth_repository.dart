@@ -128,6 +128,13 @@ class InMemoryAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, User>> getCurrentUser() async {
+    final user = _currentUser;
+    if (user == null) return left(const Failure.unauthorized());
+    return right(user);
+  }
+
+  @override
   Future<Either<Failure, Unit>> logout() async {
     logger.i('Logout');
     _currentUser = null;
