@@ -21,6 +21,7 @@ class RemoteAuthRepository implements AuthRepository {
     GoogleSignIn? googleSignIn,
   })  : _client = client ?? http.Client(),
         _baseUrl = baseUrl ?? ApiConfig.baseUrl,
+        // ignore: prefer_initializing_formals
         _googleSignIn = googleSignIn;
 
   static const String _tokenKey = 'auth_token';

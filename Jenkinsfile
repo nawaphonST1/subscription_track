@@ -15,8 +15,7 @@ pipeline {
     }
 
     triggers {
-        // DP-400: SCM Webhook trigger from GitHub push events with fallback polling
-        githubPush()
+        // DP-400: SCM polling trigger (checks GitHub periodically without requiring public webhook)
         pollSCM('H/5 * * * *')
     }
 
