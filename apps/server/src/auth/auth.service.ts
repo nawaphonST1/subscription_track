@@ -13,6 +13,7 @@ import { SocialLoginDto } from './dto/social-login.dto';
 import { NotificationType } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import { BusinessMetrics } from '../metrics/business.metrics';
+import { isPinConfigured } from '../common/security/pin.util';
 
 @Injectable()
 export class AuthService {
@@ -73,6 +74,7 @@ export class AuthService {
       user: {
         ...user,
         monthly_income: Number(user.monthly_income),
+        pin_configured: await isPinConfigured(securityPinHash),
       },
     };
   }
@@ -107,6 +109,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         monthly_income: Number(user.monthly_income),
+        pin_configured: await isPinConfigured(user.security_pin_hash),
         created_at: user.created_at,
       },
     };
@@ -156,6 +159,7 @@ export class AuthService {
         email: true,
         name: true,
         monthly_income: true,
+        security_pin_hash: true,
         created_at: true,
       },
     });
@@ -187,6 +191,7 @@ export class AuthService {
           email: true,
           name: true,
           monthly_income: true,
+          security_pin_hash: true,
           created_at: true,
         },
       });
@@ -199,11 +204,17 @@ export class AuthService {
 
     this.metrics?.recordLogin('success', 'password');
 
+    const pinConfigured = await isPinConfigured(user.security_pin_hash);
+
     return {
       token,
       user: {
-        ...user,
+        id: user.id,
+        email: user.email,
+        name: user.name,
         monthly_income: Number(user.monthly_income),
+        pin_configured: pinConfigured,
+        created_at: user.created_at,
       },
     };
   }

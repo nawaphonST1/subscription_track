@@ -256,14 +256,7 @@ class RemoteAuthRepository implements AuthRepository {
     String? fallbackName,
     String provider = 'email',
   }) {
-    final bool pinConfigured;
-    if (json.containsKey('pin_configured')) {
-      pinConfigured = json['pin_configured'] as bool? ?? false;
-    } else if (provider == 'google' || provider == 'apple') {
-      pinConfigured = false;
-    } else {
-      pinConfigured = true;
-    }
+    final pinConfigured = json['pin_configured'] as bool? ?? false;
 
     return User(
       id: json['id'] as String? ??
