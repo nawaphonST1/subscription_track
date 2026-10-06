@@ -197,6 +197,8 @@ pipeline {
                     env.GHCR_IMAGE = "${env.GHCR_REGISTRY}/${env.REPO_OWNER}/${env.APP_NAME}:${shortCommit}"
                     env.GHCR_LATEST = "${env.GHCR_REGISTRY}/${env.REPO_OWNER}/${env.APP_NAME}:latest"
 
+                    def isDeployBranch = (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/develop')
+
                     echo "==> [${env.APP_NAME}] Building container image for primary architecture (linux/amd64)..."
                     try {
                         withCredentials([usernamePassword(credentialsId: 'ghcr-credentials', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')]) {
@@ -215,8 +217,13 @@ pipeline {
                                         docker tag ${env.IMAGE_TAG} ${env.GHCR_IMAGE} || true
                                         docker tag ${env.IMAGE_TAG} ${env.GHCR_LATEST} || true
                                     fi
-                                    docker push ${env.GHCR_IMAGE} 2>/dev/null || true
-                                    docker push ${env.GHCR_LATEST} 2>/dev/null || true
+                                    if [ "${isDeployBranch}" = "true" ]; then
+                                        echo "==> [${env.APP_NAME}] Deploy branch detected (${env.GIT_BRANCH}); pushing container image to GHCR..."
+                                        docker push ${env.GHCR_IMAGE} 2>/dev/null || true
+                                        docker push ${env.GHCR_LATEST} 2>/dev/null || true
+                                    else
+                                        echo "==> [${env.APP_NAME}] Feature branch (${env.GIT_BRANCH}): skipping remote GHCR push for maximum CI velocity (image loaded locally)."
+                                    fi
                                 fi
                             """
                         }
@@ -248,16 +255,16 @@ pipeline {
                     echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL CVEs (real scan)..."
                     sh """
                         if command -v trivy >/dev/null 2>&1; then
-                            trivy image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
-                            trivy image --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image --scanners vuln --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image --scanners vuln --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         elif command -v docker >/dev/null 2>&1; then
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                aquasec/trivy:latest image --severity HIGH,CRITICAL --format sarif --output "${WORKSPACE}/trivy-results.sarif" "${env.IMAGE_TAG}" || true
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                aquasec/trivy:latest image --severity HIGH,CRITICAL --format json --output "${WORKSPACE}/trivy-report.json" "${env.IMAGE_TAG}" || true
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
+                                aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --format sarif --output "${WORKSPACE}/trivy-results.sarif" "${env.IMAGE_TAG}" || true
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
+                                aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --format json --output "${WORKSPACE}/trivy-report.json" "${env.IMAGE_TAG}" || true
                         elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
-                            "${WORKSPACE}/scripts/bin/trivy" image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
-                            "${WORKSPACE}/scripts/bin/trivy" image --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image --scanners vuln --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image --scanners vuln --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         else
                             echo '{"runs":[]}' > trivy-results.sarif
                             echo '{"Results":[]}' > trivy-report.json
