@@ -597,7 +597,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
               // Switch toggle
               Switch(
                 value: pkg.isActive,
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
                 onChanged: (val) => notifier.togglePackageActive(pkg.id, val),
               ),
               IconButton(
@@ -712,7 +712,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: billingCycle,
+                  initialValue: billingCycle,
                   dropdownColor: const Color(0xFF131C2E),
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
@@ -859,7 +859,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: billingCycle,
+                  initialValue: billingCycle,
                   dropdownColor: const Color(0xFF131C2E),
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
@@ -954,7 +954,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                 border: Border.all(color: const Color(0xFF1E293B)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -968,9 +968,9 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                     height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF3B82F6).withOpacity(0.12),
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
                       border: Border.all(
-                        color: const Color(0xFF3B82F6).withOpacity(0.3),
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -1003,7 +1003,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.5),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFF334155)),
                     ),
@@ -1136,7 +1136,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3B82F6),
-                        disabledBackgroundColor: const Color(0xFF3B82F6).withOpacity(0.5),
+                        disabledBackgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1813,7 +1813,7 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedRole,
+                    initialValue: selectedRole,
                     dropdownColor: const Color(0xFF131C2E),
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
@@ -1946,7 +1946,7 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: billingCycle,
+                    initialValue: billingCycle,
                     dropdownColor: const Color(0xFF131C2E),
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
@@ -1963,7 +1963,7 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     dropdownColor: const Color(0xFF131C2E),
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
