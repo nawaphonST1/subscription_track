@@ -21,7 +21,7 @@ export class BatchCancelDto {
   subscription_ids!: string[];
 
   @ApiProperty({
-    example: '111111',
+    example: '482910',
     description: 'User 6-digit security PIN for authorization',
   })
   @IsString()

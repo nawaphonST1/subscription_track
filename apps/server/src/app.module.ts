@@ -23,6 +23,8 @@ import { CacheModule } from './cache/cache.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { SecurityModule } from './common/security/security.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { PinSetupGuard } from './common/guards/pin-setup.guard';
+import { SecurityPinGuard } from './common/guards/security-pin.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
@@ -60,6 +62,14 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PinSetupGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SecurityPinGuard,
     },
     {
       provide: APP_FILTER,

@@ -15,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AllowWithoutPin } from '../common/decorators/allow-without-pin.decorator';
 import { UpdateIncomeDto } from './dto/update-income.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerifyPinDto } from './dto/verify-pin.dto';
@@ -26,6 +27,7 @@ import { ChangePinDto } from './dto/change-pin.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @AllowWithoutPin()
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile and metrics' })
   @ApiResponse({
@@ -90,20 +92,21 @@ export class UsersController {
     return this.usersService.verifyPin(userId, dto.pin);
   }
 
+  @AllowWithoutPin()
   @Patch('pin')
-  @ApiOperation({ summary: 'Change 6-digit security PIN' })
+  @ApiOperation({ summary: 'Change or configure 6-digit security PIN' })
   @ApiResponse({
     status: 200,
     description: 'Security PIN updated successfully',
   })
   @ApiResponse({
     status: 401,
-    description: 'Current security PIN is incorrect',
+    description: 'Current security PIN or primary auth password is incorrect',
   })
   async changePin(
     @CurrentUser('id') userId: string,
     @Body() dto: ChangePinDto,
   ) {
-    return this.usersService.changePin(userId, dto.current_pin, dto.new_pin);
+    return this.usersService.changePin(userId, dto);
   }
 }

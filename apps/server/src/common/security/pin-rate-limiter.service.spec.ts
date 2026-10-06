@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { PinRateLimiter } from './pin-rate-limiter.service';
 

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
-import { JwtService } from '@nestjs/jwt';
 
 describe('AuthService pin_configured responses', () => {
   let authService: AuthService;
@@ -37,7 +36,7 @@ describe('AuthService pin_configured responses', () => {
         password: 'password123',
         name: 'New User',
         security_pin: '111111',
-      } as any);
+      });
 
       expect(res.user.pin_configured).toBe(false);
       expect(res.token).toBe('mock-jwt-token');
@@ -58,7 +57,7 @@ describe('AuthService pin_configured responses', () => {
         password: 'password123',
         name: 'Custom User',
         security_pin: '849201',
-      } as any);
+      });
 
       expect(res.user.pin_configured).toBe(true);
       expect(res.token).toBe('mock-jwt-token');

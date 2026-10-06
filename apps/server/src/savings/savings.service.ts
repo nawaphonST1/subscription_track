@@ -15,6 +15,7 @@ import {
   UsageStatus,
 } from '@prisma/client';
 import { PinRateLimiter } from '../common/security/pin-rate-limiter.service';
+import { isPinConfigured } from '../common/security/pin.util';
 
 @Injectable()
 export class SavingsService {
@@ -104,6 +105,14 @@ export class SavingsService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    const configured = await isPinConfigured(user.security_pin_hash);
+    if (!configured) {
+      this.rateLimiter.recordFailure(userId);
+      throw new ForbiddenException(
+        'Security PIN is not configured or has been reset',
+      );
     }
 
     const isPinValid = await bcrypt.compare(

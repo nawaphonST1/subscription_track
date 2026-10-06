@@ -10,12 +10,14 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { SubscriptionsService } from './subscriptions.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequireSecurityPin } from '../common/guards/security-pin.guard';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { QuerySubscriptionDto } from './dto/query-subscription.dto';
@@ -94,9 +96,24 @@ export class SubscriptionsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a subscription' })
+  @RequireSecurityPin()
+  @ApiOperation({ summary: 'Delete a subscription (requires security PIN)' })
+  @ApiHeader({
+    name: 'x-security-pin',
+    required: false,
+    description:
+      '6-digit security PIN (can alternatively be sent in JSON body as security_pin)',
+  })
   @ApiResponse({ status: 200, description: 'Subscription deleted' })
+  @ApiResponse({
+    status: 400,
+    description: 'Security PIN is required or invalid',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description: 'Invalid security PIN or PIN setup required',
+  })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   async remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.subscriptionsService.remove(userId, id);

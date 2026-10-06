@@ -18,4 +18,9 @@ describe('isPinConfigured', () => {
     const customHash = await bcrypt.hash('847291', 10);
     expect(await isPinConfigured(customHash)).toBe(true);
   });
+
+  it('returns false when hash is marked with reset prefix or marker', async () => {
+    expect(await isPinConfigured('$RESET$some-random-uuid')).toBe(false);
+    expect(await isPinConfigured('RESET_REQUIRED')).toBe(false);
+  });
 });

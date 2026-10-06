@@ -50,7 +50,7 @@ export class AuthService {
           create: {
             title: 'Welcome to SubTracker',
             message:
-              'Your account has been created. Default security PIN is set to 111111. You can update your income and PIN anytime in Settings.',
+              'Your account has been created. You can update your income and PIN anytime in Settings.',
             type: NotificationType.SECURITY_ALERT,
           },
         },

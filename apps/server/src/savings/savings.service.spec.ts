@@ -117,9 +117,24 @@ describe('SavingsService', () => {
       ).rejects.toThrow(HttpException);
     });
 
+    it('should reject batch cancellation if account is on default PIN (111111)', async () => {
+      const userId = 'user-default-pin';
+      const defaultHash = await bcrypt.hash('111111', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        security_pin_hash: defaultHash,
+      });
+
+      await expect(
+        service.batchCancel(userId, {
+          subscription_ids: ['sub-1'],
+          security_pin: '111111',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('should cancel subscriptions and log audit records when PIN is valid', async () => {
       const userId = 'user-1';
-      const realPinHash = await bcrypt.hash('111111', 10);
+      const realPinHash = await bcrypt.hash('654321', 10);
       prismaMock.user.findUnique.mockResolvedValue({
         security_pin_hash: realPinHash,
       });
@@ -138,7 +153,7 @@ describe('SavingsService', () => {
 
       const result = await service.batchCancel(userId, {
         subscription_ids: ['sub-1'],
-        security_pin: '111111',
+        security_pin: '654321',
       });
 
       expect(result.cancelled_count).toBe(1);
