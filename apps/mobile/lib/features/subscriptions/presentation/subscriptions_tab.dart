@@ -133,24 +133,21 @@ class SubscriptionsTab extends ConsumerWidget {
     );
     if (!shouldDelete || !context.mounted) return;
 
-    // SECURITY NOTE (XC-5 / F6 Finding):
-    // Client-side PIN verification is currently the only layer of protection here
-    // (defense-in-depth), because single-subscription deletion is not yet wired to a
-    // real network call (it mutates local in-memory state via InMemorySubscriptionRepository).
-    // When subscription deletion is wired to the backend (DELETE /subscriptions/:id),
-    // server-side PIN enforcement must be added to achieve security parity with batch-cancel
-    // (POST /savings/batch-cancel).
-    final pinVerified = await PinVerificationDialog.show(
+    // SECURITY NOTE (XC-5 / F6 Finding & Server PIN Enforcement):
+    // Client verifies PIN and propagates it in-memory to deleteSubscription,
+    // which transmits it via x-security-pin header to DELETE /subscriptions/:id.
+    // The PIN is never logged, persisted, or stored locally.
+    final pin = await PinVerificationDialog.showForPin(
       context: context,
       title: 'ยืนยันการลบบริการ',
       message: 'กรุณากรอกรหัส PIN เพื่อลบบริการ ${subscription.name}',
     );
-    if (!pinVerified || !context.mounted) return;
+    if (pin == null || !context.mounted) return;
 
     try {
       await ref
           .read(subscriptionListProvider.notifier)
-          .deleteSubscription(subscription.id);
+          .deleteSubscription(subscription.id, pin: pin);
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

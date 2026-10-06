@@ -84,14 +84,14 @@ final class SubscriptionListController
   }
 
   /// ลบจาก UI ก่อนเพื่อให้ตอบสนองทันที และ rollback หาก data source ล้มเหลว
-  Future<void> deleteSubscription(String id) async {
+  Future<void> deleteSubscription(String id, {String? pin}) async {
     final previous = await future;
     state = AsyncData<List<Subscription>>(
       previous.where((item) => item.id != id).toList(growable: false),
     );
 
     try {
-      await _repository.deleteSubscription(id);
+      await _repository.deleteSubscription(id, pin: pin);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
       Error.throwWithStackTrace(error, stackTrace);
