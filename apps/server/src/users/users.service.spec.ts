@@ -89,6 +89,46 @@ describe('UsersService', () => {
       expect(result.pin_configured).toBe(false);
     });
 
+    it('should return pin_configured false for an unrotated default-PIN account', async () => {
+      const defaultHash = await bcrypt.hash('111111', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-default-pin',
+        email: 'default@example.com',
+        name: 'Default User',
+        monthly_income: 10000,
+        security_pin_hash: defaultHash,
+        created_at: new Date(),
+        updated_at: new Date(),
+        _count: {
+          payment_cards: 0,
+          subscriptions: 0,
+        },
+      });
+
+      const result = await service.getProfile('user-default-pin');
+      expect(result.pin_configured).toBe(false);
+    });
+
+    it('should return pin_configured true after a real PIN is set', async () => {
+      const customHash = await bcrypt.hash('987654', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-custom-pin',
+        email: 'custom@example.com',
+        name: 'Custom User',
+        monthly_income: 20000,
+        security_pin_hash: customHash,
+        created_at: new Date(),
+        updated_at: new Date(),
+        _count: {
+          payment_cards: 0,
+          subscriptions: 0,
+        },
+      });
+
+      const result = await service.getProfile('user-custom-pin');
+      expect(result.pin_configured).toBe(true);
+    });
+
     it('should throw NotFoundException when user does not exist', async () => {
       prismaMock.user.findUnique.mockResolvedValue(null);
 

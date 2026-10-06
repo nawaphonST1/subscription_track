@@ -49,7 +49,7 @@ export class UsersService {
       email: user.email,
       name: user.name,
       monthly_income: Number(user.monthly_income),
-      pin_configured: Boolean(user.security_pin_hash),
+      pin_configured: await this.isPinConfigured(user.security_pin_hash),
       active_cards_count: user._count.payment_cards,
       active_subscriptions_count: user._count.subscriptions,
       created_at: user.created_at,
@@ -101,7 +101,7 @@ export class UsersService {
         email: user.email,
         name: user.name,
         monthly_income: Number(user.monthly_income),
-        pin_configured: Boolean(user.security_pin_hash),
+        pin_configured: await this.isPinConfigured(user.security_pin_hash),
         created_at: user.created_at,
         updated_at: user.updated_at,
       };
@@ -200,5 +200,12 @@ export class UsersService {
     return {
       message: 'Security PIN changed successfully',
     };
+  }
+
+  private async isPinConfigured(
+    securityPinHash: string | null | undefined,
+  ): Promise<boolean> {
+    if (!securityPinHash) return false;
+    return !(await bcrypt.compare('111111', securityPinHash));
   }
 }
