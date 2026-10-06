@@ -142,7 +142,9 @@ export class AuthService {
             }
           }
         } catch {
-          throw new UnauthorizedException('Invalid Google ID Token or Access Token');
+          throw new UnauthorizedException(
+            'Invalid Google ID Token or Access Token',
+          );
         }
       }
     }
@@ -169,8 +171,7 @@ export class AuthService {
           email,
           password_hash: passwordHash,
           name:
-            name ??
-            (dto.provider === 'google' ? 'Google User' : 'Apple User'),
+            name ?? (dto.provider === 'google' ? 'Google User' : 'Apple User'),
           monthly_income: 0,
           security_pin_hash: securityPinHash,
           notifications: {
