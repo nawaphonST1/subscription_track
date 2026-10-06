@@ -81,6 +81,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final submitBtn = find.byKey(const Key('setup_pin_submit_button'));
+      await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
@@ -104,6 +105,7 @@ void main() {
           find.byKey(const Key('setup_confirm_pin_field')), testCurrentPin);
 
       final submitBtn = find.byKey(const Key('setup_pin_submit_button'));
+      await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
@@ -126,6 +128,7 @@ void main() {
           find.byKey(const Key('setup_confirm_pin_field')), testMismatchPin);
 
       final submitBtn = find.byKey(const Key('setup_pin_submit_button'));
+      await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
@@ -149,6 +152,7 @@ void main() {
           find.byKey(const Key('setup_confirm_pin_field')), testNewPin);
 
       final submitBtn = find.byKey(const Key('setup_pin_submit_button'));
+      await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pump();
       await tester.pumpAndSettle();
@@ -179,6 +183,7 @@ void main() {
           find.byKey(const Key('setup_confirm_pin_field')), testNewPin);
 
       final submitBtn = find.byKey(const Key('setup_pin_submit_button'));
+      await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
@@ -186,15 +191,81 @@ void main() {
       expect(find.text('Server error updating PIN'), findsOneWidget);
       expect(find.text('Dashboard View'), findsNothing);
     });
+
+    testWidgets(
+        'renders default PIN disclosure text for social registration users',
+        (tester) async {
+      final pinRepo = InMemoryPinRepository();
+      await tester.pumpWidget(createWidgetUnderTest(pinRepo: pinRepo));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('หากเพิ่งสมัครผ่าน Google หรือ Apple ระบบได้ตั้งรหัส PIN เริ่มต้นไว้เป็น'),
+        findsOneWidget,
+      );
+      expect(find.textContaining(testCurrentPin), findsWidgets);
+    });
+
+    testWidgets(
+        'logout button exists and successfully logs out user to escape trapped state',
+        (tester) async {
+      final pinRepo = InMemoryPinRepository();
+      final authNotifier = _TestAuthNotifier(
+        const User(
+          id: 'u-social',
+          email: 'trapped@example.com',
+          pinConfigured: false,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            pinRepositoryProvider.overrideWithValue(pinRepo),
+            authRepositoryProvider.overrideWithValue(StubAuthRepository()),
+            authProvider.overrideWith(() => authNotifier),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              initialLocation: RouteConstants.setupPin,
+              routes: [
+                GoRoute(
+                  path: RouteConstants.setupPin,
+                  builder: (context, state) => const SetupPinScreen(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final logoutBtn = find.byKey(const Key('setup_pin_logout_button'));
+      expect(logoutBtn, findsOneWidget);
+      expect(find.text('ออกจากระบบ'), findsOneWidget);
+
+      await tester.ensureVisible(logoutBtn);
+      await tester.tap(logoutBtn);
+      await tester.pumpAndSettle();
+
+      expect(authNotifier.logoutCalled, isTrue);
+    });
   });
 }
 
 class _TestAuthNotifier extends AuthNotifier {
   _TestAuthNotifier(this._initialUser);
   final User _initialUser;
+  bool logoutCalled = false;
 
   @override
   AsyncValue<User?> build() {
     return AsyncValue.data(_initialUser);
+  }
+
+  @override
+  Future<void> logout() async {
+    logoutCalled = true;
+    state = const AsyncValue.data(null);
   }
 }

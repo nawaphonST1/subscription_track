@@ -151,7 +151,45 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8), height: 1.4),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
+                  Builder(
+                    builder: (context) {
+                      final defaultPinText = List.filled(6, '1').join();
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              color: Color(0xFF60A5FA),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'หากเพิ่งสมัครผ่าน Google หรือ Apple ระบบได้ตั้งรหัส PIN เริ่มต้นไว้เป็น $defaultPinText '
+                                'กรุณากรอก $defaultPinText เป็นรหัสเดิม แล้วตั้งรหัส PIN ใหม่ของคุณด้านล่าง',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF93C5FD),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
 
                   // --- Current / Temporary PIN Field ---
                   _buildInputField(
@@ -303,6 +341,20 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                         ),
                       ),
                     ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: TextButton(
+                      key: const Key('setup_pin_logout_button'),
+                      onPressed: () async => ref.read(authProvider.notifier).logout(),
+                      child: const Text(
+                        'ออกจากระบบ',
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
