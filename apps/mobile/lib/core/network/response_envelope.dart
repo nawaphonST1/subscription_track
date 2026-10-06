@@ -31,6 +31,53 @@ Either<Failure, T> unwrapEnvelope<T>(
   T Function(Map<String, dynamic> data) parseData, {
   Map<int, Failure> statusOverrides = const {},
 }) {
+  return _unwrapEnvelopeData(response, statusOverrides: statusOverrides)
+      .flatMap((data) {
+    if (data is! Map<String, dynamic>) {
+      // endpoint ที่คืน list หรือ primitive (เช่น `GET /` คืน string) ให้ใช้
+      // unwrapEnvelopeList หรือ parseData ที่รับรูปแบบนั้นแทน ไม่ใช่ฟังก์ชันนี้
+      return left(Failure.serverError(_malformedMessage(response.statusCode)));
+    }
+    return right(parseData(data));
+  });
+}
+
+/// เหมือน [unwrapEnvelope] แต่สำหรับ endpoint ที่ `data` เป็น JSON array
+/// (เช่น `GET /subscriptions`, `GET /cards`) แทนที่จะเป็น object เดี่ยว
+///
+/// [parseItem] รับแต่ละ element ของ array (ต้องเป็น Map) แล้วแปลงเป็น [T]
+/// เองทีละตัว — ถ้า element ไหนแปลงไม่ได้ (ไม่ใช่ Map หรือ parseItem throw)
+/// ทั้งก้อนจะกลายเป็น [Failure.serverError] เดียว ไม่ส่งคืน list ที่แปลงมาได้
+/// บางส่วนแบบเงียบ ๆ
+Either<Failure, List<T>> unwrapEnvelopeList<T>(
+  http.Response response,
+  T Function(Map<String, dynamic> item) parseItem, {
+  Map<int, Failure> statusOverrides = const {},
+}) {
+  return _unwrapEnvelopeData(response, statusOverrides: statusOverrides)
+      .flatMap((data) {
+    if (data is! List) {
+      return left(Failure.serverError(_malformedMessage(response.statusCode)));
+    }
+    try {
+      final items = data
+          .map((item) => parseItem(item as Map<String, dynamic>))
+          .toList(growable: false);
+      return right(items);
+    } catch (_) {
+      return left(Failure.serverError(_malformedMessage(response.statusCode)));
+    }
+  });
+}
+
+/// ตรรกะร่วมของ [unwrapEnvelope] และ [unwrapEnvelopeList]: แกะ envelope,
+/// ตัดสิน success/error ตาม [TransformInterceptor]/[HttpExceptionFilter] แล้ว
+/// คืน **เนื้อใน `data` แบบดิบ** (ยังไม่ตรวจรูปร่างว่าเป็น Map หรือ List)
+/// ให้ผู้เรียกแต่ละฟังก์ชันตรวจรูปร่างที่ตัวเองต้องการเอง
+Either<Failure, Object?> _unwrapEnvelopeData(
+  http.Response response, {
+  Map<int, Failure> statusOverrides = const {},
+}) {
   final statusCode = response.statusCode;
 
   // caller ขอ override สถานะนี้ไว้ ไม่ต้องแตะ body เลย
@@ -52,13 +99,7 @@ Either<Failure, T> unwrapEnvelope<T>(
   final isSuccessStatus = statusCode >= 200 && statusCode < 300;
 
   if (isSuccessStatus && isSuccessEnvelope) {
-    final data = decoded['data'];
-    if (data is! Map<String, dynamic>) {
-      // endpoint ที่คืน list หรือ primitive (เช่น `GET /` คืน string) ยังไม่รองรับ
-      // ที่นี่ — รอ unwrapEnvelopeList ตอน wiring subscriptions
-      return left(Failure.serverError(_malformedMessage(statusCode)));
-    }
-    return right(parseData(data));
+    return right(decoded['data']);
   }
 
   if (isSuccessStatus && !isSuccessEnvelope) {
