@@ -13,6 +13,12 @@ const Set<String> kPublicAuthPaths = {
   '/auth/social',
 };
 
+/// Path ที่ตอบ 401 เมื่อข้อมูลทางธุรกิจไม่ถูกต้อง (เช่น PIN เดิมผิด)
+/// ไม่ใช่ session หมดอายุ จึงไม่ควรยิงสัญญาณ [onUnauthorized]
+const Set<String> kUnauthorizedExemptPaths = {
+  '/users/pin',
+};
+
 /// http.Client ที่แนบ `Authorization: Bearer <token>` ให้ request ขาออกอัตโนมัติ
 ///
 /// ก่อนหน้านี้ไม่มีที่ไหนในแอปแนบ header นี้เลย ทำให้ 39 จาก 44 routes ของ
@@ -26,6 +32,7 @@ class AuthenticatedHttpClient extends http.BaseClient {
     required this.readToken,
     http.Client? inner,
     this.publicPaths = kPublicAuthPaths,
+    this.unauthorizedExemptPaths = kUnauthorizedExemptPaths,
     this.onUnauthorized,
   }) : _inner = inner ?? http.Client();
 
@@ -34,6 +41,9 @@ class AuthenticatedHttpClient extends http.BaseClient {
 
   /// Path ที่ไม่ต้องแนบ token
   final Set<String> publicPaths;
+
+  /// Path ที่ยกเว้นการยิงสัญญาณ 401
+  final Set<String> unauthorizedExemptPaths;
 
   /// ยิงเมื่อ request ที่ต้อง auth ได้ 401 กลับมา
   ///
@@ -47,9 +57,13 @@ class AuthenticatedHttpClient extends http.BaseClient {
 
   bool isPublicPath(String path) => publicPaths.contains(path);
 
+  bool isUnauthorizedExemptPath(String path) =>
+      unauthorizedExemptPaths.contains(path);
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final isPublic = isPublicPath(request.url.path);
+    final isExempt = isUnauthorizedExemptPath(request.url.path);
 
     // ไม่เขียนทับถ้า caller ตั้ง Authorization มาเองแล้ว
     final alreadySet = request.headers.keys
@@ -67,7 +81,8 @@ class AuthenticatedHttpClient extends http.BaseClient {
     final response = await _inner.send(request);
 
     // 401 จาก public path คือ "รหัสผ่านผิด" ไม่ใช่ "session หมดอายุ" จึงไม่ยิงสัญญาณ
-    if (response.statusCode == 401 && !isPublic) {
+    // 401 จาก exempt path (เช่น /users/pin) คือ "PIN ไม่ถูกต้อง" จึงไม่ยิงสัญญาณเช่นกัน
+    if (response.statusCode == 401 && !isPublic && !isExempt) {
       onUnauthorized?.call();
     }
 

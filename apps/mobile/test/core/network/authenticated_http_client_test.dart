@@ -328,6 +328,48 @@ void main() {
 
       expect(response.statusCode, 401);
     });
+
+    for (final path in kUnauthorizedExemptPaths) {
+      test('401 จาก $path ไม่ยิงสัญญาณ onUnauthorized (เช่น PIN เดิมผิด)',
+          () async {
+        final capture = _Capture();
+        var signals = 0;
+        final client = AuthenticatedHttpClient(
+          readToken: () async => 'jwt-valid',
+          inner: _mockReturning(401, capture),
+          onUnauthorized: () => signals++,
+        );
+
+        await client.patch(Uri.parse('http://localhost:3000$path'));
+
+        expect(signals, 0,
+            reason: '401 จาก $path ต้องไม่ยิงสัญญาณ session หมดอายุ');
+        expect(
+          _authHeaderOf(capture),
+          'Bearer jwt-valid',
+          reason: '$path ยังคงต้องแนบ Bearer token ตามปกติ (ไม่ใช่ public path)',
+        );
+      });
+    }
+
+    test('สามารถ inject unauthorizedExemptPaths เองได้', () async {
+      final capture = _Capture();
+      var signals = 0;
+      final client = AuthenticatedHttpClient(
+        readToken: () async => 'jwt-valid',
+        inner: _mockReturning(401, capture),
+        unauthorizedExemptPaths: const {'/custom/exempt'},
+        onUnauthorized: () => signals++,
+      );
+
+      await client.post(Uri.parse('http://localhost:3000/custom/exempt'));
+      expect(signals, 0);
+
+      await client.post(Uri.parse('http://localhost:3000/users/pin'));
+      expect(signals, 1,
+          reason:
+              'เมื่อ override แล้ว path เดิมที่ไม่ถูกระบุต้องยิงสัญญาณตามปกติ');
+    });
   });
 
   group('ส่งต่อ request ตามเดิม', () {
