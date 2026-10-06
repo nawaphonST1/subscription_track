@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:subscription_track/features/auth/data/in_memory_auth_repository.dart';
 import 'package:subscription_track/features/auth/data/remote_auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
