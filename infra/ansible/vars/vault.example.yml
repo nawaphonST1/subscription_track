@@ -23,3 +23,9 @@ vault_azure_storage_container: "postgres"
 vault_azure_storage_key: "replace-with-azure-storage-account-key"
 vault_azure_storage_sas_token: ""  # Optional SAS token (if authenticating via SAS instead of account key)
 
+# Mobile App Code Signing & Keystore Credentials (for DP-603)
+vault_mobile_keystore_base64: "replace-with-base64-encoded-keystore-file"
+vault_mobile_keystore_password: "replace-with-secure-keystore-password"
+vault_mobile_key_alias: "subscription_track_release"
+vault_mobile_key_password: "replace-with-secure-key-password"
+

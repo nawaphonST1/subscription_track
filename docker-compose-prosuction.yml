@@ -32,13 +32,19 @@
 #   - Nginx publishes host port 80 instead of the dev convenience port 3000.
 #
 # NOT done here (ask before adding):
-#   - HTTPS/TLS — infra/nginx/nginx.conf is still HTTP-only, so Nginx answers
-#     plain HTTP on port 80. Do not expose this to the public internet as-is;
-#     put it behind a TLS terminator (or add real certs to Nginx) before
-#     treating this as internet-facing production traffic.
 #   - A registry image reference — api/worker build from local source via
 #     Buildx; swap `build:` for `image: <registry>/subscription-track-api:<tag>`
 #     once images are actually pushed somewhere.
+
+# DP-510. Explicit project name, distinct from docker-compose.yml's
+# subscription-track-dev, so the two can never collide on container/network/
+# volume names if ever run on the same host. Volumes below are NOT pinned to
+# explicit names (unlike the dev file): this stack has never actually been
+# deployed anywhere (confirmed — no running containers on the Azure VM prior
+# to this change, and the DP-5 monitoring plan lists this stack's deployment
+# as still TODO), so there is no existing data under the old implicit name to
+# preserve. They will simply be created as subscription-track-prod_*.
+name: subscription-track-prod
 
 services:
   api:
@@ -136,17 +142,42 @@ services:
     profiles:
       - migrate
 
+  # DP-507. nginx:1.27-alpine is EOL (Docker Hub stopped rebuilding that tag
+  # in April 2025) and carries dozens of known CVEs in its Alpine base
+  # packages; 1.30-alpine is the actively-maintained stable branch. Bumped
+  # here because this is the exact service a TLS hardening ticket touches —
+  # shipping new TLS config on a known-EOL image would undercut the point.
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.30-alpine
     restart: unless-stopped
     ports:
       - "80:8080"
+      - "443:8443"
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - certbot-webroot:/var/www/certbot:ro
+      - certbot-certs:/etc/letsencrypt:ro
     depends_on:
       api:
         condition: service_healthy
 
+  # DP-507. Renews the certificate nginx serves on 8443. NOT started by a
+  # plain `up` (profile-gated): the first certificate has to be issued by
+  # hand first — see the "First deploy" steps at the top of
+  # infra/nginx/nginx.prod.conf. Once that's done:
+  #   docker compose -f docker-compose-prosuction.yml --profile tls up -d certbot
+  certbot:
+    image: certbot/certbot:v5.8.0
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h; done"
+    profiles:
+      - tls
+
 volumes:
   postgres_data:
   redis_data:
+  certbot-webroot:
+  certbot-certs:

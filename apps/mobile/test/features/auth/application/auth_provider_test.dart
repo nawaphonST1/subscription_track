@@ -24,6 +24,13 @@ void main() {
     expect(container.read(authProvider).value, isNull);
     expect(repository.logoutCalls, 1);
 
+    await controller.loginWithEmail(
+      email: 'existing@example.com',
+      password: 'password123',
+    );
+    expect(container.read(authProvider).value?.email, 'existing@example.com');
+    expect(repository.emailLoginCalls, 1);
+
     await controller.registerWithEmail(
       email: 'newuser@example.com',
       password: 'password123',
@@ -133,6 +140,16 @@ class _FakeAuthRepository implements AuthRepository {
   int googleLoginCalls = 0;
   int logoutCalls = 0;
   int registerCalls = 0;
+  int emailLoginCalls = 0;
+
+  @override
+  Future<Either<Failure, User>> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    emailLoginCalls++;
+    return right(User(id: 'login-user', email: email));
+  }
 
   @override
   Future<Either<Failure, User>> registerWithEmail({

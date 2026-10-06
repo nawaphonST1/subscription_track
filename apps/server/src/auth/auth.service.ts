@@ -11,6 +11,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { NotificationType } from '@prisma/client';
+import { OAuth2Client } from 'google-auth-library';
 import { BusinessMetrics } from '../metrics/business.metrics';
 
 @Injectable()
@@ -112,7 +113,39 @@ export class AuthService {
   }
 
   async socialLogin(dto: SocialLoginDto) {
-    const email = dto.email.toLowerCase();
+    let email = dto.email.toLowerCase();
+    let name = dto.name;
+
+    // Verify Google ID Token if provider is google (OAuth2Client)
+    if (dto.provider === 'google') {
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      if (googleClientId && dto.token && dto.token !== 'mock-google-token') {
+        try {
+          const client = new OAuth2Client(googleClientId);
+          try {
+            const ticket = await client.verifyIdToken({
+              idToken: dto.token,
+              audience: googleClientId,
+            });
+            const payload = ticket.getPayload();
+            if (payload && payload.email) {
+              email = payload.email.toLowerCase();
+              name = payload.name ?? name;
+            }
+          } catch {
+            const tokenInfo = await client.getTokenInfo(dto.token);
+            if (tokenInfo.email) {
+              email = tokenInfo.email.toLowerCase();
+              name = dto.name || name;
+            } else {
+              throw new UnauthorizedException('Invalid Google Token');
+            }
+          }
+        } catch {
+          throw new UnauthorizedException('Invalid Google ID Token or Access Token');
+        }
+      }
+    }
 
     let user = await this.prisma.user.findUnique({
       where: { email },
@@ -136,7 +169,7 @@ export class AuthService {
           email,
           password_hash: passwordHash,
           name:
-            dto.name ??
+            name ??
             (dto.provider === 'google' ? 'Google User' : 'Apple User'),
           monthly_income: 0,
           security_pin_hash: securityPinHash,

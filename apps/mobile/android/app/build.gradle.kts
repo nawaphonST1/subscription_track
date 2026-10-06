@@ -25,11 +25,26 @@ android {
         versionName = flutter.versionName
     }
 
+    // DP-603: Release signing credentials from environment (Ansible Vault / Jenkins withCredentials)
+    val releaseKeystore: String? = System.getenv("KEYSTORE_FILE")
+    signingConfigs {
+        if (releaseKeystore != null && file(releaseKeystore).exists()) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS") ?: "subscription_track_release"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseKeystore != null && file(releaseKeystore).exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

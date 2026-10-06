@@ -1,0 +1,34 @@
+# Compose override for the APP stack (repository-root docker-compose-prosuction.yml),
+# not for the agent stack in this directory.
+#
+# Why it exists: Grafana Alloy runs with `network_mode: host` (see
+# docker-compose.yml), so it cannot resolve the Compose DNS names `api` and
+# `worker`. Publishing each process's metrics port on the host loopback is the
+# smallest change that lets it scrape them, and it keeps /metrics exactly as
+# unreachable from outside as before — 127.0.0.1 is not routable off the VM,
+# and infra/nginx/nginx.conf proxies nothing to these ports.
+#
+# This is a separate file rather than an edit to docker-compose-prosuction.yml
+# because that file belongs to another team member. Apply it from the
+# repository root, where the first -f sets the context for relative paths:
+#
+#   docker compose \
+#     -f docker-compose-prosuction.yml \
+#     -f infra/monitoring/prod-agent/docker-compose.app-metrics.override.yml \
+#     up -d
+#
+# Ports: api 9464 (the app's default), worker 9465. They must differ — one
+# node:http server per process, and both default to METRICS_PORT=9464
+# (apps/server/docs/metrics.md, "Endpoint").
+services:
+  api:
+    environment:
+      METRICS_PORT: 9464
+    ports:
+      - "127.0.0.1:9464:9464"
+
+  worker:
+    environment:
+      METRICS_PORT: 9465
+    ports:
+      - "127.0.0.1:9465:9465"

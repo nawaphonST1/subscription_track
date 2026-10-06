@@ -1,6 +1,13 @@
 # ==============================================================================
 # Traefik Ingress Controller - Helm Chart Values Configuration
 # Covers: DP-300 (Helm Deployment & Secure Dashboard) & DP-301 (Auto SSL/TLS ACME)
+#
+# NOT the active TLS path. infra/nginx/nginx.prod.conf + certbot (Docker
+# Compose) is what's actually deployed. This file has never been applied to
+# a real cluster (no kubectl/kubeconfig found anywhere, no Terraform cluster
+# resource, and its hostnames below are .local placeholders, never real
+# domains). Kept for reference; only one TLS path should be active in any
+# given deployment — see infra/nginx/nginx.prod.conf.
 # ==============================================================================
 
 # กำหนด Replica ของ Traefik Controller

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/app/application/theme_mode_controller.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
+import 'package:subscription_track/features/app_update/application/app_update_controller.dart';
+import 'package:subscription_track/features/app_update/presentation/app_update_dialog.dart';
 import 'package:subscription_track/features/settings/application/notification_reminder_controller.dart';
 
 class SettingsTab extends ConsumerWidget {
@@ -85,20 +87,69 @@ class SettingsTab extends ConsumerWidget {
             const SizedBox(height: 16),
             Card(
               clipBehavior: Clip.antiAlias,
-              child: ListTile(
-                leading: const Icon(
-                  Icons.info_outline_rounded,
-                  color: AppColors.primaryLight,
-                ),
-                title: const Text('เกี่ยวกับแอป'),
-                subtitle: const Text('Subscription Track v1.0.0'),
-                onTap: () => _showComingSoon(context),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.primaryLight,
+                    ),
+                    title: const Text('เกี่ยวกับแอป'),
+                    subtitle: const Text('Subscription Track v1.0.0'),
+                    onTap: () => _showComingSoon(context),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.system_update_rounded,
+                      color: Color(0xFF10B981),
+                    ),
+                    title: const Text('ตรวจสอบการอัปเดต'),
+                    subtitle: const Text('ตรวจหาเวอร์ชันล่าสุดของแอป'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _handleCheckForUpdate(context, ref),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _handleCheckForUpdate(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('กำลังตรวจสอบเวอร์ชันล่าสุด...'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    final controller = ref.read(appUpdateControllerProvider.notifier);
+    await controller.checkForUpdates();
+
+    if (!context.mounted) return;
+    final state = ref.read(appUpdateControllerProvider);
+
+    if (state.isUpdateAvailable && state.updateInfo != null) {
+      await AppUpdateDialog.show(
+        context: context,
+        updateInfo: state.updateInfo!,
+        isForceUpdate: state.isForceUpdate,
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('คุณกำลังใช้งานเวอร์ชันล่าสุดแล้ว (v${state.currentVersion})'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    }
   }
 
   void _showComingSoon(BuildContext context) {

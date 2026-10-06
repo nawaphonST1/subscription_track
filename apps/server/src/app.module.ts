@@ -20,6 +20,7 @@ import { DeviceRegistrationsModule } from './device-registrations/device-registr
 import { PackagesModule } from './packages/packages.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { CacheModule } from './cache/cache.module';
+import { ObservabilityModule } from './observability/observability.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -36,6 +37,9 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     // Registers the HTTP metrics middleware for every route and starts the
     // internal metrics server; adds no route to the public API surface.
     MetricsModule,
+    // DP-503. Registers the Sentry error interceptor globally. Inert unless
+    // SENTRY_DSN is set at bootstrap.
+    ObservabilityModule,
     HealthModule,
     AuthModule,
     UsersModule,
