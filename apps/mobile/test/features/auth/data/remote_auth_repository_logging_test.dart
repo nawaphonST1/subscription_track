@@ -108,7 +108,7 @@ void main() {
       _expectNoSecrets(lines);
     });
 
-    test('register สำเร็จ: ไม่เห็นรหัสผ่าน', () async {
+    test('register สำเร็จ: ไม่เห็นรหัสผ่านหรือ PIN', () async {
       final lines = await _capturePrints(() async {
         final repository = RemoteAuthRepository(
           baseUrl: _baseUrl,
@@ -118,6 +118,7 @@ void main() {
           email: 'newuser@example.com',
           password: _password,
           name: 'New User',
+          securityPin: _pin,
         );
       });
 
