@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'node:22-alpine'
-            args '-u 0:0 -v /var/run/docker.sock:/var/run/docker.sock'
+            args '-u 0:0 -v /var/run/docker.sock:/var/run/docker.sock -v subtracker-pnpm-store:/root/.local/share/pnpm/store -v subtracker-npm-cache:/root/.npm -v subtracker-corepack:/root/.cache/node/corepack'
         }
     }
 
@@ -28,17 +28,25 @@ pipeline {
         stage('Install & Setup') {
             steps {
                 script { env.CURRENT_STAGE = env.STAGE_NAME }
-                echo "==> [${env.APP_NAME}] Installing dependencies..."
+                echo "==> [${env.APP_NAME}] Preparing environment and verifying dependency cache..."
                 sh '''
                     chmod +x scripts/bin/* 2>/dev/null || true
                     chmod +x scripts/cicd/* 2>/dev/null || true
+                    corepack enable 2>/dev/null || true
                 '''
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh '''
-                        if command -v pnpm >/dev/null 2>&1; then
-                            pnpm install --frozen-lockfile || pnpm install
+                        # Smart Cache Hit Check: Skip install if node_modules exists and lockfile matches
+                        if [ -d "node_modules" ] && [ -f "node_modules/.lock-hash" ] && cmp -s pnpm-lock.yaml node_modules/.lock-hash 2>/dev/null; then
+                            echo "⚡ [CACHE HIT] node_modules is already up-to-date with pnpm-lock.yaml. Skipping install step!"
                         else
-                            npm ci || npm install
+                            echo "📦 [CACHE MISS] Installing dependencies into workspace..."
+                            if command -v pnpm >/dev/null 2>&1; then
+                                pnpm install --frozen-lockfile --prefer-offline || pnpm install
+                            else
+                                npm ci --prefer-offline || npm install
+                            fi
+                            cp pnpm-lock.yaml node_modules/.lock-hash 2>/dev/null || true
                         fi
                     '''
                 }
