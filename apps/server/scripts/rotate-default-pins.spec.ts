@@ -133,14 +133,25 @@ describe('rotate-default-pins', () => {
       mockPrisma.user.findMany.mockResolvedValueOnce(mockUsers);
       mockPrisma.user.update.mockResolvedValue({});
 
+      const testGeneratedPin = '482910';
+
       await rotateDefaultPins({
         prisma: mockPrisma as any,
         logger: mockLogger,
         dryRun: false,
+        generatePin: () => testGeneratedPin,
       });
 
-      const loggedMessages = mockLogger.log.mock.calls.map((c) => c[0]);
-      for (const msg of loggedMessages) {
+      const capturedLogOutput = [
+        ...mockLogger.log.mock.calls.map((c) => c[0]),
+        ...(mockLogger.warn?.mock.calls.map((c) => c[0]) ?? []),
+        ...(mockLogger.error?.mock.calls.map((c) => c[0]) ?? []),
+      ];
+
+      // Format-agnostic check against actual generated PIN value appearing anywhere
+      expect(capturedLogOutput.join('\n')).not.toContain(testGeneratedPin);
+
+      for (const msg of capturedLogOutput) {
         // Must never print a plaintext PIN or mention secrets
         expect(msg).not.toMatch(/pin=\d{6}/i);
         expect(msg).not.toMatch(/secret/i);

@@ -13,6 +13,7 @@ export interface RotateDefaultPinsOptions {
     warn?: (message: string) => void;
     error?: (message: string) => void;
   };
+  generatePin?: () => string;
 }
 
 export interface RotationReport {
@@ -49,6 +50,7 @@ export async function rotateDefaultPins(
   const batchSize = options.batchSize ?? 100;
   const dryRun = options.dryRun ?? false;
   const logger = options.logger ?? console;
+  const generatePin = options.generatePin ?? generateRandomPin;
 
   logger.log(
     `[rotate-default-pins] Starting PIN rotation scan (batchSize: ${batchSize}, dryRun: ${dryRun})...`,
@@ -95,7 +97,7 @@ export async function rotateDefaultPins(
       defaultPinCount++;
 
       // Generate secure random PIN and hash it
-      const newPin = generateRandomPin();
+      const newPin = generatePin();
       const newHash = await bcrypt.hash(newPin, 10);
 
       if (!dryRun) {
