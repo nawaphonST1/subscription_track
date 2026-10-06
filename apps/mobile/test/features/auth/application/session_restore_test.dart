@@ -78,6 +78,8 @@ ProviderContainer _containerWith(_RestoreRepository repository) {
     overrides: [authRepositoryProvider.overrideWithValue(repository)],
   );
   addTearDown(container.dispose);
+  final sub = container.listen(authProvider, (_, __) {});
+  addTearDown(sub.close);
   return container;
 }
 

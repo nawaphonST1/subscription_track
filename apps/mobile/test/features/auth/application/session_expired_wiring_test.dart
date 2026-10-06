@@ -32,6 +32,8 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      final sub = container.listen(authProvider, (_, __) {});
+      addTearDown(sub.close);
 
       // ยืนยันว่าการสร้าง graph ทั้งสองฝั่งพร้อมกันไม่ติด circular dependency loop
       expect(() => container.read(authRepositoryProvider), returnsNormally);
@@ -167,6 +169,8 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      final sub = container.listen(authProvider, (_, __) {});
+      addTearDown(sub.close);
 
       final notifier = container.read(authProvider.notifier);
       // เรียกพร้อมกัน 2 ครั้งเพื่อจำลอง 2 in-flight requests 401 พร้อมกัน

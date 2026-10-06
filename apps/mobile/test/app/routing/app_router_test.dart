@@ -234,6 +234,8 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      final sub = container.listen(authProvider, (_, __) {});
+      addTearDown(sub.close);
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
