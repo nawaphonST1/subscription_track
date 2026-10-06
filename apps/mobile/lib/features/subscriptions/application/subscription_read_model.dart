@@ -27,9 +27,6 @@ class SubscriptionCommands {
 
   Future<void> toggleSelection(String id) =>
       _ref.read(subscriptionListProvider.notifier).toggleSelection(id);
-
-  Future<void> deleteSelected() =>
-      _ref.read(subscriptionListProvider.notifier).deleteSelected();
 }
 
 class SubscriptionReadModel {
