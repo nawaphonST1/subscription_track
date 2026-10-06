@@ -79,7 +79,11 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
       body: jsonEncode({'mock_card_id': id}),
     );
     final result = unwrapEnvelope(response, (data) {
-      final cardJson = data['card'] as Map<String, dynamic>;
+      final cardJson = data['card'];
+      if (cardJson is! Map<String, dynamic>) {
+        throw FormatException(
+            'Expected card object in link response, got ${cardJson.runtimeType}');
+      }
       return _mapJsonToCard(cardJson);
     });
     return result.fold(

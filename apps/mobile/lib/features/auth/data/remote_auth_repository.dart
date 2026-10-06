@@ -283,7 +283,7 @@ class RemoteAuthRepository implements AuthRepository {
     } catch (_) {}
   }
 
-  static bool _parsePinConfigured(dynamic raw) {
+  static bool _parsePinConfigured(Object? raw) {
     if (raw is bool) return raw;
     if (raw is String) {
       final s = raw.trim().toLowerCase();

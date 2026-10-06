@@ -322,7 +322,7 @@ describe('SubscriptionsService', () => {
         },
       ]);
 
-      const result = await service.listPresets();
+      const result: any = await service.listPresets();
 
       expect(prismaMock.subscriptionPreset.findMany).toHaveBeenCalledWith({
         orderBy: [{ category: 'asc' }, { name: 'asc' }],
