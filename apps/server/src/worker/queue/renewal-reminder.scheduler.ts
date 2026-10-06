@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { RENEWAL_DISCOVERY_CRON_PATTERN } from '../../notifications/renewal-reminder/renewal-reminder.constants';
+import { WorkerJobMetrics } from '../metrics/worker-job.metrics';
 import {
   RENEWAL_DISCOVERY_JOB,
   RENEWAL_DISCOVERY_SCHEDULER_ID,
@@ -20,18 +21,28 @@ export class RenewalReminderScheduler implements OnModuleInit {
 
   constructor(
     @InjectQueue(RENEWAL_REMINDER_QUEUE) private readonly queue: Queue,
+    @Optional() private readonly metrics?: WorkerJobMetrics,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.queue.upsertJobScheduler(
-      RENEWAL_DISCOVERY_SCHEDULER_ID,
-      { pattern: RENEWAL_DISCOVERY_CRON_PATTERN },
-      {
-        name: RENEWAL_DISCOVERY_JOB,
-        data: {},
-        opts: REMINDER_JOB_RETRY_OPTIONS,
-      },
-    );
+    try {
+      await this.queue.upsertJobScheduler(
+        RENEWAL_DISCOVERY_SCHEDULER_ID,
+        { pattern: RENEWAL_DISCOVERY_CRON_PATTERN },
+        {
+          name: RENEWAL_DISCOVERY_JOB,
+          data: {},
+          opts: REMINDER_JOB_RETRY_OPTIONS,
+        },
+      );
+    } catch (error) {
+      this.metrics?.recordSchedulerRun('failure');
+      // Startup still fails exactly as before: a worker without its
+      // schedule is not a worker.
+      throw error;
+    }
+
+    this.metrics?.recordSchedulerRun('success');
 
     this.logger.log(
       `Renewal reminder discovery scheduler registered (schedulerId=${RENEWAL_DISCOVERY_SCHEDULER_ID}, pattern=${RENEWAL_DISCOVERY_CRON_PATTERN})`,

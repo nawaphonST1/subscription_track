@@ -7,6 +7,7 @@ import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 import 'package:subscription_track/app/presentation/splash_screen.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/features/auth/presentation/login_screen.dart';
+import 'package:subscription_track/features/auth/presentation/register_screen.dart';
 import 'package:subscription_track/features/notifications/presentation/notification_center_screen.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:subscription_track/features/subscriptions/presentation/add_subscription_screen.dart';
@@ -79,6 +80,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: RouteConstants.register,
+        builder: (context, state) => const RegisterScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainNavigationShell(

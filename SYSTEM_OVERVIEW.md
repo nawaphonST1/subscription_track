@@ -29,6 +29,10 @@
    - ระบบ **JWT Authentication & Password Hashing** (ฝั่ง Backend)
 7. **Responsive & Adaptive Shell:**
    - ปรับการแสดงผลอัตโนมัติตามขนาดหน้าจอ: โทรศัพท์มือถือ (Bottom Navigation Bar) และ แท็บเล็ต/เดสก์ท็อป (Navigation Rail ด้านข้าง)
+8. **ระบบ In-App Version Checker & Force Update (Direct APK Sideloading):**
+   - ตรวจจับเวอร์ชันของแอปพลิเคชันแบบไดนามิกผ่าน Manifest JSON (`version.json`) บน Azure Blob Storage
+   - รองรับทั้ง **Optional Update** (แสดงความเปลี่ยนแปลง What's New พร้อมตัวเลือกอัปเดตภายหลัง) และ **Force Update** (ล็อกหน้าจอ ไม่อนุญาตให้ข้าม สำหรับอัปเดตด้านความปลอดภัยหรือ Breaking API)
+   - ดาวน์โหลดและเตรียมติดตั้ง APK แทนที่ของเดิมได้ทันทีโดยคงสถานะและข้อมูลเดิมของผู้ใช้ไว้ครบถ้วน
 
 ---
 
@@ -54,12 +58,16 @@ subscription_track/
 - **สถาปัตยกรรม:** **Feature-First Clean Architecture**
   - แบ่งโครงสร้างโค้ดตามฟีเจอร์ (`lib/features/<feature_name>/`)
   - แต่ละฟีเจอร์แยก Layer เคร่งครัด: `domain` -> `data` -> `application` -> `presentation`
+- **รูปแบบการทำงานและความปลอดภัย (Connectivity & Security Model):** **Online-Only & Server-Authoritative**
+  - บังคับเชื่อมต่ออินเทอร์เน็ตในการเรียกดูและทำธุรกรรมทุกรายการ **ไม่ใช้ระบบ Offline-First (Local Sync)** เพื่อป้องกันความเสี่ยงด้านความปลอดภัยจากการดัดแปลงข้อมูลในเครื่อง (Anti-Data Tampering) และป้องกันความคลาดเคลื่อนของรอบบิล/ยอดเงิน
+  - ระบบยึดถือเซิร์ฟเวอร์กลาง (NestJS + PostgreSQL) เป็น **Single Source of Truth** ข้อมูลและผลการคำนวณ Creep Score จะถูก Validate ซ้ำที่ Server เสมอ
+  - จัดเก็บเฉพาะ Authentication Token ใน Encrypted Storage (Keystore/Keychain) สำหรับระบุตัวตนผู้ใช้
 - **การจัดการสถานะ (State Management):** **Riverpod (Riverpod 3 / Riverpod Annotation)** ทำงานร่วมกับ Code Generation (`build_runner`)
 - **การจัดเส้นทาง (Navigation):** **GoRouter** แบบ Declarative Routing
 - **สถานะปัจจุบัน:**
-  - UI ครบทุก Flow ทั้ง 5 แท็บหลัก
-  - ใช้ `InMemorySubscriptionRepository` เป็น Data Source ในระดับ MVP Client ทำให้รันแบบ Standalone ได้ทันที
-  - มีชุดทดสอบ Unit Tests และ Widget Tests ผ่านครบ **43/43 tests passing**
+  - UI ครบทุก Flow ทั้ง 5 แท็บหลัก พร้อมโมดูล In-App Version Checker & Force Update
+  - ใช้ `InMemorySubscriptionRepository` เป็น Data Source ชั่วคราวสำหรับการพัฒนา Client Standalone
+  - มีชุดทดสอบ Unit Tests และ Widget Tests ผ่านครบ **61/61 tests passing**
 
 ### แผนผังหน้าจอและแท็บหลัก (Screens & Tabs)
 | แท็บ / หน้าจอ | ที่ตั้งโค้ด | หน้าที่และความสามารถ |
@@ -93,7 +101,29 @@ subscription_track/
 | **SavingsModule** | `savings/` | เครื่องมือคำนวณการตัดลดค่าบริการ และบันทึกประวัติการยกเลิก (`SavingsCancellationLog`) |
 | **NotificationsModule** | `notifications/` | แจ้งเตือนรอบบิลใกล้ถึงกำหนด, แจ้งเตือนบริการที่ไม่ได้ใช้งาน (Unused Subscriptions) |
 | **AdminPackagesModule** | `admin/packages/` | จัดการแคตตาล็อกเทมเพลตบริการส่วนกลาง (Subscription Presets) สำหรับผู้ดูแลระบบ |
+| **CacheModule** | `cache/` | จัดการ Caching ทั่วทั้งระบบด้วย Redis (ioredis) พร้อม In-Memory Fallback สำหรับ Auth, Analytics, และ Packages |
 | **PrismaModule** | `prisma/` | Singleton Client สำหรับเชื่อมต่อและทำ Transaction ฐานข้อมูล PostgreSQL |
+
+### ⚡ สถาปัตยกรรมระบบแคช (Multi-Tier Caching Architecture)
+ระบบใช้กลยุทธ์ **Cache-Aside Pattern** และ **Event-Driven Cache Invalidation** ผ่าน `CacheService` เชื่อมต่อ Redis 7 (พร้อม In-Memory Fallback อัตโนมัติเมื่อรันแบบ Isolated/Unit Test):
+1. **Security Auth Cache (`auth:user:{userId}`):**
+   - แคช Minimal Safe User Payload (`{ id, email, name }`) ใน `JwtStrategy` (ไม่เก็บ Password หรือ PIN Hash)
+   - **TTL:** 180 วินาที (3 นาที) ช่วยลด DB Roundtrip จาก 5-15ms เหลือ 0.2ms ต่อทุก Authenticated Request
+   - **Invalidation:** ลบแคชทันทีเมื่อมีการเปลี่ยน PIN (`UsersService.changePin`) หรืออัปเดตโปรไฟล์
+   - **Security Guarantee:** การตรวจ Security PIN 6 หลัก (`verifyPin`) ตรวจสอบกับฐานข้อมูลสดเสมอโดยไม่ผ่านแคช
+2. **Creep Score & Analytics Cache (`cache:user:{userId}:creep-score`):**
+   - แคชผลลัพธ์การคำนวณและสัดส่วนค่าใช้จ่ายต่อเดือนใน `CreepScoreService`
+   - **TTL:** 900 วินาที (15 นาที) เร่งความเร็วการเปิดหน้าแรกและ Dashboard แบบ Instant
+   - **Invalidation:** ลบแคชทันทีเมื่อเพิ่ม/แก้/ลบ Subscription, อัปเดตรายได้ (`monthly_income`), จัดการบัตร, หรือทำ Batch Cancel
+3. **Preset Packages Catalog Cache (`cache:packages:*` & `cache:subscriptions:presets`):**
+   - แคชรายการแพ็กเกจบริการสำเร็จรูปส่วนกลาง (Netflix, Spotify, iCloud ฯลฯ)
+   - **TTL:** 86,400 วินาที (24 ชั่วโมง)
+
+4. **Kubernetes Shared Cache & Worker Queue Protection (`volatile-lru` & Zero-Cost):**
+   - ภายในคลัสเตอร์ Kubernetes (AKS / Zero-Cost Self-Hosted) อินสแตนซ์ Redis ให้บริการแบบ Centralized Cache ให้กับทุก Pod Replicas ของ `subtracker-api` และทำหน้าที่เป็น Message Broker ให้กับ BullMQ (`subtracker-worker`)
+   - **Eviction Policy Tuning (`volatile-lru`):** กำหนดผ่าน `k8s/redis-configmap.yaml` (`maxmemory 256mb`) เพื่อการันตีความปลอดภัยของคิวงาน Background Workers (คีย์ที่ไม่มีการตั้ง TTL จะไม่ถูกลบเด็ดขาด) และยินยอมให้ลบเฉพาะแคชที่มี TTL เมื่อหน่วยความจำแตะขีดจำกัด
+   - **Zero-Trust Ingress Security:** ปรับแต่ง `k8s/network-policy.yaml` ให้เปิดรับเฉพาะพ็อด `subtracker-api` และ `subtracker-worker` สู่ Redis (TCP 6379) ป้องกันการเชื่อมต่อที่ไม่ได้รับอนุญาตภายใต้โหมด Default Deny
+   - **Zero-Cost Mandate Compliance (Rule 9):** อาศัย Containerized Redis ภายในคลัสเตอร์โดยไม่มีค่าใช้จ่ายคลาวด์รายเดือนจาก PaaS (เช่น Azure Cache for Redis) คงต้นทุน $0 Out-of-pocket
 
 ### โครงสร้างโมเดลฐานข้อมูล (Prisma Schema Entities)
 - `User`: บัญชีผู้ใช้งาน, รหัสผ่านแฮช, PIN แฮช, รายได้รายเดือน
@@ -209,6 +239,7 @@ flowchart LR
 | **Data & Code Gen** | `freezed`, `freezed_annotation`, `json_serializable`, `build_runner` | สร้าง Data Class แบบ Immutable และแปลง JSON อัตโนมัติ |
 | **Functional Tools** | `fpdart` (^1.1.1) | การจัดการผลลัพธ์และข้อผิดพลาดสไตล์ Functional (`Either`, `Option`) |
 | **UI & Assets** | `flutter_launcher_icons`, `flutter_native_splash` | จัดการ Splash Screen และ App Icons ตามมาตรฐานระบบปฏิบัติการ |
+| **In-App Update** | `AppUpdateController`, `AppUpdateDialog` | ตรวจสอบเวอร์ชันผ่าน Remote Manifest บน Azure Blob รองรับทั้ง Optional และ Force Update |
 | **Testing & Quality** | `flutter_test`, `flutter_lints` (^5.0.0), `logger` (^2.5.0) | ทดสอบ Widget/Unit tests และตรวจจับโค้ดตามมาตรฐาน Linter |
 
 ### 🖥️ ฝั่ง Backend (NestJS / TypeScript)
@@ -218,6 +249,7 @@ flowchart LR
 | **Runtime & Language** | Node.js (22-24 LTS), TypeScript (~6.0) | ภาษาและสภาพแวดล้อมรันเซิร์ฟเวอร์ความเร็วสูง |
 | **Package Manager** | **pnpm** (10.2.1) + Corepack | ตัวจัดการแพ็กเกจที่รวดเร็วและประหยัดเนื้อที่ Disk |
 | **Database & ORM** | **Prisma ORM** (^6.4.1), `@prisma/client` | การเชื่อมต่อฐานข้อมูล Type-safe Data Access และ Migration |
+| **Caching Engine** | **ioredis** (^5.9.1), Redis 7 | ไคลเอนต์และตัวจัดการ Distributed Caching ประสิทธิภาพสูง รองรับ TTL และ Invalidation |
 | **Authentication** | `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcrypt`, `bcryptjs` | ระบบยืนยันตัวตนด้วย Access Token, การเข้ารหัส Password & PIN |
 | **Validation** | `class-validator`, `class-transformer`, `zod` | ตรวจสอบ Data Transfer Object (DTO) และ Environment Variables |
 | **API Docs** | `@nestjs/swagger` (^12.0.1) | สร้าง Swagger UI และ OpenAPI 3.0 Documentation อัตโนมัติ |
@@ -227,9 +259,10 @@ flowchart LR
 | กลุ่ม / เลเยอร์ | เครื่องมือ / ไลบรารี | เฟสที่ใช้งาน | ประโยชน์และความสำคัญ |
 |---|---|---|---|
 | **CI/CD Orchestration** | **Jenkins** | Build, Test, Release, Deploy | เครื่องมือ Pipeline Orchestrator ควบคุมการสร้าง ทดสอบ และส่งมอบระบบอัตโนมัติ |
-| **Mobile Delivery** | **Flutter SDK & Test** | Build, Test | คอมไพล์และทดสอบโค้ดแอปพลิเคชันมือถือ |
-| **Mobile Delivery** | **Fastlane** | Release, Deploy | จัดการ Code Signing และส่งมอบแอปเข้าสู่ App Store & Play Store |
-| **Testing & Verification** | **Vitest, Playwright, Docker Compose** | Test | ชุดทดสอบ Unit/Integration API และ E2E UI บนสภาพแวดล้อมจำลอง |
+| **Mobile Runner** | **Flutter & Android SDK Container** | Build, Test | Docker Agent (`cirruslabs/flutter:stable`) รัน Flutter/Android Build พร้อมแคช |
+| **Mobile Delivery** | **Flutter SDK & Test** | Build, Test | คอมไพล์และทดสอบโค้ดแอปพลิเคชันมือถือ (`flutter test --coverage`) |
+| **Mobile Delivery** | **Fastlane & Azure Blob** | Release, Deploy | คอมไพล์ Signed Release APK, ตรวจสอบลายเซ็น และส่งมอบผ่าน Azure Blob Storage |
+| **Testing & Verification** | **Vitest, Playwright, Docker Compose, k6** | Test | ชุดทดสอบ Unit/Integration API, E2E UI, และ Performance/Load Testing ด้วย k6 จำลองพฤติกรรมผู้ใช้และทดสอบเพดานระบบ |
 | **Container Registry** | **GHCR** (GitHub Container Registry) | Release | คลังจัดเก็บ Production Docker Images อย่างปลอดภัย |
 | **GitOps Delivery** | **ArgoCD** | Deploy | ตรวจจับการเปลี่ยนแปลงของ Manifest และ Sync ขึ้น K8s อัตโนมัติ |
 | **Cloud Runtime & IaC** | **Kubernetes, Traefik, Terraform** | Operate | คลัสเตอร์จัดการ Container, Ingress Routing และเครื่องมือจัดการ Cloud Infra แบบโค้ด |
@@ -295,5 +328,12 @@ fvm flutter run -d web-server --web-port 8080
 | **2026-10-02** | **Project Documentation & Agent Rules Cleanup** | ลบโฟลเดอร์ `/doc` ภายในโปรเจกต์ และยุบขอบเขต Agent ให้คงเหลือเพียง `agent.md` เป็นกฎหลัก พร้อมเพิ่มลงใน `.gitignore` โดยรวมศูนย์เอกสารภาพรวมระบบทั้งหมดมาไว้ที่ `SYSTEM_OVERVIEW.md` ฉบับนี้เพียงจุดเดียว ซึ่ง AI Agent จะต้องเข้ามาอัปเดตและอธิบายรายละเอียดทุกครั้งหลังปฏิบัติงานเสร็จสิ้นตาม Rule 6 |
 | **2026-10-03** | **EPICDP 0, 1 & 4 Implementation & Verification** | ผสานรวมระบบ EPICDP 0, 1, 4 บน Branch `EPICDP-0,1-and-4`: เพิ่ม Docker Compose 5-service stack, Kubernetes StatefulSets/CronJob, Ansible Vault templates, และ Jenkins DevSecOps ครบทั้ง SAST (Semgrep/Gitleaks), SCA (pnpm audit), Test Orchestration (tmpfs postgres), Multi-arch Buildx, Trivy, Syft SBOM, DAST (OWASP ZAP) และ ArgoCD GitOps พร้อมแก้ไขปัญหา Local verification: ปรับ `start_period: 60s`, ติดตั้งและเปิดใช้งาน Gitleaks pre-commit บนเครื่อง, และติดตั้ง host dependencies ผ่านการทดสอบ Vitest 187/187 tests |
 | **2026-10-03** | **Cloud Provider Migration to Microsoft Azure (Rule 8 Mandate)** | ปรับเปลี่ยนระบบคลาวด์และโครงสร้างพื้นฐานทั้งหมดจาก AWS สู่ Microsoft Azure: ย้ายฐานสำรองข้อมูลและ DR (DP-103) จาก AWS S3 มาเป็น Azure Blob Storage ด้วย AzCopy/Azure CLI, ปรับโครงสร้างความลับ Ansible Vault & Template (DP-102) เป็น `backup-azure-secret`, กำหนด StorageClass สำหรับ StatefulSet บน AKS เป็น `managed-csi`, และอัปเดต Terraform Provider เป็น `hashicorp/azurerm` |
+| **2026-10-04** | **Distributed Caching Layer & Cross-Service Eviction Suite** | ติดตั้ง `CacheModule` / `CacheService` ด้วย Redis 7 + `ioredis` พร้อม In-Memory Graceful Fallback รองรับ 3 จุดสำคัญ: 1) Auth User Identity (`auth:user:{id}`, TTL 180s) 2) Creep Score Analytics (`cache:user:{id}:creep-score`, TTL 900s) 3) Catalog Presets (`cache:packages:*`, TTL 24h) พร้อมเพิ่ม Unit Test Assertion ยืนยันการทำ Event-driven Cross-Service Eviction บน `SubscriptionsService` และ `UsersService` ผ่านการทดสอบ Vitest ครบ 276/276 tests |
+| **2026-10-04** | **k6 Realistic & Ceiling Stress Load Testing Suite** | พัฒนาชุดทดสอบโหลด `scripts/k6/load-test.js` และ `scripts/k6/run-k6.ps1` จำลองพฤติกรรมผู้ใช้จริง (Browse Catalog, Batch Dashboard 5-endpoint fetch, Savings Optimizer, และ Subscription Mutation triggering Eviction) พร้อมโหมด Ceiling Stress ไต่ระดับ 0 ➔ 500 VUs แบบลด Think Time เพื่อค้นหาคอขวด Event Loop, DB Connection Pool, และวัดประสิทธิภาพการบรรเทาภาระของ Redis Cache |
+| **2026-10-06** | **Kubernetes Zero-Cost Caching & Worker Architecture ($0 Mandate - Rule 9)** | ออกแบบและปรับปรุงคอนฟิก Kubernetes สำหรับระบบ Caching และ Background Worker ให้ปลอดภัย เชื่อถือได้ และไร้ต้นทุน ($0 Out-of-pocket): 1) ปรับ Redis Eviction Policy ใน `k8s/redis-configmap.yaml` เป็น `volatile-lru` ป้องกันไม่ให้ BullMQ Queue Keys (Renewal Reminder Discovery) ถูก Evict ทิ้ง 2) อัปเดต `k8s/network-policy.yaml` ให้ Whitelist พ็อด `subtracker-worker` เข้าถึง Redis พอร์ต 6379 3) สร้าง Kubernetes Deployment & Service Manifests (`k8s/api-deployment.yaml`) รองรับ HPA Auto-scaling ร่วมกับ StatefulSet Redis 4) ทดสอบตรวจสอบ YAML Syntax และรัน Vitest Suite ผ่านครบถ้วน 276/276 tests |
+| **2026-10-06** | **EPICDP 6: Mobile Integration & Direct APK Sideloading Delivery Suite (DP-600 to DP-605)** | ปรับเปลี่ยนยุทธศาสตร์การส่งมอบแอปพลิเคชันมือถือจาก App Store สู่การติดตั้งโดยตรง (Direct APK Sideloading) พร้อมระบบ In-App Update: 1) **DP-600**: ออกแบบ Jenkins Mobile Runner (`Jenkinsfile.mobile`) บน Container `ghcr.io/cirruslabs/flutter:stable` พร้อม Docker volumes สำหรับ `.pub-cache` และ `.gradle` 2) **DP-601**: สร้าง Quality Gate อัตโนมัติ (`flutter analyze` และ `flutter test --coverage`) ผ่านการทดสอบ 61/61 tests 3) **DP-602**: บูรณาการเครื่องมือ Static Security Testing สำหรับ Mobile Binary ด้วย MobSF API (`scripts/cicd/mobsf-scan.sh`) 4) **DP-603**: กำหนด Schema จัดเก็บ Keystore และ Signing Credentials ด้วย Ansible Vault (`vault.example.yml`) ร่วมกับ Gradle Signing Config 5) **DP-604**: พัฒนาระบบ In-App Version Checker & Force Update บน Flutter Client (`AppUpdateController`, `AppUpdateDialog`) ตรวจสอบเวอร์ชันผ่าน Remote Manifest 6) **DP-605**: คอนฟิก Fastlane Lane (`Fastfile`) สำหรับการคอมไพล์ Signed Release APK, ตรวจสอบลายเซ็นใบรับรอง และส่งมอบขึ้น Microsoft Azure Blob Storage พร้อม Manifest `version.json` |
+| **2026-10-06** | **Backend & Mobile Pipeline Quality Gate Remediation** | 1) แก้ไขปัญหา Dependency ใน `apps/server`: ติดตั้ง `google-auth-library`, กำหนด pnpm overrides สำหรับ `proxy-addr`, `source-map-js`, และ `fast-uri` ปิดช่องโหว่ความปลอดภัย, ปรับ `check:security` ใช้นโยบาย `--audit-level=high` สอดคล้องกับ `Jenkinsfile` (DP-402), รัน `pnpm verify` ผ่าน 100% (307/307 Vitest tests passing) 2) แก้ไข Lint Warning ใน `apps/mobile`: ลบ unused import ใน `auth_provider.dart` และจัดระเบียบ constructor ใน `remote_auth_repository.dart` ส่งผลให้ `flutter analyze` ผ่านแบบ Clean (0 issues) และชุดทดสอบ `flutter test` ผ่านครบ 70/70 tests |
+| **2026-10-06** | **Jenkinsfile Trigger Standardization & Robustness** | ปรับปรุง `Jenkinsfile` ในส่วน `triggers`: นำ `githubPush()` ออกและคงเหลือ `pollSCM('H/5 * * * *')` เป็นตัวหลัก เพื่อป้องกันความขัดข้องด้าน Compilation Syntax (`Invalid trigger type "githubPush"`) บน Jenkins Instance ที่ไม่ได้ติดตั้ง GitHub Plugin พร้อมรองรับการรันแบบ On-Premise/Localhost ที่ไม่สามารถรับ Webhook ตรงจากภายนอกได้ |
+
 
 

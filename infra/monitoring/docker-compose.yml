@@ -1,0 +1,169 @@
+# Monitoring stack — DP-5 phase 1 (DP-500 / DP-501).
+#
+# WHERE THIS RUNS: the monitoring VM (the lecturer's VM), NOT the Azure
+# production VM. Nothing in this file is meant to run next to the app.
+#
+# Usage (from this directory, so `.env` and the relative mounts resolve):
+#   cp .env.example .env && $EDITOR .env      # never committed
+#   docker compose pull                        # while the PSU session is up
+#   docker compose up -d
+#   docker compose --profile tunnel build      # phase 3 only
+#
+# Design rules this file follows (see doc/architecture/DP5_monitoring_plan.md §4):
+#   - Published ports bind 127.0.0.1 only. Grafana is reached over
+#     `ssh -L 3000:localhost:3000`, never over the network. Prometheus'
+#     remote-write receiver is therefore only reachable from the host itself
+#     and through the reverse SSH tunnel (phase 3).
+#   - No `container_name:` and a distinct project `name:` — the same host also
+#     runs the unrelated `flash-sale-system` stack, which must not collide.
+#   - Every service pins an exact image tag, sets `mem_limit` and
+#     `restart: unless-stopped`. Limits total 1536 MiB (1568 MiB with the
+#     phase-3 tunnel), on a host with ~5.8 GiB shared with the older stack.
+#   - Persistent data uses named volumes, never bind mounts, so the images'
+#     own uids (grafana 472, loki 10001, prometheus 65534) keep working
+#     without any chown on the host.
+#   - Docker's own logs are capped (x-logging) so a long-running stack cannot
+#     fill the disk.
+name: subscription-monitoring
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  prometheus:
+    # v3.5.x is the current LTS line; .5 is its newest patch. Flags below were
+    # verified against the v3.5.5 source tree before pinning.
+    image: prom/prometheus:v3.5.5
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Both a time and a size bound: the size bound is the one that actually
+      # protects the ~37 GB of free disk if prod ever pushes more than expected.
+      - --storage.tsdb.retention.time=10d
+      - --storage.tsdb.retention.size=3GB
+      # Phase 3: Grafana Alloy on the Azure VM pushes metrics in through the
+      # reverse tunnel. Safe to enable now — the port is loopback-only.
+      - --web.enable-remote-write-receiver
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom-data:/prometheus
+    mem_limit: 512m
+    restart: unless-stopped
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:3.5.10
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    mem_limit: 512m
+    restart: unless-stopped
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Compose refuses to start if this is unset — no default password ever
+      # ships in git.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in infra/monitoring/.env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # DP-504. The webhook URL is never in git: provisioning/alerting/
+      # contact-points.yaml contains the literal string $DISCORD_WEBHOOK_URL,
+      # which Grafana substitutes from this environment at startup. Required
+      # rather than optional on purpose — an unset variable would provision a
+      # contact point that delivers nowhere, and the first time anyone noticed
+      # would be the outage it was supposed to report.
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:?set DISCORD_WEBHOOK_URL in infra/monitoring/.env}
+      # No outbound calls: this host only has internet while a captive-portal
+      # session is alive, and analytics/update pings just add noise and delay.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      # Dashboards live outside /var/lib/grafana on purpose, so the read-only
+      # provisioned files are not nested inside the writable data volume.
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    mem_limit: 384m
+    restart: unless-stopped
+    logging: *default-logging
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.28.0
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    # No published port: only Prometheus talks to it, over the compose network.
+    mem_limit: 64m
+    restart: unless-stopped
+    logging: *default-logging
+
+  node-exporter:
+    # Health of the monitoring VM itself. Deliberately NOT `network_mode: host`
+    # (decision D2): host networking would publish 9100 on the host and can
+    # collide with the node-exporter the flash-sale-system stack already runs.
+    # Consequence: CPU / memory / disk are the host's (thanks to `pid: host`
+    # and --path.rootfs), but node_network_* metrics describe this container's
+    # network namespace, not the host's. See README "ข้อจำกัดที่รู้อยู่".
+    image: prom/node-exporter:v1.9.1
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Phase 3 only — not started by a plain `up`:
+  #   docker compose --profile tunnel build
+  #   docker compose --profile tunnel up -d
+  # Opens the reverse SSH tunnel to the Azure production VM so Alloy there can
+  # push to 127.0.0.1:9090 / 127.0.0.1:3100 on ITS side. Requires ./secrets/
+  # (private key + a known_hosts whose fingerprint you verified by hand).
+  tunnel:
+    profiles: ["tunnel"]
+    build: ./tunnel
+    command: >
+      -M 0 -N
+      -o ServerAliveInterval=15
+      -o ServerAliveCountMax=3
+      -o ExitOnForwardFailure=yes
+      -o UserKnownHostsFile=/secrets/known_hosts
+      -o StrictHostKeyChecking=yes
+      -o IdentitiesOnly=yes
+      -i /secrets/id_azure_tunnel
+      -R 127.0.0.1:9090:prometheus:9090
+      -R 127.0.0.1:3100:loki:3100
+      tunnel@${AZURE_HOST:?set AZURE_HOST in infra/monitoring/.env}
+    environment:
+      # Reconnect even if the previous session died in under 30s, which is what
+      # happens when the university captive-portal session expires.
+      AUTOSSH_GATETIME: "0"
+    volumes:
+      - ./secrets:/secrets:ro
+    depends_on:
+      - prometheus
+      - loki
+    mem_limit: 32m
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  prom-data:
+  loki-data:
+  grafana-data:

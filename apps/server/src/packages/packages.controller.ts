@@ -14,7 +14,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PackagesService } from './packages.service';
+import { PackageItem, PackagesService } from './packages.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 import { QueryPackageDto } from './dto/query-package.dto';
@@ -28,7 +28,7 @@ export class PackagesController {
   @Get()
   @ApiOperation({ summary: 'List and search preset packages catalog' })
   @ApiResponse({ status: 200, description: 'List of preset packages' })
-  async findAll(@Query() query: QueryPackageDto) {
+  async findAll(@Query() query: QueryPackageDto): Promise<PackageItem[]> {
     return this.packagesService.findAll(query);
   }
 
@@ -36,7 +36,7 @@ export class PackagesController {
   @ApiOperation({ summary: 'Get details of a single preset package' })
   @ApiResponse({ status: 200, description: 'Package details' })
   @ApiResponse({ status: 404, description: 'Package not found' })
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<PackageItem> {
     return this.packagesService.findOne(id);
   }
 

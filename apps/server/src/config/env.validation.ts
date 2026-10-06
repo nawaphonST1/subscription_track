@@ -1,26 +1,49 @@
 import { z } from 'zod';
 
-const nodeEnvironments = ['development', 'test', 'production'] as const;
+import {
+  nodeEnvironments,
+  rejectEphemeralMetricsPortInProduction,
+} from './metrics-port.validation';
 
-const environmentSchema = z.object({
-  NODE_ENV: z.enum(nodeEnvironments).default('development'),
-  APP_HOST: z.string().trim().min(1).default('0.0.0.0'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  DB_HOST: z.string().trim().min(1, 'DB_HOST is required'),
-  DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
-  DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),
-  DB_USER: z.string().trim().min(1, 'DB_USER is required'),
-  DB_PASSWORD: z.string().trim().min(1, 'DB_PASSWORD is required'),
-  // Note: 32 characters is a syntactic length floor, NOT an entropy guarantee.
-  // Production JWT secrets must be generated using a CSPRNG providing at least 256 bits of entropy.
-  JWT_SECRET: z
-    .string()
-    .min(1, 'JWT_SECRET is required')
-    .min(32, 'JWT_SECRET must be at least 32 characters long')
-    .refine((value) => value === value.trim(), {
-      message: 'JWT_SECRET must not have leading or trailing whitespace',
-    }),
-});
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(nodeEnvironments).default('development'),
+    APP_HOST: z.string().trim().min(1).default('0.0.0.0'),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    // Internal Prometheus endpoint, served on its own HTTP server and never
+    // published to the host or proxied by nginx. 0 asks the OS for a free port,
+    // which is what tests use; the refinement below rejects it in production.
+    METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+    // Rolling window for the `active_users` gauge. Counted in process memory
+    // from authenticated requests; no user id ever leaves the process.
+    ACTIVE_USERS_WINDOW_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(86400)
+      .default(900),
+    DB_HOST: z.string().trim().min(1, 'DB_HOST is required'),
+    DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
+    DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),
+    DB_USER: z.string().trim().min(1, 'DB_USER is required'),
+    DB_PASSWORD: z.string().trim().min(1, 'DB_PASSWORD is required'),
+    // Note: 32 characters is a syntactic length floor, NOT an entropy guarantee.
+    // Production JWT secrets must be generated using a CSPRNG providing at least 256 bits of entropy.
+    JWT_SECRET: z
+      .string()
+      .min(1, 'JWT_SECRET is required')
+      .min(32, 'JWT_SECRET must be at least 32 characters long')
+      .refine((value) => value === value.trim(), {
+        message: 'JWT_SECRET must not have leading or trailing whitespace',
+      }),
+  })
+  .superRefine((environment, context) => {
+    rejectEphemeralMetricsPortInProduction(
+      environment.NODE_ENV,
+      environment.METRICS_PORT,
+      context,
+    );
+  });
 
 export type EnvironmentVariables = z.output<typeof environmentSchema>;
 

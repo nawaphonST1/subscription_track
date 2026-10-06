@@ -75,6 +75,58 @@ class InMemoryAuthRepository implements AuthRepository {
     return right(_currentUser!);
   }
 
+    @override
+  Future<Either<Failure, User>> registerWithEmail({
+    required String email,
+    required String password,
+    String? name,
+  }) async {
+    logger.i('Mock Register with Email: $email');
+    await Future.delayed(const Duration(seconds: 1));
+
+    // สมมติว่าลงทะเบียนสำเร็จ
+    _currentUser = User(
+      id: 'mock-email-user-${DateTime.now().millisecondsSinceEpoch}',
+      email: email,
+      name: name ?? 'New User',
+      authProvider: 'email',
+      //income: 0, // เริ่มต้นด้วย 0
+      currency: 'THB',
+      creditCards: [], // เริ่มต้นไม่มีบัตร
+    );
+
+    return right(_currentUser!);
+  }
+
+  @override
+  Future<Either<Failure, User>> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    logger.i('Mock Login with Email: $email');
+    await Future.delayed(const Duration(seconds: 1));
+
+    _currentUser = User(
+      id: 'mock-email-user-login',
+      email: email,
+      name: email.split('@').first,
+      authProvider: 'email',
+      currency: 'THB',
+      creditCards: const [
+        CreditCard(
+          id: 'card-1',
+          bankName: 'KBank',
+          last4Digits: '4242',
+          creditLimit: 50000.0,
+          currentBalance: 12500.0,
+          cardColor: '#00A859',
+        ),
+      ],
+    );
+
+    return right(_currentUser!);
+  }
+
   @override
   Future<Either<Failure, Unit>> logout() async {
     logger.i('Logout');

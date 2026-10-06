@@ -2,16 +2,23 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { BusinessMetrics } from '../metrics/business.metrics';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly metrics?: BusinessMetrics,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -80,6 +87,15 @@ export class UsersService {
         },
       });
 
+      if (this.cacheService) {
+        if (dto.name !== undefined) {
+          await this.cacheService.del(`auth:user:${userId}`);
+        }
+        if (dto.monthly_income !== undefined) {
+          await this.cacheService.del(`cache:user:${userId}:creep-score`);
+        }
+      }
+
       return {
         id: user.id,
         email: user.email,
@@ -113,6 +129,10 @@ export class UsersService {
       },
     });
 
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+    }
+
     return {
       id: user.id,
       monthly_income: Number(user.monthly_income),
@@ -130,6 +150,8 @@ export class UsersService {
     }
 
     const isValid = await bcrypt.compare(pin, user.security_pin_hash);
+    this.metrics?.recordLogin(isValid ? 'success' : 'failure', 'pin');
+
     return { valid: isValid };
   }
 
@@ -170,6 +192,10 @@ export class UsersService {
         },
       }),
     ]);
+
+    if (this.cacheService) {
+      await this.cacheService.del(`auth:user:${userId}`);
+    }
 
     return {
       message: 'Security PIN changed successfully',

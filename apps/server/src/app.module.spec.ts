@@ -1,4 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
+import { BusinessMetrics } from './metrics/business.metrics';
+import { HttpMetrics } from './metrics/http.metrics';
+import { MetricsServerService } from './metrics/metrics-server.service';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 describe('AppModule', () => {
@@ -35,5 +39,27 @@ describe('AppModule', () => {
 
   it('should compile the root AppModule successfully', () => {
     expect(moduleRef).toBeDefined();
+  });
+
+  // The business counters are injected with `@Optional()`, so deleting the
+  // MetricsModule import from AppModule would compile and run with every
+  // other test green while all business and HTTP metrics silently vanished.
+  // The metrics integration specs cannot catch that: they import
+  // MetricsModule directly instead of booting AppModule.
+  it('wires the metrics providers into the API container', () => {
+    expect(moduleRef.get(BusinessMetrics)).toBeInstanceOf(BusinessMetrics);
+    expect(moduleRef.get(HttpMetrics)).toBeInstanceOf(HttpMetrics);
+    expect(moduleRef.get(MetricsServerService)).toBeInstanceOf(
+      MetricsServerService,
+    );
+  });
+
+  it('hands AuthService a real BusinessMetrics rather than undefined', async () => {
+    const { AuthService } = await import('./auth/auth.service');
+    const service = moduleRef.get(AuthService);
+
+    expect(
+      (service as unknown as { metrics?: BusinessMetrics }).metrics,
+    ).toBeInstanceOf(BusinessMetrics);
   });
 });

@@ -1,0 +1,6 @@
+# Real values for this stack — created by hand on the Azure production VM.
+.env
+
+!.env.example
+!.gitignore
+!tests/log-pipeline/nginx-access.log

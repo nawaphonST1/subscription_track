@@ -20,7 +20,22 @@ services:
       timeout: 5s
       retries: 5
 
-  # 2. NestJS API Service (รันโหมด Dev พร้อม Hot-reload)
+  # 2. Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: subtracker_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. NestJS API Service (รันโหมด Dev พร้อม Hot-reload)
   api:
     build:
       context: .
@@ -30,6 +45,8 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       NODE_ENV: development
@@ -41,6 +58,9 @@ services:
       DB_USER: postgres
       DB_PASSWORD: password123
       DATABASE_URL: "postgresql://postgres:password123@postgres:5432/subtracker_db?schema=public"
+      JWT_SECRET: ${JWT_SECRET:-dev-only-local-secret-not-for-production-min-32-chars-long}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - ./src:/app/src
       - ./prisma:/app/prisma
@@ -49,3 +69,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

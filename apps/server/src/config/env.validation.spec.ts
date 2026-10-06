@@ -34,7 +34,30 @@ describe('validateEnvironment', () => {
       DB_USER: 'subscription_track',
       DB_PASSWORD: 'test-password',
       JWT_SECRET: TEST_JWT_SECRET,
+      METRICS_PORT: 9464,
+      ACTIVE_USERS_WINDOW_SECONDS: 900,
     });
+  });
+
+  it('defaults ACTIVE_USERS_WINDOW_SECONDS to 15 minutes', () => {
+    expect(
+      validateEnvironment(validEnvironment).ACTIVE_USERS_WINDOW_SECONDS,
+    ).toBe(900);
+  });
+
+  it('defaults METRICS_PORT to the internal Prometheus port', () => {
+    expect(validateEnvironment(validEnvironment).METRICS_PORT).toBe(9464);
+  });
+
+  it('accepts an explicit METRICS_PORT, including 0 for an OS-assigned port', () => {
+    expect(
+      validateEnvironment({ ...validEnvironment, METRICS_PORT: '9465' })
+        .METRICS_PORT,
+    ).toBe(9465);
+    expect(
+      validateEnvironment({ ...validEnvironment, METRICS_PORT: '0' })
+        .METRICS_PORT,
+    ).toBe(0);
   });
 
   it('accepts a Docker Compose service name as DB_HOST', () => {

@@ -12,3 +12,15 @@ abstract class Failure with _$Failure {
   const factory Failure.cacheError(String message) = _CacheError;
   const factory Failure.unknown(String message) = _Unknown;
 }
+
+extension FailureX on Failure {
+  String get displayMessage => when(
+        serverError: (message) => message,
+        networkError: () => 'ไม่สามารถเชื่อมต่อเครือข่ายได้',
+        notFound: () => 'ไม่พบข้อมูลในระบบ',
+        unauthorized: () => 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+        validationError: (field, message) => message,
+        cacheError: (message) => message,
+        unknown: (message) => message,
+      );
+}
