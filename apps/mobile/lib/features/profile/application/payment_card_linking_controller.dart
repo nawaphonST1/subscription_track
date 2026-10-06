@@ -58,6 +58,20 @@ final class PaymentCardLinkingController
     }
   }
 
+  Future<void> deleteCard(String id, {String? pin}) async {
+    final previous = await future;
+    state = AsyncData<List<PaymentCard>>(
+      previous.where((item) => item.id != id).toList(growable: false),
+    );
+
+    try {
+      await _repository.deleteCard(id, pin: pin);
+    } catch (error, stackTrace) {
+      state = AsyncData<List<PaymentCard>>(previous);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
   Subscription _toSubscription(DetectedSubscription detected) {
     return Subscription(
       id: detected.id,
