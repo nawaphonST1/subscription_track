@@ -150,10 +150,12 @@ export class PackagesService {
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.category !== undefined && { category: dto.category }),
-        ...((dto.default_price !== undefined || dto.defaultPrice !== undefined) && {
+        ...((dto.default_price !== undefined ||
+          dto.defaultPrice !== undefined) && {
           default_price: dto.default_price ?? dto.defaultPrice,
         }),
-        ...((dto.billing_cycle !== undefined || dto.billingCycle !== undefined) && {
+        ...((dto.billing_cycle !== undefined ||
+          dto.billingCycle !== undefined) && {
           billing_cycle: dto.billing_cycle ?? dto.billingCycle,
         }),
         ...((dto.brand_color !== undefined || dto.brandColor !== undefined) && {

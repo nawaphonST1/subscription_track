@@ -34,7 +34,8 @@ export class AdminUsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get system-wide overview statistics for admin dashboard',
-    description: 'Returns total users, active subscriptions, cards, and packages in the system.',
+    description:
+      'Returns total users, active subscriptions, cards, and packages in the system.',
   })
   @ApiResponse({
     status: 200,
@@ -49,7 +50,8 @@ export class AdminUsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get all users in the system',
-    description: 'Returns all registered users with subscription and payment card counts.',
+    description:
+      'Returns all registered users with subscription and payment card counts.',
   })
   @ApiResponse({
     status: 200,
@@ -74,12 +76,10 @@ export class AdminUsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update user profile by ID (Admin action)',
-    description: 'Allows administrator to update user name, role, or monthly income.',
+    description:
+      'Allows administrator to update user name, role, or monthly income.',
   })
-  async updateUser(
-    @Param('id') id: string,
-    @Body() dto: UpdateAdminUserDto,
-  ) {
+  async updateUser(@Param('id') id: string, @Body() dto: UpdateAdminUserDto) {
     return this.adminUsersService.updateUser(id, dto);
   }
 
@@ -87,7 +87,8 @@ export class AdminUsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update user subscription by ID (Admin action)',
-    description: 'Allows administrator to edit any user subscription details (name, price, status, billing cycle, renewal date, etc.)',
+    description:
+      'Allows administrator to edit any user subscription details (name, price, status, billing cycle, renewal date, etc.)',
   })
   async updateSubscription(
     @Param('id') id: string,
@@ -110,7 +111,8 @@ export class AdminUsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete user by ID',
-    description: 'Deletes a user and their associated subscriptions/cards from the system.',
+    description:
+      'Deletes a user and their associated subscriptions/cards from the system.',
   })
   @ApiParam({
     name: 'id',

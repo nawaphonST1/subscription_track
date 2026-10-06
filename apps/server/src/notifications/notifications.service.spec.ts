@@ -91,7 +91,7 @@ describe('NotificationsService', () => {
   });
 
   describe('removeAll', () => {
-    it('deletes only the requesting user\'s notifications and reports the count', async () => {
+    it("deletes only the requesting user's notifications and reports the count", async () => {
       prismaMock.notification.deleteMany.mockResolvedValue({ count: 3 });
 
       const result = await service.removeAll('user-1');

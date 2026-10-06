@@ -43,7 +43,8 @@ export class HealthService {
     if (isMaintenance) {
       return {
         status: 'maintenance',
-        message: 'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
+        message:
+          'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
         checks: {
           database: 'ok',
           maintenance: true,

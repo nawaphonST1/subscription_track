@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ExecutionContext, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  MaintenanceGuard,
-  MAINTENANCE_MESSAGE,
-} from './maintenance.guard';
+import { MaintenanceGuard, MAINTENANCE_MESSAGE } from './maintenance.guard';
 
 function createMockContext(url: string): ExecutionContext {
   const req = { url };
