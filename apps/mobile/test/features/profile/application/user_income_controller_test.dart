@@ -67,7 +67,7 @@ void main() {
       expect(container.read(userIncomeProvider), 40000);
     });
 
-    test('falls back to 35,000 when no user or cards are present', () {
+    test('falls back to 0.0 when no user or cards are present', () {
       final container = ProviderContainer(
         overrides: [
           authProvider.overrideWith(() => _MockAuthNotifier(null)),
@@ -75,7 +75,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      expect(container.read(userIncomeProvider), 35000);
+      expect(container.read(userIncomeProvider), 0.0);
     });
   });
 

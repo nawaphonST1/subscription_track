@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { LinkMockCardDto } from './dto/link-mock-card.dto';
 import { BillingCycle, NotificationType, UsageStatus } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
-import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class PaymentCardsService {
@@ -229,6 +233,49 @@ export class PaymentCardsService {
   }
 
   async linkMockCard(userId: string, dto: LinkMockCardDto) {
+    const targetId = dto.card_id || dto.mock_card_id;
+
+    if (targetId) {
+      const existingPaymentCard = await this.prisma.paymentCard.findUnique({
+        where: { id: targetId },
+      });
+
+      if (existingPaymentCard) {
+        if (existingPaymentCard.user_id !== userId) {
+          throw new ForbiddenException(
+            'This card does not belong to your account.',
+          );
+        }
+
+        if (!existingPaymentCard.is_active) {
+          await this.prisma.paymentCard.update({
+            where: { id: existingPaymentCard.id },
+            data: { is_active: true },
+          });
+        }
+
+        if (this.cacheService) {
+          await this.cacheService.del(`cache:user:${userId}:creep-score`);
+        }
+
+        return {
+          card: {
+            id: existingPaymentCard.id,
+            card_nickname: existingPaymentCard.card_nickname,
+            card_brand: existingPaymentCard.card_brand,
+            card_type: existingPaymentCard.card_type,
+            last_4_digits: existingPaymentCard.last_4_digits,
+            bank_name: existingPaymentCard.bank_name,
+            balance: Number(existingPaymentCard.balance),
+            currency: existingPaymentCard.currency,
+            is_default: existingPaymentCard.is_default,
+          },
+          imported_subscriptions_count: 0,
+          imported_subscriptions: [],
+        };
+      }
+    }
+
     let mockCard = null;
 
     if (dto.mock_card_id) {

@@ -217,7 +217,7 @@ void main() {
     final initialRisk = tester.widget<Text>(
       find.byKey(const Key('creep-risk-value')),
     );
-    expect(initialRisk.data, contains('6.3%'));
+    expect(initialRisk.data, contains('0.0%'));
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(MainNavigationShell)),

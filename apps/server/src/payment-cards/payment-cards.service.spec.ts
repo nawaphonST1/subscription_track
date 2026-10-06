@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PaymentCardsService } from './payment-cards.service';
 import { BillingCycle, CardType } from '@prisma/client';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 describe('PaymentCardsService', () => {
   let service: PaymentCardsService;
@@ -12,6 +12,7 @@ describe('PaymentCardsService', () => {
       paymentCard: {
         findMany: vi.fn(),
         findFirst: vi.fn(),
+        findUnique: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),
@@ -70,7 +71,59 @@ describe('PaymentCardsService', () => {
   });
 
   describe('linkMockCard', () => {
+    it('should throw ForbiddenException when card belongs to another user', async () => {
+      prismaMock.paymentCard.findUnique.mockResolvedValue({
+        id: 'card-user-2',
+        user_id: 'user-2',
+        card_nickname: 'Other User Card',
+        bank_name: 'Kasikornbank',
+      });
+
+      await expect(
+        service.linkMockCard('user-1', { card_id: 'card-user-2' }),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.linkMockCard('user-1', { card_id: 'card-user-2' }),
+      ).rejects.toThrow('This card does not belong to your account.');
+    });
+
+    it('should link/activate card when card belongs to current user', async () => {
+      const ownCard = {
+        id: 'card-user-1',
+        user_id: 'user-1',
+        card_nickname: 'My Saved Card',
+        card_brand: 'Visa',
+        card_type: CardType.CREDIT,
+        last_4_digits: '4321',
+        bank_name: 'SCB',
+        balance: 25000,
+        currency: 'THB',
+        is_default: true,
+        is_active: false,
+      };
+
+      prismaMock.paymentCard.findUnique.mockResolvedValue(ownCard);
+      prismaMock.paymentCard.update.mockResolvedValue({
+        ...ownCard,
+        is_active: true,
+      });
+
+      const result = await service.linkMockCard('user-1', {
+        card_id: 'card-user-1',
+      });
+
+      expect(prismaMock.paymentCard.update).toHaveBeenCalledWith({
+        where: { id: 'card-user-1' },
+        data: { is_active: true },
+      });
+      expect(result.card.id).toBe('card-user-1');
+      expect(result.card.balance).toBe(25000);
+      expect(result.imported_subscriptions_count).toBe(0);
+    });
+
     it('should throw NotFoundException when no matching mock card exists', async () => {
+      prismaMock.paymentCard.findUnique.mockResolvedValue(null);
       prismaMock.mockBankCard.findUnique.mockResolvedValue(null);
 
       await expect(

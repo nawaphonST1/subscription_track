@@ -75,8 +75,8 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
     final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      // backend's LinkMockCardDto expects "mock_card_id", not "id"
-      body: jsonEncode({'mock_card_id': id}),
+      // backend's LinkMockCardDto accepts "mock_card_id" and "card_id"
+      body: jsonEncode({'mock_card_id': id, 'card_id': id}),
     );
     final result = unwrapEnvelope(response, (data) {
       final cardJson = data['card'];
@@ -87,8 +87,13 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
       return _mapJsonToCard(cardJson);
     });
     return result.fold(
-      (failure) => throw Exception(
-          'Failed to link card (HTTP ${response.statusCode}): ${failure.displayMessage}'),
+      (failure) {
+        if (response.statusCode == 403) {
+          throw Exception('This card does not belong to your account.');
+        }
+        throw Exception(
+            'Failed to link card (HTTP ${response.statusCode}): ${failure.displayMessage}');
+      },
       (card) => card,
     );
   }

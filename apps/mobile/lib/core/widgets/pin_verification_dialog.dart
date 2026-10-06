@@ -157,77 +157,81 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
             ),
           ),
           const SizedBox(height: 24),
-          // Hidden TextField to receive numeric input
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Opacity(
-                opacity: 0,
-                child: SizedBox(
-                  width: 0,
-                  height: 0,
-                  child: TextField(
-                    controller: _pinController,
-                    focusNode: _focusNode,
-                    enabled: !_isLoading,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    onChanged: (val) {
-                      setState(() {
-                        if (_errorMessage != null) {
-                          _errorMessage = null;
+          // PIN input: Visual boxes underneath + transparent TextField on top spanning the exact area
+          SizedBox(
+            width: 280,
+            height: 50,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(6, (index) {
+                      final hasValue = index < text.length;
+                      final isFocused = _focusNode.hasFocus && index == text.length;
+
+                      return Container(
+                        width: 40,
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _errorMessage != null
+                                ? AppColors.danger
+                                : isFocused
+                                    ? theme.colorScheme.primary
+                                    : theme.dividerColor,
+                            width: isFocused || _errorMessage != null ? 2 : 1,
+                          ),
+                        ),
+                        child: Text(
+                          hasValue ? '•' : '',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.0,
+                    child: TextField(
+                      key: const Key('verify_pin_text_field'),
+                      controller: _pinController,
+                      focusNode: _focusNode,
+                      autofocus: true,
+                      enabled: !_isLoading,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          if (_errorMessage != null) {
+                            _errorMessage = null;
+                          }
+                        });
+                        if (val.length == 6) {
+                          _verifyPin(val);
                         }
-                      });
-                      if (val.length == 6) {
-                        _verifyPin(val);
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      counterText: '',
+                      },
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              // PIN Boxes
-              GestureDetector(
-                onTap: _isLoading ? null : () => _focusNode.requestFocus(),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (index) {
-                    final hasValue = index < text.length;
-                    final isFocused = _focusNode.hasFocus && index == text.length;
-
-                    return Container(
-                      width: 40,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _errorMessage != null
-                              ? AppColors.danger
-                              : isFocused
-                                  ? theme.colorScheme.primary
-                                  : theme.dividerColor,
-                          width: isFocused || _errorMessage != null ? 2 : 1,
-                        ),
-                      ),
-                      child: Text(
-                        hasValue ? '•' : '',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (_isLoading) ...[
             const SizedBox(height: 16),

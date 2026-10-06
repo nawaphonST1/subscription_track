@@ -12,8 +12,15 @@ import 'package:subscription_track/features/auth/presentation/register_screen.da
 import 'package:subscription_track/features/auth/presentation/setup_pin_screen.dart';
 import 'package:subscription_track/features/notifications/presentation/notification_center_screen.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:subscription_track/features/dashboard/presentation/dashboard_tab.dart';
+import 'package:subscription_track/features/profile/application/user_income_controller.dart';
+import 'package:subscription_track/features/profile/presentation/income_editor_sheet.dart';
+import 'package:subscription_track/features/profile/presentation/profile_tab.dart';
+import 'package:subscription_track/features/savings/presentation/savings_tab.dart';
+import 'package:subscription_track/features/settings/presentation/settings_tab.dart';
 import 'package:subscription_track/features/subscriptions/presentation/add_subscription_screen.dart';
 import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
+import 'package:subscription_track/features/subscriptions/presentation/subscriptions_tab.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
@@ -116,28 +123,76 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteConstants.setupPin,
         builder: (context, state) => const SetupPinScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => MainNavigationShell(
-          child: state.uri.path == RouteConstants.dashboard ? null : child,
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => MainNavigationShell(
+          navigationShell: navigationShell,
+          state: state,
         ),
-        routes: [
-          GoRoute(
-            path: RouteConstants.dashboard,
-            builder: (context, state) => const SizedBox.shrink(),
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: RouteConstants.notifications,
-                builder: (context, state) => const NotificationCenterScreen(),
-              ),
-              GoRoute(
-                path: RouteConstants.addSubscription,
-                builder: (context, state) => const AddSubscriptionScreen(),
+                path: RouteConstants.dashboard,
+                builder: (context, state) => const DashboardTab(),
                 routes: [
                   GoRoute(
-                    path: RouteConstants.selectPackage,
-                    builder: (context, state) => const SelectPackageScreen(),
+                    path: RouteConstants.notifications,
+                    builder: (context, state) =>
+                        const NotificationCenterScreen(),
+                  ),
+                  GoRoute(
+                    path: RouteConstants.addSubscription,
+                    builder: (context, state) =>
+                        const AddSubscriptionScreen(),
+                    routes: [
+                      GoRoute(
+                        path: RouteConstants.selectPackage,
+                        builder: (context, state) =>
+                            const SelectPackageScreen(),
+                      ),
+                    ],
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.subscriptions,
+                builder: (context, state) => const SubscriptionsTab(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.savings,
+                builder: (context, state) => const SavingsTab(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.settings,
+                builder: (context, state) => const SettingsTab(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.profile,
+                builder: (context, state) => ProfileTab(
+                  onEditIncome: () {
+                    final income = ref.read(userIncomeProvider);
+                    showIncomeEditorSheet(
+                      context: context,
+                      currentIncome: income,
+                    );
+                  },
+                ),
               ),
             ],
           ),

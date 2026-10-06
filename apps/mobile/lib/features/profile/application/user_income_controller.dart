@@ -6,7 +6,7 @@ final userIncomeProvider = NotifierProvider<UserIncomeController, double>(
 );
 
 final class UserIncomeController extends Notifier<double> {
-  static const double fallbackIncome = 35000.0;
+  static const double fallbackIncome = 0.0;
 
   @override
   double build() {
@@ -26,7 +26,7 @@ final class UserIncomeController extends Notifier<double> {
       if (totalBalance > 0) return totalBalance;
     }
 
-    // 3. UI fallback ค่าเริ่มต้นสุดท้าย 35,000 บาท หากเน็ตหลุดหรือไม่พบค่ายอดเงิน
+    // 3. คืนค่าเริ่มต้น 0.0 (ไม่มีข้อมูลรายได้หรือบัตร ไม่ฮาร์ดโค้ด 35,000)
     return fallbackIncome;
   }
 

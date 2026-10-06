@@ -218,6 +218,37 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+
+    test('throws Exception with specific message on HTTP 403 Forbidden', () async {
+      final mockInner = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': false,
+            'statusCode': 403,
+            'message': 'This card does not belong to your account.',
+            'error': 'Forbidden',
+          }),
+          403,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      expect(
+        () => repository.linkCard('student01-card-id'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('This card does not belong to your account.'),
+          ),
+        ),
+      );
+    });
   });
 
   group('RemotePaymentCardRepository.getLinkedCards field mapping', () {
