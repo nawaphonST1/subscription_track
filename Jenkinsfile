@@ -95,7 +95,8 @@ pipeline {
 
                                 node -e '
                                     const fs = require("fs");
-                                    const auditPath = "${WORKSPACE}/pnpm-audit.json";
+                                    const path = require("path");
+                                    const auditPath = path.resolve(process.env.WORKSPACE || ".", "pnpm-audit.json");
                                     if (fs.existsSync(auditPath) && fs.statSync(auditPath).size > 0) {
                                         try {
                                             const data = JSON.parse(fs.readFileSync(auditPath, "utf8"));
