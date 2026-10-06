@@ -1,27 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_track/features/subscriptions/domain/preset_package.dart';
-import 'package:subscription_track/features/subscriptions/domain/preset_package_catalog.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/features/subscriptions/data/remote_package_repository.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/preset_package_grid.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/preset_search_field.dart';
 
-class SelectPackageScreen extends StatefulWidget {
+class SelectPackageScreen extends ConsumerStatefulWidget {
   const SelectPackageScreen({super.key});
 
   @override
-  State<SelectPackageScreen> createState() => _SelectPackageScreenState();
+  ConsumerState<SelectPackageScreen> createState() => _SelectPackageScreenState();
 }
 
-class _SelectPackageScreenState extends State<SelectPackageScreen> {
+class _SelectPackageScreenState extends ConsumerState<SelectPackageScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-
-  List<PresetPackage> get _visiblePackages {
-    final query = _searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return presetPackageCatalog;
-    return presetPackageCatalog
-        .where((package) => package.name.toLowerCase().contains(query))
-        .toList(growable: false);
-  }
 
   @override
   void dispose() {
@@ -32,6 +24,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final packagesAsync = ref.watch(packagesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -73,9 +66,48 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: PresetPackageGrid(
-                  packages: _visiblePackages,
-                  onSelected: (package) => Navigator.pop(context, package),
+                child: packagesAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (error, _) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          size: 48,
+                          color: Colors.redAccent,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'ไม่สามารถโหลดข้อมูลแพ็กเกจได้',
+                          style: TextStyle(
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: () => ref.invalidate(packagesProvider),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('ลองใหม่อีกครั้ง'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (packages) {
+                    final query = _searchQuery.trim().toLowerCase();
+                    final visiblePackages = query.isEmpty
+                        ? packages
+                        : packages
+                            .where((p) => p.name.toLowerCase().contains(query))
+                            .toList(growable: false);
+
+                    return PresetPackageGrid(
+                      packages: visiblePackages,
+                      onSelected: (package) => Navigator.pop(context, package),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 20),
@@ -86,3 +118,4 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
     );
   }
 }
+
