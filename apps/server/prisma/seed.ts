@@ -1,4 +1,5 @@
 import { PrismaClient, CardType, BillingCycle } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -223,6 +224,30 @@ async function main() {
   }
 
   console.log(`Configured ${mockCards.length} mock bank cards with pre-attached services.`);
+
+  // 3. Default System Administrator Account
+  const adminEmail = 'admin@subtracker.com';
+  const adminPasswordHash = await bcrypt.hash('AdminPassword123!', 10);
+  const adminPinHash = await bcrypt.hash('999999', 10);
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      role: 'ADMIN' as any,
+      password_hash: adminPasswordHash,
+      security_pin_hash: adminPinHash,
+    },
+    create: {
+      email: adminEmail,
+      name: 'System Administrator',
+      password_hash: adminPasswordHash,
+      security_pin_hash: adminPinHash,
+      role: 'ADMIN' as any,
+      monthly_income: 100000,
+    },
+  });
+  console.log(`Configured default admin account: ${adminEmail} (password: AdminPassword123!)`);
+
   console.log('Seeding completed successfully.');
 }
 

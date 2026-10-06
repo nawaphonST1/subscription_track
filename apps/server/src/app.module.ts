@@ -16,12 +16,14 @@ import { CreepScoreModule } from './creep-score/creep-score.module';
 import { SavingsModule } from './savings/savings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminPackagesModule } from './admin/packages/admin-packages.module';
+import { AdminUsersModule } from './admin/users/admin-users.module';
 import { DeviceRegistrationsModule } from './device-registrations/device-registrations.module';
 import { PackagesModule } from './packages/packages.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { CacheModule } from './cache/cache.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { SecurityModule } from './common/security/security.module';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PinSetupGuard } from './common/guards/pin-setup.guard';
 import { SecurityPinGuard } from './common/guards/security-pin.guard';
@@ -53,12 +55,17 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     SavingsModule,
     NotificationsModule,
     AdminPackagesModule,
+    AdminUsersModule,
     DeviceRegistrationsModule,
     PackagesModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

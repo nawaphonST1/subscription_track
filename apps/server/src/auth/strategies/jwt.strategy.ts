@@ -9,6 +9,7 @@ import { CacheService } from '../../cache/cache.service';
 export interface JwtPayload {
   sub: string;
   email: string;
+  role?: string;
 }
 
 @Injectable()
@@ -33,6 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         id: string;
         email: string;
         name: string;
+        role: string;
       }>(cacheKey);
       if (cached) {
         this.activeUsers?.record(cached.id);
@@ -46,6 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         id: true,
         email: true,
         name: true,
+        role: true,
       },
     });
 

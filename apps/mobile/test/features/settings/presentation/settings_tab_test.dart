@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/app/application/theme_mode_controller.dart';
 import 'package:subscription_track/core/theme/app_theme.dart';
+import 'package:subscription_track/features/admin/application/admin_controller.dart';
 import 'package:subscription_track/features/settings/application/notification_reminder_controller.dart';
 import 'package:subscription_track/features/settings/presentation/settings_tab.dart';
 
@@ -62,5 +63,35 @@ void main() {
     final container = ProviderScope.containerOf(element);
     expect(container.read(notificationReminderProvider), isFalse);
     expect(container.read(themeModeProvider), ThemeMode.dark);
+  });
+
+  testWidgets('does not display admin portal tile when user is not admin', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildSettingsApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('ระบบจัดการผู้ดูแล (Admin Portal)'), findsNothing);
+  });
+
+  testWidgets('displays admin portal tile when user is admin', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          isAdminUserProvider.overrideWith((ref) => Future.value(true)),
+        ],
+        child: Consumer(
+          builder: (context, ref, _) => MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(body: SettingsTab()),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('ระบบจัดการผู้ดูแล (Admin Portal)'), findsOneWidget);
   });
 }

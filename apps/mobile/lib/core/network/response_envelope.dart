@@ -41,6 +41,11 @@ Either<Failure, T> unwrapEnvelope<T>(
   try {
     decoded = jsonDecode(response.body);
   } catch (_) {
+    if (statusCode == 503) {
+      return left(const Failure.serverError(
+        'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
+      ));
+    }
     return left(Failure.serverError(_malformedMessage(statusCode)));
   }
 
@@ -81,6 +86,12 @@ Failure failureFromErrorBody(Map<String, dynamic> body, int statusCode) {
   // ต้องเพิ่มพารามิเตอร์ข้อความให้ variant นี้ (ต้อง regenerate failures.freezed.dart)
   if (statusCode == 401) return const Failure.unauthorized();
   if (statusCode == 404) return const Failure.notFound();
+  if (statusCode == 503) {
+    final message = extractErrorMessage(body);
+    return Failure.serverError(
+      message ?? 'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
+    );
+  }
 
   final message = extractErrorMessage(body);
   if (message != null) return Failure.serverError(message);

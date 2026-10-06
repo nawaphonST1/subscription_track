@@ -148,13 +148,19 @@ export class PackagesService {
     const updated = await this.prisma.subscriptionPreset.update({
       where: { id },
       data: {
-        name: dto.name,
-        category: dto.category,
-        default_price: dto.default_price,
-        billing_cycle: dto.billing_cycle,
-        brand_color: dto.brand_color,
-        icon_url: dto.icon_url,
-        description: dto.description,
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...((dto.default_price !== undefined || dto.defaultPrice !== undefined) && {
+          default_price: dto.default_price ?? dto.defaultPrice,
+        }),
+        ...((dto.billing_cycle !== undefined || dto.billingCycle !== undefined) && {
+          billing_cycle: dto.billing_cycle ?? dto.billingCycle,
+        }),
+        ...((dto.brand_color !== undefined || dto.brandColor !== undefined) && {
+          brand_color: dto.brand_color ?? dto.brandColor,
+        }),
+        ...(dto.icon_url !== undefined && { icon_url: dto.icon_url }),
+        ...(dto.description !== undefined && { description: dto.description }),
       },
     });
 
