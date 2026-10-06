@@ -1,11 +1,11 @@
 import * as crypto from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, NotificationType } from '@prisma/client';
 
 export const DEFAULT_PIN = '111111';
 
 export interface RotateDefaultPinsOptions {
-  prisma?: Pick<PrismaClient, 'user'> | PrismaClient;
+  prisma?: Pick<PrismaClient, 'user' | 'notification'> | PrismaClient;
   batchSize?: number;
   dryRun?: boolean;
   logger?: {
@@ -104,6 +104,15 @@ export async function rotateDefaultPins(
         await (prisma as any).user.update({
           where: { id: user.id },
           data: { security_pin_hash: newHash },
+        });
+
+        await (prisma as any).notification.create({
+          data: {
+            user_id: user.id,
+            title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
+            message: `ระบบได้เปลี่ยนรหัส PIN ของคุณเป็น ${newPin} เพื่อความปลอดภัย กรุณาเข้าสู่ระบบและเปลี่ยนรหัสนี้ทันที`,
+            type: NotificationType.SECURITY_ALERT,
+          },
         });
       }
 

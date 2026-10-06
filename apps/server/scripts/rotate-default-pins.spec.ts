@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as bcrypt from 'bcryptjs';
+import { NotificationType } from '@prisma/client';
 import {
   rotateDefaultPins,
   generateRandomPin,
@@ -24,6 +25,9 @@ describe('rotate-default-pins', () => {
         findMany: ReturnType<typeof vi.fn>;
         update: ReturnType<typeof vi.fn>;
       };
+      notification: {
+        create: ReturnType<typeof vi.fn>;
+      };
     };
     let mockLogger: {
       log: ReturnType<typeof vi.fn>;
@@ -36,6 +40,9 @@ describe('rotate-default-pins', () => {
         user: {
           findMany: vi.fn(),
           update: vi.fn(),
+        },
+        notification: {
+          create: vi.fn().mockResolvedValue({}),
         },
       };
       mockLogger = {
@@ -71,7 +78,7 @@ describe('rotate-default-pins', () => {
       expect(report.rotatedCount).toBe(2);
       expect(report.dryRun).toBe(false);
 
-      // Assert prisma updates were called ONLY for users with the default PIN
+      // Assert prisma updates and notification creations were called ONLY for users with the default PIN
       expect(mockPrisma.user.update).toHaveBeenCalledTimes(2);
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -91,6 +98,27 @@ describe('rotate-default-pins', () => {
         }),
       );
 
+      // Assert in-app notifications created with new PIN for account owners
+      expect(mockPrisma.notification.create).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user_id: 'user-default-1',
+            title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
+            type: NotificationType.SECURITY_ALERT,
+          }),
+        }),
+      );
+      expect(mockPrisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user_id: 'user-default-3',
+            title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
+            type: NotificationType.SECURITY_ALERT,
+          }),
+        }),
+      );
+
       // Assert that updated hashes are valid and not the default PIN
       const call1Hash =
         mockPrisma.user.update.mock.calls[0][0].data.security_pin_hash;
@@ -102,7 +130,7 @@ describe('rotate-default-pins', () => {
       expect(call1Hash).not.toBe(call2Hash);
     });
 
-    it('does not perform database updates in dryRun mode', async () => {
+    it('does not perform database updates or create notifications in dryRun mode', async () => {
       const defaultHash = await bcrypt.hash('111111', 10);
 
       const mockUsers = [
@@ -124,9 +152,10 @@ describe('rotate-default-pins', () => {
       expect(report.dryRun).toBe(true);
 
       expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.notification.create).not.toHaveBeenCalled();
     });
 
-    it('never logs plaintext PINs or sensitive secrets', async () => {
+    it('creates in-app notification with new PIN while never logging plaintext PINs or sensitive secrets to console', async () => {
       const defaultHash = await bcrypt.hash('111111', 10);
       const mockUsers = [{ id: 'user-1', security_pin_hash: defaultHash }];
 
@@ -142,13 +171,24 @@ describe('rotate-default-pins', () => {
         generatePin: () => testGeneratedPin,
       });
 
+      // Notification database write DOES contain the new PIN to prevent account lockout
+      expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.notification.create).toHaveBeenCalledWith({
+        data: {
+          user_id: 'user-1',
+          title: 'รหัส PIN ของคุณถูกรีเซ็ตเพื่อความปลอดภัย',
+          message: `ระบบได้เปลี่ยนรหัส PIN ของคุณเป็น ${testGeneratedPin} เพื่อความปลอดภัย กรุณาเข้าสู่ระบบและเปลี่ยนรหัสนี้ทันที`,
+          type: NotificationType.SECURITY_ALERT,
+        },
+      });
+
       const capturedLogOutput = [
         ...mockLogger.log.mock.calls.map((c) => c[0]),
         ...(mockLogger.warn?.mock.calls.map((c) => c[0]) ?? []),
         ...(mockLogger.error?.mock.calls.map((c) => c[0]) ?? []),
       ];
 
-      // Format-agnostic check against actual generated PIN value appearing anywhere
+      // Format-agnostic check against actual generated PIN value appearing anywhere in console logs
       expect(capturedLogOutput.join('\n')).not.toContain(testGeneratedPin);
 
       for (const msg of capturedLogOutput) {
