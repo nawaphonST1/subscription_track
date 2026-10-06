@@ -74,29 +74,6 @@ final class SubscriptionListController
     }
   }
 
-  Future<void> deleteSelected() async {
-    final previous = await future;
-    final selectedIds = previous
-        .where((item) => item.isSelected)
-        .map((item) => item.id)
-        .toList(growable: false);
-    if (selectedIds.isEmpty) return;
-
-    state = AsyncData<List<Subscription>>(
-      previous.where((item) => !item.isSelected).toList(growable: false),
-    );
-
-    try {
-      for (final id in selectedIds) {
-        await _repository.deleteSubscription(id);
-      }
-    } catch (error, stackTrace) {
-      // บาง data source อาจลบบางรายการไปแล้ว จึง reload จาก source ให้ตรงจริง
-      state = await AsyncValue.guard(_repository.getSubscriptions);
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-  }
-
   /// toggle แบบ optimistic เพื่อให้ checkbox/simulation ไม่หน่วง 300 ms
   Future<void> toggleSelection(String id) async {
     final previous = await future;

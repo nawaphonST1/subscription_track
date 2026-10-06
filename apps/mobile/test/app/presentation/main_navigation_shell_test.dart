@@ -9,6 +9,8 @@ import 'package:subscription_track/features/subscriptions/data/in_memory_subscri
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 import 'package:subscription_track/features/dashboard/data/in_memory_creep_score_repository.dart';
 import 'package:subscription_track/features/dashboard/data/remote_creep_score_repository.dart';
+import 'package:subscription_track/features/savings/data/in_memory_savings_repository.dart';
+import 'package:subscription_track/features/savings/data/remote_savings_repository.dart';
 import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 
 Widget _buildShell() {
@@ -22,6 +24,9 @@ Widget _buildShell() {
       ),
       creepScoreRepositoryProvider.overrideWithValue(
         InMemoryCreepScoreRepository(ioDelay: Duration.zero),
+      ),
+      savingsRepositoryProvider.overrideWithValue(
+        InMemorySavingsRepository(ioDelay: Duration.zero),
       ),
     ],
     child: MaterialApp(theme: AppTheme.dark, home: const MainNavigationShell()),

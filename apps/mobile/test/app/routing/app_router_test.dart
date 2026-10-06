@@ -19,9 +19,11 @@ import 'package:subscription_track/features/subscriptions/data/in_memory_subscri
 
 import 'package:subscription_track/features/dashboard/data/in_memory_creep_score_repository.dart';
 import 'package:subscription_track/features/dashboard/data/remote_creep_score_repository.dart';
+import 'package:subscription_track/features/savings/data/in_memory_savings_repository.dart';
+import 'package:subscription_track/features/savings/data/remote_savings_repository.dart';
 
-/// Dashboard ที่ build ในเทสต์เหล่านี้ต้องไม่ยิง network จริง: ถ้าปล่อยให้
-/// subscriptionRepositoryProvider/paymentCardRepositoryProvider/creepScoreRepositoryProvider
+/// Dashboard และ Savings ที่ build ในเทสต์เหล่านี้ต้องไม่ยิง network จริง: ถ้าปล่อยให้
+/// subscriptionRepositoryProvider/paymentCardRepositoryProvider/creepScoreRepositoryProvider/savingsRepositoryProvider
 /// ใช้ default (Remote*Repository) เทสต์จะค้างที่ pumpAndSettle timeout เพราะไม่มี
 /// backend จริงให้ต่อในแซนด์บ็อกซ์เทสต์
 _offlineDataOverrides() => [
@@ -33,6 +35,9 @@ _offlineDataOverrides() => [
       ),
       creepScoreRepositoryProvider.overrideWithValue(
         InMemoryCreepScoreRepository(ioDelay: Duration.zero),
+      ),
+      savingsRepositoryProvider.overrideWithValue(
+        InMemorySavingsRepository(ioDelay: Duration.zero),
       ),
     ];
 
