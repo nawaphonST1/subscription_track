@@ -6,6 +6,7 @@ import 'package:subscription_track/app/application/app_flow_provider.dart';
 import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 import 'package:subscription_track/app/presentation/splash_screen.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
+import 'package:subscription_track/features/admin/presentation/admin_portal_screen.dart';
 import 'package:subscription_track/features/auth/presentation/login_screen.dart';
 import 'package:subscription_track/features/auth/presentation/register_screen.dart';
 import 'package:subscription_track/features/auth/presentation/setup_pin_screen.dart';
@@ -106,6 +107,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: RouteConstants.admin,
+        builder: (context, state) => const AdminPortalScreen(),
       ),
       GoRoute(
         path: RouteConstants.setupPin,

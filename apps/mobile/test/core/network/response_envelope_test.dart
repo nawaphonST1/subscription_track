@@ -409,5 +409,39 @@ void main() {
         (data) => fail('คาดว่า Left แต่ได้ Right: $data'),
       );
     });
+
+    test('503 Service Unavailable (maintenance) ถอดข้อความแจ้งเตือนปิดปรับปรุง', () {
+      final response = _json({
+        'statusCode': 503,
+        'message': 'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
+        'error': 'Service Unavailable',
+      }, 503);
+
+      final result = unwrapEnvelope(response, _identity);
+
+      expect(result.isLeft(), isTrue);
+      result.fold(
+        (failure) => expect(
+          failure.displayMessage,
+          'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
+        ),
+        (data) => fail('คาดว่า Left แต่ได้ Right: $data'),
+      );
+    });
+
+    test('503 ที่ตอบกลับแบบ non-json คืนข้อความปิดปรับปรุงมาตรฐาน', () {
+      final response = http.Response('Service Unavailable', 503);
+
+      final result = unwrapEnvelope(response, _identity);
+
+      expect(result.isLeft(), isTrue);
+      result.fold(
+        (failure) => expect(
+          failure.displayMessage,
+          'เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง',
+        ),
+        (data) => fail('คาดว่า Left แต่ได้ Right: $data'),
+      );
+    });
   });
 }

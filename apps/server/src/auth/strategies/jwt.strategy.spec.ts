@@ -137,6 +137,7 @@ describe('JwtStrategy', () => {
       id: true,
       email: true,
       name: true,
+      role: true,
     });
 
     // Explicitly verify sensitive fields are not selected
