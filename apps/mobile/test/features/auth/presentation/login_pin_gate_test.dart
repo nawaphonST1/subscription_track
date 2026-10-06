@@ -2,14 +2,34 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_track/app/app.dart';
+import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/data/remote_auth_repository.dart';
+import 'package:subscription_track/features/auth/domain/user.dart';
 import 'package:subscription_track/features/auth/presentation/setup_pin_screen.dart';
 import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
+
+class _TestRemoteAuthRepository extends RemoteAuthRepository {
+  _TestRemoteAuthRepository({
+    required super.client,
+    required super.baseUrl,
+  });
+
+  @override
+  Future<Either<Failure, User>> loginWithGoogle() {
+    return executeSocialLogin(
+      provider: 'google',
+      email: 'google.test@example.com',
+      token: 'mock-google-token',
+      name: 'Google User',
+    );
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +43,7 @@ void main() {
       overrides: [
         onboardingProvider.overrideWithBuild((ref, _) => true),
         authRepositoryProvider.overrideWithValue(
-          RemoteAuthRepository(
+          _TestRemoteAuthRepository(
             client: client,
             baseUrl: 'http://localhost:3000',
           ),
@@ -201,6 +221,95 @@ void main() {
         // MUST land on Dashboard directly
         expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
         expect(find.byType(SetupPinScreen), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'repeat Google login where server returns pin_configured: true lands directly on Dashboard',
+      (tester) async {
+        final mockClient = MockClient((request) async {
+          if (request.url.path == '/auth/social') {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'statusCode': 200,
+                'data': {
+                  'token': 'jwt-google-repeat-user',
+                  'user': {
+                    'id': 'google-user-configured',
+                    'email': 'returning.google@example.com',
+                    'name': 'Returning Google User',
+                    'monthly_income': 0,
+                    'pin_configured': true,
+                    'created_at': '2026-10-06T12:00:00.000Z',
+                  },
+                },
+                'timestamp': '2026-10-06T12:00:00.000Z',
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response('Not Found', 404);
+        });
+
+        await tester.pumpWidget(createTestApp(mockClient));
+        await tester.pumpAndSettle();
+
+        final googleButton = find.text('Google');
+        await tester.ensureVisible(googleButton);
+        await tester.tap(googleButton);
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // Returning user with configured PIN MUST land on Dashboard
+        expect(find.byKey(const Key('hero-payout-card')), findsOneWidget);
+        expect(find.byType(SetupPinScreen), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'initial Google login where server returns pin_configured: false lands on SetupPinScreen',
+      (tester) async {
+        final mockClient = MockClient((request) async {
+          if (request.url.path == '/auth/social') {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'statusCode': 200,
+                'data': {
+                  'token': 'jwt-google-new-user',
+                  'user': {
+                    'id': 'google-user-new',
+                    'email': 'new.google@example.com',
+                    'name': 'New Google User',
+                    'monthly_income': 0,
+                    'pin_configured': false,
+                    'created_at': '2026-10-06T12:00:00.000Z',
+                  },
+                },
+                'timestamp': '2026-10-06T12:00:00.000Z',
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response('Not Found', 404);
+        });
+
+        await tester.pumpWidget(createTestApp(mockClient));
+        await tester.pumpAndSettle();
+
+        final googleButton = find.text('Google');
+        await tester.ensureVisible(googleButton);
+        await tester.tap(googleButton);
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // New user with unconfigured PIN MUST land on SetupPinScreen
+        expect(find.byType(SetupPinScreen), findsOneWidget);
+        expect(find.text('ตั้งค่ารหัสความปลอดภัย (PIN)'), findsOneWidget);
+        expect(find.byKey(const Key('hero-payout-card')), findsNothing);
       },
     );
   });

@@ -170,6 +170,20 @@ class RemoteAuthRepository implements AuthRepository {
     );
   }
 
+  @visibleForTesting
+  Future<Either<Failure, User>> executeSocialLogin({
+    required String provider,
+    required String email,
+    required String token,
+    required String name,
+  }) =>
+      _socialLogin(
+        provider: provider,
+        email: email,
+        token: token,
+        name: name,
+      );
+
   Future<Either<Failure, User>> _socialLogin({
     required String provider,
     required String email,
