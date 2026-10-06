@@ -15,6 +15,7 @@ export class PinRateLimiter {
 
   private readonly maxAttempts = 5;
   private readonly baseLockoutMs = 60_000; // 1 minute base lockout
+  private readonly cooldownMs = 15 * 60_000; // 15 minutes cooldown with no failed attempts to reset failure history
 
   /**
    * Checks whether the user is currently locked out before attempting PIN verification.
@@ -44,6 +45,8 @@ export class PinRateLimiter {
 
   /**
    * Record a failed PIN attempt. Increments count and calculates backoff if limit reached.
+   * During a sustained attack across multiple lockout cycles, lockout durations escalate.
+   * Failure counts only reset after a full cooldown period without failures.
    */
   recordFailure(userId: string): void {
     const now = Date.now();
@@ -52,9 +55,16 @@ export class PinRateLimiter {
       lastAttemptTime: now,
     };
 
-    // If previous lockout expired, reset counter before recording new failure
-    if (record.lockedUntil && now >= record.lockedUntil) {
+    // If full cooldown elapsed with no attempts, reset counter
+    const lastActive = record.lockedUntil
+      ? Math.max(record.lockedUntil, record.lastAttemptTime)
+      : record.lastAttemptTime;
+    if (now - lastActive > this.cooldownMs) {
       record.failedAttempts = 0;
+      record.lockedUntil = undefined;
+    } else if (record.lockedUntil && now >= record.lockedUntil) {
+      // Previous lockout expired, but we are still within the cooldown window (sustained attack).
+      // Clear expired lockout so new attempt is evaluated, preserving failure history so backoff escalates.
       record.lockedUntil = undefined;
     }
 
@@ -62,8 +72,9 @@ export class PinRateLimiter {
     record.lastAttemptTime = now;
 
     if (record.failedAttempts >= this.maxAttempts) {
-      // Exponential backoff: baseLockoutMs * 2^(excess attempts)
-      const multiplier = Math.pow(2, record.failedAttempts - this.maxAttempts);
+      // Exponential backoff: baseLockoutMs * 2^(excess attempts), capped at 2^10 to prevent overflow
+      const excess = record.failedAttempts - this.maxAttempts;
+      const multiplier = Math.pow(2, Math.min(excess, 10));
       record.lockedUntil = now + this.baseLockoutMs * multiplier;
     }
 
@@ -82,6 +93,13 @@ export class PinRateLimiter {
    */
   getFailedAttempts(userId: string): number {
     return this.attempts.get(userId)?.failedAttempts ?? 0;
+  }
+
+  /**
+   * Get lockout expiration timestamp for a user (useful for testing).
+   */
+  getLockoutUntil(userId: string): number | undefined {
+    return this.attempts.get(userId)?.lockedUntil;
   }
 
   /**

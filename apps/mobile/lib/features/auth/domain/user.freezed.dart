@@ -229,7 +229,7 @@ return $default(_that.id,_that.email,_that.name,_that.avatar,_that.authProvider,
 @JsonSerializable()
 
 class _User implements User {
-  const _User({required this.id, required this.email, this.name = '', this.avatar = '', this.authProvider = 'google', this.income = 0.0, this.currency = 'THB', final  List<CreditCard> creditCards = const [], this.settings = const UserSettings(), this.pinConfigured = true, this.createdAt, this.updatedAt}): _creditCards = creditCards;
+  const _User({required this.id, required this.email, this.name = '', this.avatar = '', this.authProvider = 'google', this.income = 0.0, this.currency = 'THB', final  List<CreditCard> creditCards = const [], this.settings = const UserSettings(), this.pinConfigured = false, this.createdAt, this.updatedAt}): _creditCards = creditCards;
   factory _User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 
 @override final  String id;

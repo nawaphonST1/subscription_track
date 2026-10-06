@@ -234,23 +234,23 @@ void main() {
       );
     });
 
-    test('loginWithApple uses mock social login flow', () async {
+    test('executeSocialLogin sends provider payload and parses response', () async {
       final mockClient = MockClient((request) async {
         if (request.url.path == '/auth/social' && request.method == 'POST') {
           final body = jsonDecode(request.body) as Map<String, dynamic>;
-          expect(body['provider'], 'apple');
-          expect(body['email'], 'user@icloud.com');
+          expect(body['provider'], 'google');
+          expect(body['email'], 'user@gmail.com');
 
           return http.Response(
             jsonEncode({
               'success': true,
               'statusCode': 200,
               'data': {
-                'token': 'apple-jwt-token',
+                'token': 'google-jwt-token',
                 'user': {
-                  'id': 'apple-user-id',
-                  'email': 'user@icloud.com',
-                  'name': 'Jane Doe (Apple User)',
+                  'id': 'google-user-id',
+                  'email': 'user@gmail.com',
+                  'name': 'Jane Doe',
                 },
               },
               'timestamp': '2026-10-05T12:00:00.000Z',
@@ -267,13 +267,18 @@ void main() {
         baseUrl: testBaseUrl,
       );
 
-      final result = await repository.loginWithApple();
+      final result = await repository.executeSocialLogin(
+        provider: 'google',
+        email: 'user@gmail.com',
+        token: 'mock-google-token',
+        name: 'Jane Doe',
+      );
       expect(result.isRight(), isTrue);
       result.fold(
         (l) => fail('Expected Right'),
         (user) {
-          expect(user.email, 'user@icloud.com');
-          expect(user.authProvider, 'apple');
+          expect(user.email, 'user@gmail.com');
+          expect(user.authProvider, 'google');
         },
       );
     });
@@ -449,6 +454,129 @@ void main() {
             expect(failure.displayMessage, contains('longer than or equal'));
           },
           (user) => fail('Expected Left but got Right: $user'),
+        );
+      });
+    });
+
+    group('pin_configured parsing and error reporting (L4)', () {
+      test(
+          'loginWithEmail with string pin_configured "true" coerces safely to boolean true',
+          () async {
+        final mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'statusCode': 200,
+              'data': {
+                'token': 'mock-jwt-token',
+                'user': {
+                  'id': 'user-1',
+                  'email': 'user@example.com',
+                  'name': 'User 1',
+                  'pin_configured': 'true', // string representation
+                },
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final repository = RemoteAuthRepository(
+          client: mockClient,
+          baseUrl: testBaseUrl,
+        );
+
+        final result = await repository.loginWithEmail(
+          email: 'user@example.com',
+          password: 'password123',
+        );
+
+        expect(result.isRight(), isTrue);
+        result.fold(
+          (failure) => fail('Expected Right but got failure: $failure'),
+          (user) {
+            expect(user.pinConfigured, isTrue);
+          },
+        );
+      });
+
+      test(
+          'loginWithEmail with string pin_configured "false" coerces safely to boolean false',
+          () async {
+        final mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'statusCode': 200,
+              'data': {
+                'token': 'mock-jwt-token',
+                'user': {
+                  'id': 'user-2',
+                  'email': 'user2@example.com',
+                  'name': 'User 2',
+                  'pin_configured': 'false',
+                },
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final repository = RemoteAuthRepository(
+          client: mockClient,
+          baseUrl: testBaseUrl,
+        );
+
+        final result = await repository.loginWithEmail(
+          email: 'user2@example.com',
+          password: 'password123',
+        );
+
+        expect(result.isRight(), isTrue);
+        result.fold(
+          (failure) => fail('Expected Right but got failure: $failure'),
+          (user) {
+            expect(user.pinConfigured, isFalse);
+          },
+        );
+      });
+
+      test(
+          'corrupted/malformed response payload surfaces as server format error, NOT network connection error',
+          () async {
+        final mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'statusCode': 200,
+              'data': 'not-a-map', // completely unexpected shape that triggers parsing error
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final repository = RemoteAuthRepository(
+          client: mockClient,
+          baseUrl: testBaseUrl,
+        );
+
+        final result = await repository.loginWithEmail(
+          email: 'user@example.com',
+          password: 'password123',
+        );
+
+        expect(result.isLeft(), isTrue);
+        result.fold(
+          (failure) {
+            expect(failure.displayMessage,
+                isNot(contains('ไม่สามารถเชื่อมต่อกับ Server ได้')));
+            expect(failure.displayMessage,
+                contains('เซิร์ฟเวอร์ตอบกลับในรูปแบบที่ไม่รู้จัก'));
+          },
+          (user) => fail('Expected Left but got user: $user'),
         );
       });
     });

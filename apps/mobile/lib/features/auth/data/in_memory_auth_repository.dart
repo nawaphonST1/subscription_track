@@ -23,6 +23,7 @@ class InMemoryAuthRepository implements AuthRepository {
       authProvider: 'google',
       //income: 35000,
       currency: 'THB',
+      pinConfigured: true,
       // เพิ่มข้อมูลบัตรเครดิตจำลองตรงนี้ครับ
       creditCards: [
         CreditCard(
@@ -38,7 +39,7 @@ class InMemoryAuthRepository implements AuthRepository {
           bankName: 'SCB',
           last4Digits: '8888',
           creditLimit: 100000.0,
-          currentBalance: 8500.0,
+          currentBalance: 45000.0,
           cardColor: '#4E2A84', // สีม่วง SCB
         ),
       ],
@@ -47,33 +48,6 @@ class InMemoryAuthRepository implements AuthRepository {
     return right(_currentUser!);
   }
 
-  @override
-  Future<Either<Failure, User>> loginWithApple() async {
-    logger.i('Mock Apple login');
-    await Future.delayed(const Duration(seconds: 1));
-
-    _currentUser = const User(
-      id: 'mock-user-456',
-      email: 'user@icloud.com',
-      name: 'Jane Doe',
-      avatar: 'https://i.pravatar.cc/150?img=5',
-      authProvider: 'apple',
-      //income: 45000,
-      currency: 'THB',
-      creditCards: [
-        CreditCard(
-          id: 'card-3',
-          bankName: 'UOB',
-          last4Digits: '1234',
-          creditLimit: 80000.0,
-          currentBalance: 20000.0,
-          cardColor: '#002B5E', // สีน้ำเงิน UOB
-        ),
-      ],
-    );
-
-    return right(_currentUser!);
-  }
 
   @override
   Future<Either<Failure, User>> registerWithEmail({
@@ -93,6 +67,7 @@ class InMemoryAuthRepository implements AuthRepository {
       authProvider: 'email',
       //income: 0, // เริ่มต้นด้วย 0
       currency: 'THB',
+      pinConfigured: securityPin != null && securityPin.isNotEmpty,
       creditCards: [], // เริ่มต้นไม่มีบัตร
     );
 
@@ -113,6 +88,7 @@ class InMemoryAuthRepository implements AuthRepository {
       name: email.split('@').first,
       authProvider: 'email',
       currency: 'THB',
+      pinConfigured: true,
       creditCards: const [
         CreditCard(
           id: 'card-1',

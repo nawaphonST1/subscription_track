@@ -15,7 +15,7 @@ abstract class User with _$User {
     @Default('THB') String currency,
     @Default([]) List<CreditCard> creditCards, // <-- เพิ่มฟิลด์นี้ตรงนี้ครับ
     @Default(UserSettings()) UserSettings settings,
-    @Default(true) bool pinConfigured,
+    @Default(false) bool pinConfigured,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) = _User;

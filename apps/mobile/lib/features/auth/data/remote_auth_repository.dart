@@ -60,10 +60,11 @@ class RemoteAuthRepository implements AuthRepository {
     String? name,
     String? securityPin,
   }) async {
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/auth/register');
       logger.i('Calling API: POST $uri');
-      final response = await _client.post(
+      response = await _client.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -74,7 +75,14 @@ class RemoteAuthRepository implements AuthRepository {
             'security_pin': securityPin,
         }),
       );
+    } catch (e, stack) {
+      logger.e('Error connecting to register API',
+          error: e, stackTrace: stack);
+      return left(Failure.serverError(
+          'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+    }
 
+    try {
       return await _resolveAuthResponse(
         response,
         fallbackEmail: email,
@@ -84,10 +92,9 @@ class RemoteAuthRepository implements AuthRepository {
         },
       );
     } catch (e, stack) {
-      logger.e('Error connecting to register API',
-          error: e, stackTrace: stack);
-      return left(Failure.serverError(
-          'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+      logger.e('Error parsing register response', error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -96,10 +103,11 @@ class RemoteAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/auth/login');
       logger.i('Calling API: POST $uri');
-      final response = await _client.post(
+      response = await _client.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -107,13 +115,19 @@ class RemoteAuthRepository implements AuthRepository {
           'password': password,
         }),
       );
-
-      // 401 ถูก map เป็น Failure.unauthorized() อยู่แล้วใน unwrapEnvelope
-      return await _resolveAuthResponse(response, fallbackEmail: email);
     } catch (e, stack) {
       logger.e('Error connecting to login API', error: e, stackTrace: stack);
       return left(Failure.serverError(
           'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+    }
+
+    try {
+      // 401 ถูก map เป็น Failure.unauthorized() อยู่แล้วใน unwrapEnvelope
+      return await _resolveAuthResponse(response, fallbackEmail: email);
+    } catch (e, stack) {
+      logger.e('Error parsing login response', error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -159,17 +173,6 @@ class RemoteAuthRepository implements AuthRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, User>> loginWithApple() async {
-    // Mock Apple Sign-In (ตามที่ระบุ: apple ใช้ mock เหมือนเดิม)
-    return _socialLogin(
-      provider: 'apple',
-      email: 'user@icloud.com',
-      token: 'mock-apple-token',
-      name: 'Jane Doe (Apple User)',
-    );
-  }
-
   @visibleForTesting
   Future<Either<Failure, User>> executeSocialLogin({
     required String provider,
@@ -190,10 +193,11 @@ class RemoteAuthRepository implements AuthRepository {
     required String token,
     required String name,
   }) async {
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/auth/social');
       logger.i('Calling API: POST $uri ($provider)');
-      final response = await _client.post(
+      response = await _client.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -203,7 +207,14 @@ class RemoteAuthRepository implements AuthRepository {
           'name': name,
         }),
       );
+    } catch (e, stack) {
+      logger.e('Error connecting to social login API',
+          error: e, stackTrace: stack);
+      return left(Failure.serverError(
+          'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+    }
 
+    try {
       return await _resolveAuthResponse(
         response,
         fallbackEmail: email,
@@ -211,10 +222,10 @@ class RemoteAuthRepository implements AuthRepository {
         provider: provider,
       );
     } catch (e, stack) {
-      logger.e('Error connecting to social login API',
+      logger.e('Error parsing social login response',
           error: e, stackTrace: stack);
-      return left(Failure.serverError(
-          'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -227,22 +238,30 @@ class RemoteAuthRepository implements AuthRepository {
       return left(const Failure.unauthorized());
     }
 
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/users/me');
       logger.i('Calling API: GET $uri');
       // `/users/me` ไม่อยู่ใน kPublicAuthPaths ⇒ _client แนบ Bearer ให้เอง
-      final response = await _client.get(uri);
-
-      // ต่างจาก 3 endpoint ของ auth: `/users/me` คืน user object ไว้ที่ `data`
-      // ตรง ๆ ไม่ได้ซ้อนใต้คีย์ `user` อีกชั้น ⇒ ส่ง _mapJsonToUser เป็น
-      // parseData ได้เลย
-      return unwrapEnvelope<User>(response, (data) => _mapJsonToUser(data));
+      response = await _client.get(uri);
     } catch (e, stack) {
       logger.e('Error connecting to current-user API',
           error: e, stackTrace: stack);
       // แยกจาก serverError โดยตั้งใจ: ผู้เรียกใช้สัญญาใน AuthRepository เพื่อ
       // ตัดสินว่าจะล้าง token หรือไม่ — เคสนี้ต้องไม่ล้าง
       return left(const Failure.networkError());
+    }
+
+    try {
+      // ต่างจาก 3 endpoint ของ auth: `/users/me` คืน user object ไว้ที่ `data`
+      // ตรง ๆ ไม่ได้ซ้อนใต้คีย์ `user` อีกชั้น ⇒ ส่ง _mapJsonToUser เป็น
+      // parseData ได้เลย
+      return unwrapEnvelope<User>(response, (data) => _mapJsonToUser(data));
+    } catch (e, stack) {
+      logger.e('Error parsing current-user response',
+          error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -264,13 +283,24 @@ class RemoteAuthRepository implements AuthRepository {
     } catch (_) {}
   }
 
+  static bool _parsePinConfigured(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw is String) {
+      final s = raw.trim().toLowerCase();
+      if (s == 'true' || s == '1') return true;
+      if (s == 'false' || s == '0') return false;
+    }
+    if (raw is num) return raw != 0;
+    return false; // fail-closed default
+  }
+
   User _mapJsonToUser(
     Map<String, dynamic> json, {
     String? fallbackEmail,
     String? fallbackName,
     String provider = 'email',
   }) {
-    final pinConfigured = json['pin_configured'] as bool? ?? false;
+    final pinConfigured = _parsePinConfigured(json['pin_configured']);
 
     return User(
       id: json['id'] as String? ??

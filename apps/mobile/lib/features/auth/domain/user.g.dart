@@ -22,7 +22,7 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   settings: json['settings'] == null
       ? const UserSettings()
       : UserSettings.fromJson(json['settings'] as Map<String, dynamic>),
-  pinConfigured: json['pinConfigured'] as bool? ?? true,
+  pinConfigured: json['pinConfigured'] as bool? ?? false,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
