@@ -145,4 +145,172 @@ void main() {
       );
     });
   });
+
+  group('RemotePaymentCardRepository.linkCard', () {
+    test('POSTs mock_card_id (not id) to /cards/link', () async {
+      http.Request? capturedRequest;
+      Map<String, dynamic>? capturedBody;
+
+      final mockInner = MockClient((request) async {
+        capturedRequest = request;
+        capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'statusCode': 201,
+            'data': {
+              'card': {
+                'id': 'card-new-uuid',
+                'card_nickname': 'KBank',
+                'card_brand': 'Visa',
+                'last_4_digits': '4242',
+                'bank_name': 'Kasikornbank',
+                'balance': 12500,
+                'currency': 'THB',
+                'is_default': false,
+              },
+              'imported_subscriptions_count': 2,
+              'imported_subscriptions': [],
+            },
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      final card = await repository.linkCard('mock-card-uuid-123');
+
+      expect(capturedRequest!.url.path, '/cards/link');
+      expect(capturedBody!['mock_card_id'], 'mock-card-uuid-123');
+      expect(capturedBody!.containsKey('id'), isFalse);
+      expect(card.id, 'card-new-uuid');
+      expect(card.bankName, 'Kasikornbank');
+      expect(card.last4Digits, '4242');
+      expect(card.currentBalance, 12500);
+      expect(card.colorHex, '#1A1F71'); // Visa brand color
+    });
+
+    test('throws Exception when link fails', () async {
+      final mockInner = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': false,
+            'statusCode': 404,
+            'message': 'No simulated mock bank card found matching criteria',
+          }),
+          404,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      expect(
+        () => repository.linkCard('nonexistent'),
+        throwsA(isA<Exception>()),
+      );
+    });
+  });
+
+  group('RemotePaymentCardRepository.getLinkedCards field mapping', () {
+    test('maps snake_case backend fields to PaymentCard correctly', () async {
+      final mockInner = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'statusCode': 200,
+            'data': [
+              {
+                'id': 'card-1',
+                'card_nickname': 'My SCB Card',
+                'card_brand': 'Mastercard',
+                'last_4_digits': '8888',
+                'bank_name': 'Siam Commercial Bank',
+                'balance': 4500.5,
+                'currency': 'THB',
+                'is_default': true,
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      final cards = await repository.getLinkedCards();
+
+      expect(cards, hasLength(1));
+      expect(cards[0].id, 'card-1');
+      expect(cards[0].bankName, 'Siam Commercial Bank');
+      expect(cards[0].last4Digits, '8888');
+      expect(cards[0].currentBalance, 4500.5);
+      expect(cards[0].colorHex, '#EB001B'); // Mastercard brand color
+      expect(cards[0].creditLimit, 0); // no backend column, documented default
+    });
+
+    test('empty list from backend maps to empty list, not an error', () async {
+      final mockInner = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'statusCode': 200,
+            'data': <Map<String, dynamic>>[],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      expect(await repository.getLinkedCards(), isEmpty);
+    });
+
+    test('unknown card_brand falls back to extension default color, not a crash',
+        () async {
+      final mockInner = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'statusCode': 200,
+            'data': [
+              {
+                'id': 'card-1',
+                'card_brand': 'SomeObscureNetwork',
+                'last_4_digits': '0000',
+                'bank_name': 'Test Bank',
+                'balance': 0,
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      final cards = await repository.getLinkedCards();
+      expect(cards[0].colorHex, ''); // extension falls back to default blue
+    });
+  });
 }

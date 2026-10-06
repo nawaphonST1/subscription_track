@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/core/theme/app_theme.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
+import 'package:subscription_track/features/profile/data/in_memory_payment_card_repository.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
+import 'package:subscription_track/features/dashboard/data/in_memory_creep_score_repository.dart';
+import 'package:subscription_track/features/dashboard/data/remote_creep_score_repository.dart';
 import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 
 Widget _buildShell() {
@@ -12,6 +16,12 @@ Widget _buildShell() {
     overrides: [
       subscriptionRepositoryProvider.overrideWithValue(
         InMemorySubscriptionRepository(ioDelay: Duration.zero),
+      ),
+      paymentCardRepositoryProvider.overrideWithValue(
+        InMemoryPaymentCardRepository(ioDelay: Duration.zero),
+      ),
+      creepScoreRepositoryProvider.overrideWithValue(
+        InMemoryCreepScoreRepository(ioDelay: Duration.zero),
       ),
     ],
     child: MaterialApp(theme: AppTheme.dark, home: const MainNavigationShell()),
