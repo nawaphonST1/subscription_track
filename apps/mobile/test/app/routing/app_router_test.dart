@@ -79,7 +79,7 @@ class _FakeRestoreAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async =>
-      right(User(id: 'login-user', email: email));
+      right(User(id: 'login-user', email: email, pinConfigured: true));
 
   @override
   Future<Either<Failure, User>> registerWithEmail({
@@ -88,15 +88,15 @@ class _FakeRestoreAuthRepository implements AuthRepository {
     String? name,
     String? securityPin,
   }) async =>
-      right(User(id: 'new-user', email: email));
+      right(User(
+        id: 'new-user',
+        email: email,
+        pinConfigured: securityPin != null && securityPin.isNotEmpty,
+      ));
 
   @override
   Future<Either<Failure, User>> loginWithGoogle() async =>
-      right(const User(id: 'g', email: 'g@example.com'));
-
-  @override
-  Future<Either<Failure, User>> loginWithApple() async =>
-      right(const User(id: 'a', email: 'a@example.com'));
+      right(const User(id: 'g', email: 'g@example.com', pinConfigured: true));
 }
 
 ProviderScope _buildRestoreApp({
@@ -194,6 +194,35 @@ void main() {
       expect(find.byKey(const Key('hero-payout-card')), findsNothing);
     });
 
+    testWidgets('unauthenticated state allows navigating to Register screen', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const AppFlowState(
+            isInitializing: false,
+            isOnboardingCompleted: true,
+            isAuthenticated: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('ยินดีต้อนรับกลับมา'), findsOneWidget);
+
+      final registerLink = find.text('สมัครสมาชิก');
+      await tester.ensureVisible(registerLink);
+      await tester.tap(registerLink);
+      await tester.pumpAndSettle();
+
+      expect(find.text('สร้างบัญชีใหม่'), findsOneWidget);
+      expect(find.byKey(const Key('register_next_button')), findsOneWidget);
+    });
+
     testWidgets('first-time flow goes Onboarding to Login to Dashboard', (
       WidgetTester tester,
     ) async {
@@ -271,6 +300,7 @@ void main() {
           id: 'restored-user',
           email: 'restored@example.com',
           name: 'Restored User',
+          pinConfigured: true,
         )),
         delay: const Duration(milliseconds: 60),
       );

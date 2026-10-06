@@ -47,6 +47,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isOnSplash = location == RouteConstants.splash;
       final isOnboarding = location == RouteConstants.onboarding;
       final isLoggingIn = location == RouteConstants.login;
+      final isOnRegister = location == RouteConstants.register;
 
       // 1. หากอยู่ในสถานะเริ่มต้น (Initializing) ให้คงอยู่ที่หน้า Splash
       if (appFlow.isInitializing) {
@@ -58,9 +59,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isOnboarding ? null : RouteConstants.onboarding;
       }
 
-      // 3. หากยังไม่ได้ล็อกอิน ให้ไปที่หน้า Login
+      // 3. หากยังไม่ได้ล็อกอิน ให้ไปที่หน้า Login หรือ Register (สมัครสมาชิกได้โดยไม่ต้อง
+      // ล็อกอินก่อน — ไม่งั้นลิงก์ "สมัครสมาชิก" จากหน้า Login จะเด้งกลับมาเองทันที)
       if (!appFlow.isAuthenticated) {
-        return isLoggingIn ? null : RouteConstants.login;
+        return (isLoggingIn || isOnRegister) ? null : RouteConstants.login;
       }
 
       // 4. หากล็อกอินแล้วแต่ยังไม่ได้ตั้ง PIN ให้บังคับไปที่หน้า /setup-pin เท่านั้น
@@ -74,8 +76,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return RouteConstants.dashboard;
       }
 
-      // 5. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding หรือ Login ให้เปลี่ยนไปหน้า Dashboard
-      if (isOnSplash || isOnboarding || isLoggingIn) {
+      // 5. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding, Login หรือ Register
+      // ให้เปลี่ยนไปหน้า Dashboard
+      if (isOnSplash || isOnboarding || isLoggingIn || isOnRegister) {
         return RouteConstants.dashboard;
       }
 
