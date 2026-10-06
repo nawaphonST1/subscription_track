@@ -86,9 +86,16 @@ class AdminController extends Notifier<AdminState> {
   @override
   AdminState build() {
     ref.listen(authProvider, (_, __) {
-      Future.microtask(loadAll);
+      if (!ref.mounted) return;
+      Future.microtask(() {
+        if (!ref.mounted) return;
+        loadAll();
+      });
     });
-    Future.microtask(_initialLoad);
+    Future.microtask(() {
+      if (!ref.mounted) return;
+      _initialLoad();
+    });
     return const AdminState(isLoading: true);
   }
 
@@ -97,11 +104,13 @@ class AdminController extends Notifier<AdminState> {
   bool _isLoadingAll = false;
 
   Future<void> _initialLoad() async {
+    if (!ref.mounted) return;
     if (_initialized) return;
     await loadAll();
   }
 
   Future<void> loadAll() async {
+    if (!ref.mounted) return;
     if (_isLoadingAll) return;
     _initialized = true;
     _isLoadingAll = true;
@@ -145,6 +154,7 @@ class AdminController extends Notifier<AdminState> {
     required String email,
     required String password,
   }) async {
+    if (!ref.mounted) return false;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
     final authRepo = ref.read(authRepositoryProvider);
     final result = await authRepo.loginWithEmail(
@@ -182,6 +192,7 @@ class AdminController extends Notifier<AdminState> {
   }
 
   Future<void> logoutAdmin() async {
+    if (!ref.mounted) return;
     final authRepo = ref.read(authRepositoryProvider);
     await authRepo.logout();
     if (!ref.mounted) return;
@@ -200,6 +211,7 @@ class AdminController extends Notifier<AdminState> {
     String? iconUrl,
     String? description,
   }) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -253,6 +265,7 @@ class AdminController extends Notifier<AdminState> {
     String? iconUrl,
     String? description,
   }) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -293,6 +306,7 @@ class AdminController extends Notifier<AdminState> {
   }
 
   Future<bool> togglePackageActive(String id, bool isActive) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -325,6 +339,7 @@ class AdminController extends Notifier<AdminState> {
   }
 
   Future<bool> deletePackage(String id, {bool permanent = true}) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -362,6 +377,7 @@ class AdminController extends Notifier<AdminState> {
   }
 
   Future<bool> deleteUser(String id) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -399,10 +415,13 @@ class AdminController extends Notifier<AdminState> {
   }
 
   Future<AdminUserDetail?> getUserDetail(String id) async {
+    if (!ref.mounted) return null;
     final repo = _repo;
     final result = await repo.getUserDetail(id);
+    if (!ref.mounted) return null;
     return result.fold(
       (failure) {
+        if (!ref.mounted) return null;
         state = state.copyWith(errorMessage: 'ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
         return null;
       },
@@ -416,6 +435,7 @@ class AdminController extends Notifier<AdminState> {
     String? role,
     double? monthlyIncome,
   }) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -457,6 +477,7 @@ class AdminController extends Notifier<AdminState> {
     String? notes,
     String? brandColor,
   }) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
@@ -493,6 +514,7 @@ class AdminController extends Notifier<AdminState> {
   }
 
   Future<bool> deleteSubscription(String subId) async {
+    if (!ref.mounted) return false;
     final repo = _repo;
     state = state.copyWith(isActionLoading: true, errorMessage: null);
 
