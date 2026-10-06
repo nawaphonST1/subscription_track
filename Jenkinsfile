@@ -33,6 +33,9 @@ pipeline {
                     chmod +x scripts/bin/* 2>/dev/null || true
                     chmod +x scripts/cicd/* 2>/dev/null || true
                     corepack enable 2>/dev/null || true
+                    if ! command -v docker >/dev/null 2>&1; then
+                        apk add --no-cache docker-cli >/dev/null 2>&1 || true
+                    fi
                 '''
                 dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                     sh '''
@@ -59,10 +62,13 @@ pipeline {
                 stage('DP-401: Secret Scan (Gitleaks)') {
                     steps {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
-                        echo "==> [${env.APP_NAME}] Scanning repository for leaked secrets (Gitleaks)..."
+                        echo "==> [${env.APP_NAME}] Scanning repository for leaked secrets (Gitleaks real scan)..."
                         sh '''
                             if command -v gitleaks >/dev/null 2>&1; then
                                 gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json || true
+                            elif command -v docker >/dev/null 2>&1; then
+                                docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                    zricethezav/gitleaks:latest detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path "${WORKSPACE}/gitleaks-report.json" || true
                             elif [ -x "${WORKSPACE}/scripts/bin/gitleaks" ]; then
                                 "${WORKSPACE}/scripts/bin/gitleaks" detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json || true
                             else
@@ -75,10 +81,13 @@ pipeline {
                 stage('DP-401: SAST Analysis (Semgrep)') {
                     steps {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
-                        echo "==> [${env.APP_NAME}] Running Semgrep OWASP Top-10 static code security analysis..."
+                        echo "==> [${env.APP_NAME}] Running Semgrep OWASP Top-10 static code security analysis (real scan)..."
                         sh '''
                             if command -v semgrep >/dev/null 2>&1; then
                                 semgrep scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                            elif command -v docker >/dev/null 2>&1; then
+                                docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                    semgrep/semgrep:latest semgrep scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             elif [ -x "${WORKSPACE}/scripts/bin/semgrep" ]; then
                                 "${WORKSPACE}/scripts/bin/semgrep" scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             else
@@ -224,11 +233,16 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL CVEs..."
+                    echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL CVEs (real scan)..."
                     sh """
                         if command -v trivy >/dev/null 2>&1; then
                             trivy image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
                             trivy image --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                        elif command -v docker >/dev/null 2>&1; then
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                aquasec/trivy:latest image --severity HIGH,CRITICAL --format sarif --output "${WORKSPACE}/trivy-results.sarif" "${env.IMAGE_TAG}" || true
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                aquasec/trivy:latest image --severity HIGH,CRITICAL --format json --output "${WORKSPACE}/trivy-report.json" "${env.IMAGE_TAG}" || true
                         elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
                             "${WORKSPACE}/scripts/bin/trivy" image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
                             "${WORKSPACE}/scripts/bin/trivy" image --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
@@ -247,11 +261,16 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Generating CycloneDX and SPDX Software Bill of Materials (SBOM)..."
+                    echo "==> [${env.APP_NAME}] Generating CycloneDX and SPDX Software Bill of Materials via Syft (real SBOM)..."
                     sh """
                         if command -v syft >/dev/null 2>&1; then
                             syft dir:apps/server -o cyclonedx-json=subtracker-api.cdx.json 2>/dev/null || true
                             syft dir:apps/server -o spdx-json=subtracker-api.spdx.json 2>/dev/null || true
+                        elif command -v docker >/dev/null 2>&1; then
+                            docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                anchore/syft:latest dir:"${WORKSPACE}/apps/server" -o cyclonedx-json="${WORKSPACE}/subtracker-api.cdx.json" || true
+                            docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                anchore/syft:latest dir:"${WORKSPACE}/apps/server" -o spdx-json="${WORKSPACE}/subtracker-api.spdx.json" || true
                         elif [ -x "${WORKSPACE}/scripts/bin/syft" ]; then
                             "${WORKSPACE}/scripts/bin/syft" dir:apps/server -o cyclonedx-json=subtracker-api.cdx.json 2>/dev/null || true
                             "${WORKSPACE}/scripts/bin/syft" dir:apps/server -o spdx-json=subtracker-api.spdx.json 2>/dev/null || true
@@ -270,12 +289,12 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Running OWASP ZAP Dynamic Application Security Testing (DAST)..."
+                    echo "==> [${env.APP_NAME}] Running OWASP ZAP Dynamic Application Security Testing (DAST real scan)..."
                     sh '''
                         TARGET_URL="${APP_TARGET_URL:-http://localhost:8080}"
                         if command -v docker >/dev/null 2>&1; then
                             echo "==> Executing OWASP ZAP baseline scan against: ${TARGET_URL}..."
-                            docker run --rm -v "${WORKSPACE}:/zap/wrk/:rw" -t zaproxy/zap-stable zap-baseline.py \
+                            docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" -t zaproxy/zap-stable zap-baseline.py \
                                 -t "${TARGET_URL}" \
                                 -r zap-report.html \
                                 -J zap-report.json \
