@@ -179,12 +179,14 @@ class AuthNotifier extends _$AuthNotifier {
     required String email,
     required String password,
     String? name,
+    String? securityPin,
   }) async {
     state = const AsyncValue.loading();
     final result = await _repository.registerWithEmail(
       email: email,
       password: password,
       name: name,
+      securityPin: securityPin,
     );
     if (!ref.mounted) return;
     state = result.fold(

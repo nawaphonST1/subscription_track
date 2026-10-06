@@ -38,6 +38,7 @@ class StubAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    String? securityPin,
   }) async =>
       right(User(id: 'stub-register', email: email, name: name ?? ''));
 

@@ -166,6 +166,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    String? securityPin,
   }) async {
     registerCalls++;
     return right(User(id: 'new-user', email: email, name: name ?? ''));

@@ -73,6 +73,55 @@ void main() {
       expect(prefs.getString('auth_token'), 'jwt-mock-token-xyz');
     });
 
+    test('registerWithEmail sends security_pin in request body when provided',
+        () async {
+      const customPin = '654321';
+      final mockClient = MockClient((request) async {
+        if (request.url.path == '/auth/register' && request.method == 'POST') {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['email'], 'pinuser@example.com');
+          expect(body['password'], 'securePass123');
+          expect(body['name'], 'Pin User');
+          expect(body['security_pin'], customPin);
+
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'statusCode': 201,
+              'data': {
+                'token': 'jwt-mock-token-xyz',
+                'user': {
+                  'id': 'user-db-pin',
+                  'email': 'pinuser@example.com',
+                  'name': 'Pin User',
+                  'monthly_income': 50000,
+                  'created_at': '2026-10-05T12:00:00.000Z',
+                },
+              },
+              'timestamp': '2026-10-05T12:00:00.000Z',
+            }),
+            201,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final repository = RemoteAuthRepository(
+        client: mockClient,
+        baseUrl: testBaseUrl,
+      );
+
+      final result = await repository.registerWithEmail(
+        email: 'pinuser@example.com',
+        password: 'securePass123',
+        name: 'Pin User',
+        securityPin: customPin,
+      );
+
+      expect(result.isRight(), isTrue);
+    });
+
     test('registerWithEmail returns Failure on 409 Conflict', () async {
       final mockClient = MockClient((request) async {
         return http.Response(

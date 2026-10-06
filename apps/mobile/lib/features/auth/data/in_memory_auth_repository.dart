@@ -75,11 +75,12 @@ class InMemoryAuthRepository implements AuthRepository {
     return right(_currentUser!);
   }
 
-    @override
+  @override
   Future<Either<Failure, User>> registerWithEmail({
     required String email,
     required String password,
     String? name,
+    String? securityPin,
   }) async {
     logger.i('Mock Register with Email: $email');
     await Future.delayed(const Duration(seconds: 1));
