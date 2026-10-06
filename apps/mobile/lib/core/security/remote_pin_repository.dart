@@ -37,6 +37,9 @@ class RemotePinRepository implements PinRepository {
       return unwrapEnvelope<bool>(
         response,
         (data) => data['valid'] as bool? ?? false,
+        statusOverrides: const {
+          401: Failure.serverError('รหัส PIN ไม่ถูกต้อง'),
+        },
       );
     } catch (e, stack) {
       logger.e('Error connecting to verify-pin API', error: e, stackTrace: stack);
@@ -63,6 +66,9 @@ class RemotePinRepository implements PinRepository {
       return unwrapEnvelope<Unit>(
         response,
         (_) => unit,
+        statusOverrides: const {
+          401: Failure.serverError('รหัส PIN ไม่ถูกต้อง'),
+        },
       );
     } catch (e, stack) {
       logger.e('Error connecting to change-pin API', error: e, stackTrace: stack);

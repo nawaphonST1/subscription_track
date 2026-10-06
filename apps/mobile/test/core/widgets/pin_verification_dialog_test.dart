@@ -140,6 +140,40 @@ void main() {
     expect(dialogResult, isNull);
   });
 
+  testWidgets('displays PIN-specific error message on 401 failure, not email/password', (tester) async {
+    final repo = InMemoryPinRepository(
+      verifyResult: left(const Failure.serverError('รหัส PIN ไม่ถูกต้อง')),
+    );
+    bool? dialogResult;
+
+    await tester.pumpWidget(
+      buildTestWidget(
+        repo: repo,
+        onOpen: (context) async {
+          dialogResult = await PinVerificationDialog.show(
+            context: context,
+            title: 'ยืนยันรหัส PIN',
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Open Dialog'));
+    await tester.pumpAndSettle();
+
+    final textField = find.byType(TextField);
+    await tester.enterText(textField, testValidPin);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(repo.verifyCallCount, 1);
+    expect(find.text('รหัส PIN ไม่ถูกต้อง'), findsOneWidget);
+    expect(find.textContaining('อีเมล'), findsNothing);
+    expect(find.textContaining('รหัสผ่าน'), findsNothing);
+    expect(find.byType(PinVerificationDialog), findsOneWidget);
+    expect(dialogResult, isNull);
+  });
+
   testWidgets('returns false when cancel button is clicked', (tester) async {
     final repo = InMemoryPinRepository();
     bool? dialogResult;

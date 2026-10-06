@@ -132,6 +132,36 @@ void main() {
         (_) => fail('Expected Left but got Right'),
       );
     });
+    test('returns Left(Failure.serverError("รหัส PIN ไม่ถูกต้อง")) on HTTP 401 unauthorized', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': false,
+            'statusCode': 401,
+            'message': 'Unauthorized',
+          }),
+          401,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePinRepository(
+        client: mockClient,
+        baseUrl: testBaseUrl,
+      );
+
+      final result = await repository.verifyPin(testValidPin);
+
+      expect(result.isLeft(), isTrue);
+      result.match(
+        (failure) {
+          expect(failure, const Failure.serverError('รหัส PIN ไม่ถูกต้อง'));
+          expect(failure.displayMessage, 'รหัส PIN ไม่ถูกต้อง');
+          expect(failure.displayMessage, isNot(contains('อีเมลหรือรหัสผ่าน')));
+        },
+        (_) => fail('Expected Left but got Right'),
+      );
+    });
   });
 
   group('RemotePinRepository.changePin', () {
@@ -172,7 +202,7 @@ void main() {
       );
     });
 
-    test('wrong-PIN-as-401 does NOT trigger onUnauthorized logout callback', () async {
+    test('wrong-PIN-as-401 does NOT trigger onUnauthorized logout callback and returns PIN error', () async {
       var unauthorizedCallCount = 0;
       final authClient = AuthenticatedHttpClient(
         readToken: () async => 'jwt-test-token',
@@ -204,7 +234,11 @@ void main() {
 
       expect(result.isLeft(), isTrue);
       result.match(
-        (failure) => expect(failure, const Failure.unauthorized()),
+        (failure) {
+          expect(failure, const Failure.serverError('รหัส PIN ไม่ถูกต้อง'));
+          expect(failure.displayMessage, 'รหัส PIN ไม่ถูกต้อง');
+          expect(failure.displayMessage, isNot(contains('อีเมลหรือรหัสผ่าน')));
+        },
         (_) => fail('Expected Left but got Right'),
       );
       expect(
