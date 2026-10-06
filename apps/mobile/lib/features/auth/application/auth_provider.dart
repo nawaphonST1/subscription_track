@@ -11,7 +11,9 @@ import 'package:subscription_track/features/auth/domain/user.dart';
 part 'auth_provider.g.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => RemoteAuthRepository(),
+  (ref) => RemoteAuthRepository(
+    onUnauthorized: () => ref.read(authProvider.notifier).handleSessionExpired(),
+  ),
 );
 
 @riverpod
@@ -113,6 +115,28 @@ class AuthNotifier extends _$AuthNotifier {
   Future<void> retryRestore() async {
     state = const AsyncValue.loading();
     await _restoreSession();
+  }
+
+  /// จัดการกรณี session หมดอายุระหว่างใช้งาน (สัญญาณ 401 จาก [AuthenticatedHttpClient])
+  ///
+  /// ต่างจาก [logout]:
+  /// 1. **ไม่ตั้ง state เป็น loading ก่อน** เพื่อกันหน้าจอวูบกลับไปที่ splash ชั่วขณะ
+  /// 2. **เป็น idempotent**: ปลอดภัยเมื่อมี request พร้อมกันหลายตัวเจอปัญหา 401 ในเวลาเดียวกัน
+  /// 3. ล้าง token ผ่าน repository และเปลี่ยนสถานะเป็น [AsyncValue.data(null)]
+  bool _isHandlingSessionExpired = false;
+
+  Future<void> handleSessionExpired() async {
+    if (_isHandlingSessionExpired) return;
+    _isHandlingSessionExpired = true;
+    try {
+      final repository = _repository;
+      await repository.logout();
+      if (ref.mounted) {
+        state = const AsyncValue.data(null);
+      }
+    } finally {
+      _isHandlingSessionExpired = false;
+    }
   }
 
   Future<void> loginWithEmail({

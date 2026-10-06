@@ -28,9 +28,11 @@ class RemoteAuthRepository implements AuthRepository {
     http.Client? client,
     String? baseUrl,
     GoogleSignIn? googleSignIn,
+    void Function()? onUnauthorized,
   })  : _client = AuthenticatedHttpClient(
           readToken: readStoredAuthToken,
           inner: client,
+          onUnauthorized: onUnauthorized,
         ),
         _baseUrl = baseUrl ?? ApiConfig.baseUrl,
         // ignore: prefer_initializing_formals
