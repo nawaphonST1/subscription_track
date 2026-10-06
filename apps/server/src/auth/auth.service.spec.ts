@@ -36,6 +36,7 @@ describe('AuthService pin_configured responses', () => {
         email: 'new@example.com',
         password: 'password123',
         name: 'New User',
+        security_pin: '111111',
       } as any);
 
       expect(res.user.pin_configured).toBe(false);

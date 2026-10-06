@@ -36,7 +36,7 @@ export class AuthService {
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(dto.password, saltRounds);
-    const pin = dto.security_pin ?? '111111';
+    const pin = dto.security_pin;
     const securityPinHash = await bcrypt.hash(pin, saltRounds);
 
     const user = await this.prisma.user.create({
