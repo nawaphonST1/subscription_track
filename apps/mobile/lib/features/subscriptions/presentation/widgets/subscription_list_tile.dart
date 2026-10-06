@@ -21,21 +21,42 @@ class SubscriptionListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Material(
-      color: theme.cardColor,
-      borderRadius: BorderRadius.circular(14),
-      child: ListTile(
-        key: Key('subscription-${subscription.id}'),
-        onTap: onShowDetails,
-        contentPadding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-        leading: CircleAvatar(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          child: ServiceIcon(
-            serviceName: subscription.name,
-            category: subscription.category,
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E3D5B) : const Color(0xFFCBD5E1),
+          width: 1.3,
         ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.07),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: ListTile(
+          key: Key('subscription-${subscription.id}'),
+          onTap: onShowDetails,
+          contentPadding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+          leading: CircleAvatar(
+            backgroundColor: isDark
+                ? const Color(0xFF1E293B)
+                : const Color(0xFFF1F5F9),
+            child: ServiceIcon(
+              serviceName: subscription.name,
+              category: subscription.category,
+            ),
+          ),
         title: Text(
           subscription.name,
           maxLines: 1,
@@ -85,6 +106,7 @@ class SubscriptionListTile extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }

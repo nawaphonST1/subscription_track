@@ -78,6 +78,15 @@ class _NotificationTile extends StatelessWidget {
             color: theme.dividerColor.withValues(alpha: item.isRead ? 0.5 : 1),
             width: 1.5,
           ),
+          boxShadow: theme.brightness == Brightness.dark || item.isRead
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

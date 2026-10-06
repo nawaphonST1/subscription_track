@@ -29,13 +29,6 @@ void main() {
     final switchFinder = find.widgetWithText(SwitchListTile, 'โหมดกลางคืน');
     expect(
       Theme.of(tester.element(find.byType(SettingsTab))).brightness,
-      Brightness.light,
-    );
-
-    await tester.tap(switchFinder);
-    await tester.pumpAndSettle();
-    expect(
-      Theme.of(tester.element(find.byType(SettingsTab))).brightness,
       Brightness.dark,
     );
 
@@ -44,6 +37,13 @@ void main() {
     expect(
       Theme.of(tester.element(find.byType(SettingsTab))).brightness,
       Brightness.light,
+    );
+
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+    expect(
+      Theme.of(tester.element(find.byType(SettingsTab))).brightness,
+      Brightness.dark,
     );
   });
 
@@ -61,6 +61,6 @@ void main() {
     final element = tester.element(find.byType(SettingsTab));
     final container = ProviderScope.containerOf(element);
     expect(container.read(notificationReminderProvider), isFalse);
-    expect(container.read(themeModeProvider), ThemeMode.light);
+    expect(container.read(themeModeProvider), ThemeMode.dark);
   });
 }
