@@ -128,6 +128,23 @@ pipeline {
                         }
                     }
                 }
+
+                // Lab 10 Fail-Fast: Unit tests executed in parallel with static analysis
+                stage('DP-403: Automated Unit Testing (Vitest)') {
+                    steps {
+                        script { env.CURRENT_STAGE = env.STAGE_NAME }
+                        echo "==> [${env.APP_NAME}] Executing isolated Vitest unit test suite..."
+                        dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
+                            sh '''
+                                if command -v pnpm >/dev/null 2>&1; then
+                                    pnpm test --run src || pnpm test
+                                else
+                                    npm test
+                                fi
+                            '''
+                        }
+                    }
+                }
             }
         }
 
@@ -304,9 +321,40 @@ pipeline {
     post {
         success {
             echo "✅ [${env.APP_NAME}] Complete DevSecOps Pipeline SUCCEEDED on ${env.NODE_ENV}."
+            sh '''
+                echo "📢 [NOTIFICATION - SUCCESS]"
+                echo "=========================================="
+                echo "Project : ${APP_NAME}"
+                echo "Branch  : ${GIT_BRANCH:-main}"
+                echo "Build   : #${BUILD_NUMBER}"
+                echo "URL     : ${BUILD_URL}"
+                echo "Status  : SUCCEEDED ✅"
+                echo "=========================================="
+                if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data "{\\"text\\":\\"✅ *[${APP_NAME}]* Build #${BUILD_NUMBER} on *${GIT_BRANCH:-main}* succeeded!\\n<${BUILD_URL}|View Build Details>\\"}" \
+                        "${SLACK_WEBHOOK_URL}" || true
+                fi
+            '''
         }
         failure {
             echo "❌ [${env.APP_NAME}] Pipeline failed at stage: ${env.CURRENT_STAGE ?: env.STAGE_NAME}"
+            sh '''
+                echo "📢 [NOTIFICATION - FAILURE]"
+                echo "=========================================="
+                echo "Project : ${APP_NAME}"
+                echo "Branch  : ${GIT_BRANCH:-main}"
+                echo "Build   : #${BUILD_NUMBER}"
+                echo "Stage   : ${CURRENT_STAGE:-unknown}"
+                echo "URL     : ${BUILD_URL}"
+                echo "Status  : FAILED ❌"
+                echo "=========================================="
+                if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data "{\\"text\\":\\"❌ *[${APP_NAME}]* Build #${BUILD_NUMBER} on *${GIT_BRANCH:-main}* failed at stage: *${CURRENT_STAGE:-unknown}*!\\n<${BUILD_URL}|View Build Details>\\"}" \
+                        "${SLACK_WEBHOOK_URL}" || true
+                fi
+            '''
         }
         always {
             archiveArtifacts artifacts: '''
