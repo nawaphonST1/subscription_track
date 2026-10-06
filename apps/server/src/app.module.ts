@@ -21,6 +21,7 @@ import { PackagesModule } from './packages/packages.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { CacheModule } from './cache/cache.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -55,6 +56,10 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

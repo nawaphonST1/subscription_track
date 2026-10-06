@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/errors/failures.dart';
+import 'package:subscription_track/core/network/network_status.dart';
+import 'package:subscription_track/core/widgets/connectivity_status_banner.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
@@ -50,6 +52,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       if (next is AsyncError) {
         final error = next.error;
+        if (error is Failure) {
+          ref.read(networkStatusProvider.notifier).reportFailure(error);
+        }
         final errorText = error is Failure
             ? error.displayMessage
             : (error?.toString() ?? 'การสมัครสมาชิกล้มเหลว');
@@ -70,8 +75,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0F1D),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+        child: Column(
+          children: [
+            const ConnectivityStatusBanner(),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
               horizontal: 24.0,
               vertical: 32.0,
@@ -336,8 +345,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ],
               ),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

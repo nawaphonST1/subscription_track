@@ -47,4 +47,18 @@ describe('HealthService', () => {
       );
     }
   });
+
+  it('reports maintenance status when maintenance mode is enabled', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ '?column?': 1 }]);
+    const configMock = {
+      get: vi.fn().mockReturnValue(true),
+    } as any;
+
+    const maintenanceService = new HealthService(prismaMock, configMock);
+    const result = await maintenanceService.check();
+
+    expect(result.status).toBe('maintenance');
+    expect(result.checks.maintenance).toBe(true);
+    expect(result.message).toContain('เซิร์ฟเวอร์กำลังปิดปรับปรุงชั่วคราว');
+  });
 });

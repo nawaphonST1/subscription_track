@@ -7,6 +7,7 @@ export interface AppConfiguration {
   port: number;
   metricsPort: number;
   activeUsersWindowSeconds: number;
+  maintenanceMode: boolean;
 }
 
 export const appConfig = registerAs('app', (): AppConfiguration => {
@@ -18,5 +19,6 @@ export const appConfig = registerAs('app', (): AppConfiguration => {
     port: environment.PORT,
     metricsPort: environment.METRICS_PORT,
     activeUsersWindowSeconds: environment.ACTIVE_USERS_WINDOW_SECONDS,
+    maintenanceMode: environment.MAINTENANCE_MODE,
   };
 });

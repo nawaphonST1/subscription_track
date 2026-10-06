@@ -4,6 +4,7 @@ import 'package:subscription_track/app/application/current_tab_controller.dart';
 import 'package:subscription_track/app/presentation/widgets/main_app_header.dart';
 import 'package:subscription_track/app/presentation/widgets/main_app_navigation.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
+import 'package:subscription_track/core/widgets/connectivity_status_banner.dart';
 import 'package:subscription_track/features/dashboard/presentation/dashboard_tab.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
 import 'package:subscription_track/features/profile/presentation/income_editor_sheet.dart';
@@ -44,19 +45,26 @@ class MainNavigationShell extends ConsumerWidget {
           appBar: child == null
               ? MainAppHeader(onEditIncome: editIncome)
               : null,
-          body: useRail
-              ? Row(
-                  children: [
-                    MainAppNavigationRail(
-                      selectedIndex: currentTab,
-                      extended: extendRail,
-                      onSelected: selectTab,
-                    ),
-                    VerticalDivider(width: 1, color: theme.dividerColor),
-                    Expanded(child: content),
-                  ],
-                )
-              : content,
+          body: Column(
+            children: [
+              const ConnectivityStatusBanner(),
+              Expanded(
+                child: useRail
+                    ? Row(
+                        children: [
+                          MainAppNavigationRail(
+                            selectedIndex: currentTab,
+                            extended: extendRail,
+                            onSelected: selectTab,
+                          ),
+                          VerticalDivider(width: 1, color: theme.dividerColor),
+                          Expanded(child: content),
+                        ],
+                      )
+                    : content,
+              ),
+            ],
+          ),
           bottomNavigationBar: useRail
               ? null
               : MainAppNavigationBar(
