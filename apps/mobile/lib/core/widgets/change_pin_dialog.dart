@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/security/pin_provider.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
@@ -27,14 +28,18 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
   final TextEditingController _pinController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   String? _errorMessage;
-  
+  bool _isLoading = false;
+
+  String _oldPin = '';
   String _newPin = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
     });
   }
 
@@ -45,44 +50,71 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
     super.dispose();
   }
 
-  void _handlePinSubmit(String value) {
-    if (value.length != 6) return;
+  Future<void> _handlePinSubmit(String value) async {
+    if (value.length != 6 || _isLoading) return;
 
     setState(() {
       _errorMessage = null;
     });
 
+    final repo = ref.read(pinRepositoryProvider);
+
     switch (_step) {
       case ChangePinStep.verifyOld:
-        final correct = ref.read(securityPinProvider) == value;
-        if (correct) {
-          setState(() {
-            _step = ChangePinStep.enterNew;
-            _pinController.clear();
-          });
-          _focusNode.requestFocus();
-        } else {
-          setState(() {
-            _errorMessage = 'รหัส PIN เดิมไม่ถูกต้อง';
-            _pinController.clear();
-          });
-          _focusNode.requestFocus();
-        }
+        setState(() {
+          _isLoading = true;
+        });
+
+        final result = await repo.verifyPin(value);
+        if (!mounted) return;
+
+        result.fold(
+          (failure) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = failure.displayMessage;
+              _pinController.clear();
+            });
+            _focusNode.requestFocus();
+          },
+          (isValid) {
+            if (isValid) {
+              setState(() {
+                _isLoading = false;
+                _oldPin = value;
+                _step = ChangePinStep.enterNew;
+                _pinController.clear();
+              });
+              _focusNode.requestFocus();
+            } else {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = 'รหัส PIN เดิมไม่ถูกต้อง';
+                _pinController.clear();
+              });
+              _focusNode.requestFocus();
+            }
+          },
+        );
+
       case ChangePinStep.enterNew:
+        if (value == _oldPin) {
+          setState(() {
+            _errorMessage = 'รหัส PIN ใหม่ต้องไม่ซ้ำกับรหัสเดิม';
+            _pinController.clear();
+          });
+          _focusNode.requestFocus();
+          return;
+        }
         setState(() {
           _newPin = value;
           _step = ChangePinStep.confirmNew;
           _pinController.clear();
         });
         _focusNode.requestFocus();
+
       case ChangePinStep.confirmNew:
-        if (value == _newPin) {
-          ref.read(securityPinProvider.notifier).updatePin(value);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('เปลี่ยนรหัส PIN สำเร็จแล้ว')),
-          );
-          Navigator.of(context).pop();
-        } else {
+        if (value != _newPin) {
           setState(() {
             _errorMessage = 'รหัส PIN ยืนยันไม่ตรงกัน กรุณาตั้งค่าใหม่';
             _step = ChangePinStep.enterNew;
@@ -90,7 +122,39 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
             _pinController.clear();
           });
           _focusNode.requestFocus();
+          return;
         }
+
+        setState(() {
+          _isLoading = true;
+        });
+
+        final result = await repo.changePin(
+          currentPin: _oldPin,
+          newPin: _newPin,
+        );
+
+        if (!mounted) return;
+
+        result.fold(
+          (failure) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = failure.displayMessage;
+              _pinController.clear();
+            });
+            _focusNode.requestFocus();
+          },
+          (_) {
+            setState(() {
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('เปลี่ยนรหัส PIN สำเร็จแล้ว')),
+            );
+            Navigator.of(context).pop();
+          },
+        );
     }
   }
 
@@ -151,6 +215,7 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
                   child: TextField(
                     controller: _pinController,
                     focusNode: _focusNode,
+                    enabled: !_isLoading,
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     inputFormatters: [
@@ -173,7 +238,7 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
                 ),
               ),
               GestureDetector(
-                onTap: () => _focusNode.requestFocus(),
+                onTap: _isLoading ? null : () => _focusNode.requestFocus(),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(6, (index) {
@@ -209,6 +274,14 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
               ),
             ],
           ),
+          if (_isLoading) ...[
+            const SizedBox(height: 16),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
             Text(
@@ -225,7 +298,7 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('ยกเลิก'),
         ),
       ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/security/pin_provider.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
@@ -39,13 +40,16 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
   final TextEditingController _pinController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   String? _errorMessage;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     // Auto focus on open
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
     });
   }
 
@@ -56,23 +60,45 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
     super.dispose();
   }
 
-  void _verifyPin(String enteredPin) {
-    if (enteredPin.length == 6) {
-      final isCorrect = ref.read(securityPinProvider) == enteredPin;
-      if (isCorrect) {
+  Future<void> _verifyPin(String enteredPin) async {
+    if (enteredPin.length != 6 || _isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final repo = ref.read(pinRepositoryProvider);
+    final result = await repo.verifyPin(enteredPin);
+
+    if (!mounted) return;
+
+    result.fold(
+      (failure) {
         setState(() {
-          _errorMessage = null;
-        });
-        Navigator.of(context).pop(true);
-      } else {
-        setState(() {
-          _errorMessage = 'รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+          _isLoading = false;
+          _errorMessage = failure.displayMessage;
           _pinController.clear();
         });
-        // Refocus in case focus was lost
         _focusNode.requestFocus();
-      }
-    }
+      },
+      (isValid) {
+        if (isValid) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = null;
+          });
+          Navigator.of(context).pop(true);
+        } else {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+            _pinController.clear();
+          });
+          _focusNode.requestFocus();
+        }
+      },
+    );
   }
 
   @override
@@ -121,6 +147,7 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
                   child: TextField(
                     controller: _pinController,
                     focusNode: _focusNode,
+                    enabled: !_isLoading,
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     inputFormatters: [
@@ -144,7 +171,7 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
               ),
               // PIN Boxes
               GestureDetector(
-                onTap: () => _focusNode.requestFocus(),
+                onTap: _isLoading ? null : () => _focusNode.requestFocus(),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(6, (index) {
@@ -180,6 +207,14 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
               ),
             ],
           ),
+          if (_isLoading) ...[
+            const SizedBox(height: 16),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
             Text(
@@ -196,7 +231,7 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
           child: const Text('ยกเลิก'),
         ),
       ],
