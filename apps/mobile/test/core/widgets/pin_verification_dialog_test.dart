@@ -200,4 +200,63 @@ void main() {
     expect(dialogResult, isFalse);
     expect(find.byType(PinVerificationDialog), findsNothing);
   });
+
+  testWidgets('returns entered PIN string on successful verification when using showForPin', (tester) async {
+    final repo = InMemoryPinRepository(currentPin: testValidPin);
+    String? pinResult;
+
+    await tester.pumpWidget(
+      buildTestWidget(
+        repo: repo,
+        onOpen: (context) async {
+          pinResult = await PinVerificationDialog.showForPin(
+            context: context,
+            title: 'ยืนยันรหัส PIN สำหรับการลบ',
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Open Dialog'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ยืนยันรหัส PIN สำหรับการลบ'), findsOneWidget);
+
+    final textField = find.byType(TextField);
+    await tester.enterText(textField, testValidPin);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(repo.verifyCallCount, 1);
+    expect(repo.lastVerifiedPin, testValidPin);
+    expect(pinResult, testValidPin);
+    expect(find.byType(PinVerificationDialog), findsNothing);
+  });
+
+  testWidgets('returns null when cancel button is clicked when using showForPin', (tester) async {
+    final repo = InMemoryPinRepository();
+    String? pinResult;
+
+    await tester.pumpWidget(
+      buildTestWidget(
+        repo: repo,
+        onOpen: (context) async {
+          pinResult = await PinVerificationDialog.showForPin(
+            context: context,
+            title: 'ยืนยันรหัส PIN',
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Open Dialog'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('ยกเลิก'));
+    await tester.pumpAndSettle();
+
+    expect(repo.verifyCallCount, 0);
+    expect(pinResult, isNull);
+    expect(find.byType(PinVerificationDialog), findsNothing);
+  });
 }

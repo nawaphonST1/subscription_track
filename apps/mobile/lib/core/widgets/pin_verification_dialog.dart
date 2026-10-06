@@ -11,10 +11,12 @@ class PinVerificationDialog extends ConsumerStatefulWidget {
     super.key,
     required this.title,
     this.message = 'กรุณากรอกรหัส PIN 6 หลักเพื่อยืนยันการทำรายการ',
+    this.returnPinOnSuccess = false,
   });
 
   final String title;
   final String message;
+  final bool returnPinOnSuccess;
 
   @override
   ConsumerState<PinVerificationDialog> createState() => _PinVerificationDialogState();
@@ -24,7 +26,7 @@ class PinVerificationDialog extends ConsumerStatefulWidget {
     required String title,
     String message = 'กรุณากรอกรหัส PIN 6 หลักเพื่อยืนยันการทำรายการ',
   }) async {
-    final result = await showDialog<bool>(
+    final result = await showDialog<dynamic>(
       context: context,
       barrierDismissible: false,
       builder: (_) => PinVerificationDialog(
@@ -32,7 +34,27 @@ class PinVerificationDialog extends ConsumerStatefulWidget {
         message: message,
       ),
     );
-    return result ?? false;
+    return result == true || result is String;
+  }
+
+  static Future<String?> showForPin({
+    required BuildContext context,
+    required String title,
+    String message = 'กรุณากรอกรหัส PIN 6 หลักเพื่อยืนยันการทำรายการ',
+  }) async {
+    final result = await showDialog<dynamic>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PinVerificationDialog(
+        title: title,
+        message: message,
+        returnPinOnSuccess: true,
+      ),
+    );
+    if (result is String) {
+      return result;
+    }
+    return null;
   }
 }
 
@@ -88,7 +110,7 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
             _isLoading = false;
             _errorMessage = null;
           });
-          Navigator.of(context).pop(true);
+          Navigator.of(context).pop(widget.returnPinOnSuccess ? enteredPin : true);
         } else {
           setState(() {
             _isLoading = false;
