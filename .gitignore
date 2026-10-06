@@ -124,3 +124,8 @@ infra/monitoring/secrets/
 **/doc/
 docs/
 **/docs/
+
+# Wazuh: โฟลเดอร์ที่เผลอ cp มาไว้ผิดที่ (ของจริงอยู่ที่ infra/security/wazuh/ ซึ่งมี
+# .gitignore ของตัวเองคุมอยู่แล้ว) ขีดนำหน้าคือ "เฉพาะระดับ root เท่านั้น"
+/config/
+/upstream/

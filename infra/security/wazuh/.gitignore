@@ -1,6 +1,8 @@
 # Real values and everything the cert generator produces.
 .env
-config/wazuh_indexer_ssl_certs/
+# config/ ทั้งก้อน: ดึงมาจาก upstream แล้วใส่ค่าจริงลงไป (bcrypt hash ของ admin/kibanaserver
+# ใน wazuh_indexer/internal_users.yml และรหัส API ใน wazuh_dashboard/wazuh.yml) ห้ามขึ้น git
+config/
 upstream/
 
 !.env.example
