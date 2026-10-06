@@ -58,6 +58,7 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        role: true,
         monthly_income: true,
         created_at: true,
       },
@@ -66,6 +67,7 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     return {
@@ -96,6 +98,7 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     this.metrics?.recordLogin('success', 'password');
@@ -106,6 +109,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
         monthly_income: Number(user.monthly_income),
         created_at: user.created_at,
       },
@@ -155,6 +159,7 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        role: true,
         monthly_income: true,
         created_at: true,
       },
@@ -186,6 +191,7 @@ export class AuthService {
           id: true,
           email: true,
           name: true,
+          role: true,
           monthly_income: true,
           created_at: true,
         },
@@ -195,6 +201,7 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     this.metrics?.recordLogin('success', 'password');

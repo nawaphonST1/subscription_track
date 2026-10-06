@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PackagesService } from '../../packages/packages.service';
 import { CreatePackageDto } from '../../packages/dto/create-package.dto';
+import { UpdatePackageDto } from '../../packages/dto/update-package.dto';
 import { UpdatePackageStatusDto } from './dto/update-package-status.dto';
 import { AdminPackageResponseDto } from './dto/package-response.dto';
 
@@ -16,6 +17,18 @@ export class AdminPackagesService {
     private readonly prisma: PrismaService,
     private readonly packagesService: PackagesService,
   ) {}
+
+  /**
+   * Get all preset packages for admin catalog management.
+   */
+  async getAllPackages(): Promise<AdminPackageResponseDto[]> {
+    const presets = await this.prisma.subscriptionPreset.findMany({
+      orderBy: { name: 'asc' },
+    });
+    return presets.map((p) =>
+      this.mapToResponse(p, !this.disabledPackageIds.has(p.id)),
+    );
+  }
 
   // =========================================================================
   // BE-303: Admin Create Package Implementation
@@ -38,6 +51,32 @@ export class AdminPackagesService {
       updatedAt: created.updated_at,
     };
   }
+
+  /**
+   * Admin update an existing preset package.
+   */
+  async updatePackage(
+    id: string,
+    dto: UpdatePackageDto,
+  ): Promise<AdminPackageResponseDto> {
+    const updated = await this.packagesService.update(id, dto);
+    const isActive = !this.disabledPackageIds.has(updated.id);
+    return {
+      id: updated.id,
+      name: updated.name,
+      category: updated.category,
+      defaultPrice: updated.default_price,
+      billingCycle: updated.billing_cycle,
+      brandColor: updated.brand_color,
+      iconUrl: updated.icon_url,
+      description: updated.description,
+      isActive,
+      deletedAt: isActive ? null : new Date(),
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at,
+    };
+  }
+
 
   // =========================================================================
   // BE-305: Admin Disable / Delete Package Implementations

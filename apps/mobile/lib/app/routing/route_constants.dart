@@ -16,6 +16,7 @@ class RouteConstants {
   static const String notifications = 'notifications';
   static const String addSubscription = 'add';
   static const String selectPackage = 'select-package';
+  static const String admin = '/admin';
 
   // Helper methods
   static String subscriptionDetailPath(String id) =>
