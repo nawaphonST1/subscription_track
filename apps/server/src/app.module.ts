@@ -34,6 +34,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', 'apps/server/.env'],
       load: [appConfig, databaseConfig],
       validate: validateEnvironment,
     }),
