@@ -86,6 +86,15 @@ lerna-debug.log*
 infra/postgres/data/
 infra/redis/data/
 
+# prod-agent: temporary diagnostic/rollback files from the 2026-10-07 Alloy
+# self-log feedback loop incident — kept locally as an instant rollback
+# option, never meant for git history. Remove once config.alloy has been
+# stable long enough that these aren't needed. See the fix in config.alloy.
+infra/monitoring/prod-agent/*.bak
+infra/monitoring/prod-agent/config.metrics-only.alloy
+infra/monitoring/prod-agent/docker-compose.metrics-only.override.yml
+infra/monitoring/prod-agent/docker-compose.test-traffic.override.yml
+
 # Local CLI Binaries & Cluster Configs
 *.exe
 scripts/bin/
