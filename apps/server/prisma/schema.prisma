@@ -5,7 +5,6 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 enum CardType {
@@ -37,6 +36,11 @@ enum NotificationType {
   SECURITY_ALERT
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 enum DevicePlatform {
   ANDROID
   IOS
@@ -53,6 +57,7 @@ model User {
   email             String                 @unique
   password_hash     String
   name              String?
+  role              UserRole               @default(USER)
   monthly_income    Decimal                @default(0) @db.Decimal(12, 2)
   security_pin_hash String
   created_at        DateTime               @default(now())

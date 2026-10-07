@@ -28,6 +28,11 @@ export class UpdatePackageDto {
   @Min(0)
   default_price?: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  defaultPrice?: number;
+
   @ApiPropertyOptional({
     enum: BillingCycle,
     description: 'Updated billing cycle',
@@ -36,6 +41,10 @@ export class UpdatePackageDto {
   @IsEnum(BillingCycle)
   billing_cycle?: BillingCycle;
 
+  @IsOptional()
+  @IsEnum(BillingCycle)
+  billingCycle?: BillingCycle;
+
   @ApiPropertyOptional({
     example: '#E50914',
     description: 'Updated brand color hex code',
@@ -43,6 +52,10 @@ export class UpdatePackageDto {
   @IsOptional()
   @IsString()
   brand_color?: string;
+
+  @IsOptional()
+  @IsString()
+  brandColor?: string;
 
   @ApiPropertyOptional({
     example: 'https://example.com/icons/netflix-4k.png',

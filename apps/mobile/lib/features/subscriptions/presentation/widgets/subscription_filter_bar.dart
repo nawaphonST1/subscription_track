@@ -54,6 +54,7 @@ class SubscriptionFilterBar extends StatelessWidget {
                             color: filter.category == category
                                 ? theme.colorScheme.primary
                                 : theme.dividerColor,
+                            width: 1.2,
                           ),
                         ),
                       ),

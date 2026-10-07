@@ -29,18 +29,27 @@ class DashboardHeroCard extends StatelessWidget {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.35),
+          color: isDark
+              ? theme.colorScheme.primary.withValues(alpha: 0.45)
+              : const Color(0xFFCBD5E1),
+          width: 1.3,
         ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF182541), theme.cardColor]
-              : [
-                  theme.colorScheme.primary.withValues(alpha: 0.05),
-                  theme.cardColor,
-                ],
-        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+        gradient: isDark
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [const Color(0xFF182541), theme.cardColor],
+              )
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

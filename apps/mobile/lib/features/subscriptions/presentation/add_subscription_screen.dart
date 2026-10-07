@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/widgets/service_icon.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_form_validator.dart';
 import 'package:subscription_track/features/subscriptions/domain/preset_package.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
+import 'package:subscription_track/features/subscriptions/presentation/widgets/payment_card_selector.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/preset_picker_card.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_appearance_selector.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_general_fields.dart';
 import 'package:subscription_track/features/subscriptions/presentation/widgets/usage_status_selector.dart';
 
-class AddSubscriptionScreen extends StatefulWidget {
+class AddSubscriptionScreen extends ConsumerStatefulWidget {
   const AddSubscriptionScreen({super.key});
 
   @override
-  State<AddSubscriptionScreen> createState() => _AddSubscriptionScreenState();
+  ConsumerState<AddSubscriptionScreen> createState() =>
+      _AddSubscriptionScreenState();
 }
 
-class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
+class _AddSubscriptionScreenState
+    extends ConsumerState<AddSubscriptionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
@@ -26,6 +31,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
   UsageStatus _usageStatus = UsageStatus.frequent;
   IconData _selectedIcon = Icons.play_circle_fill;
   Color _selectedColor = const Color(0xFF3B82F6);
+  String? _selectedCardId;
 
   @override
   void dispose() {
@@ -58,7 +64,13 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
   }
 
   void _saveForm() {
+    // validate() ของ Form เช็ค PaymentCardSelector ด้วย (มี validator ของตัวเอง)
+    // แต่เช็ค _selectedCardId == null ซ้ำตรงนี้อีกชั้นเผื่อ cards ว่างเปล่า
+    // (ตอนนั้น PaymentCardSelector ไม่ได้ render DropdownButtonFormField เลย
+    // จึงไม่มี FormField ให้ validate）
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_selectedCardId == null) return;
+
     final subscription = Subscription(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
@@ -67,6 +79,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
       usageStatus: _usageStatus.nameValue,
       billingPeriod: _billingPeriod.toLowerCase(),
       category: _category,
+      paymentCardId: _selectedCardId,
     );
     Navigator.pop(context, subscription);
   }
@@ -74,6 +87,7 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final linkedCards = ref.watch(linkedPaymentCardsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -109,6 +123,18 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
+                linkedCards.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, __) => const Text('โหลดข้อมูลบัตรไม่สำเร็จ'),
+                  data: (cards) => PaymentCardSelector(
+                    cards: cards,
+                    selectedCardId: _selectedCardId,
+                    onChanged: (value) =>
+                        setState(() => _selectedCardId = value),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 UsageStatusSelector(
                   selectedStatus: _usageStatus,
                   onChanged: (value) => setState(() => _usageStatus = value),
@@ -130,7 +156,9 @@ class _AddSubscriptionScreenState extends State<AddSubscriptionScreen> {
                   width: double.infinity,
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: _saveForm,
+                    onPressed: linkedCards.value?.isNotEmpty ?? false
+                        ? _saveForm
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: Colors.white,

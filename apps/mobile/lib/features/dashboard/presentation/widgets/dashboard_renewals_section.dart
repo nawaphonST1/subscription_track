@@ -82,13 +82,27 @@ class _RenewalCard extends StatelessWidget {
         .inDays
         .clamp(0, 999);
 
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: fillWidth ? null : 154,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.dividerColor),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E3D5B) : const Color(0xFFCBD5E1),
+          width: 1.3,
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.07),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(
         children: [

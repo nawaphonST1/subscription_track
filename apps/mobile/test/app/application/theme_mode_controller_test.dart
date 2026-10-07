@@ -5,12 +5,12 @@ import 'package:subscription_track/app/application/theme_mode_controller.dart';
 
 void main() {
   group('ThemeModeController Unit Tests', () {
-    test('default ThemeMode should be ThemeMode.light', () {
+    test('default ThemeMode should be ThemeMode.dark', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       final themeMode = container.read(themeModeProvider);
-      expect(themeMode, ThemeMode.light);
+      expect(themeMode, ThemeMode.dark);
     });
 
     test('setMode updates ThemeMode state', () {

@@ -9,12 +9,14 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { PaymentCardsService } from './payment-cards.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequireSecurityPin } from '../common/guards/security-pin.guard';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { LinkMockCardDto } from './dto/link-mock-card.dto';
@@ -105,8 +107,26 @@ export class PaymentCardsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Deactivate a payment card' })
+  @RequireSecurityPin()
+  @ApiOperation({
+    summary: 'Deactivate a payment card (requires security PIN)',
+  })
+  @ApiHeader({
+    name: 'x-security-pin',
+    required: false,
+    description:
+      '6-digit security PIN (can alternatively be sent in JSON body as security_pin)',
+  })
   @ApiResponse({ status: 200, description: 'Card deactivated' })
+  @ApiResponse({
+    status: 400,
+    description: 'Security PIN is required or invalid',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description: 'Invalid security PIN or PIN setup required',
+  })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async remove(@CurrentUser('id') userId: string, @Param('id') cardId: string) {
     return this.cardsService.remove(userId, cardId);

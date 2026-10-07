@@ -34,6 +34,14 @@ final class InMemoryPaymentCardRepository implements PaymentCardRepository {
     return card;
   }
 
+  @override
+  Future<void> deleteCard(String id, {String? pin}) async {
+    await _simulateIo();
+    if (!_linkedCardIds.remove(id)) {
+      throw PaymentCardNotFoundException(id);
+    }
+  }
+
   Future<void> _simulateIo() => Future<void>.delayed(ioDelay);
 }
 

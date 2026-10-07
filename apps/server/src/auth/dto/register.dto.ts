@@ -41,12 +41,12 @@ export class RegisterDto {
   @Min(0)
   monthly_income?: number;
 
-  @ApiPropertyOptional({
-    example: '111111',
-    description: '6-digit security PIN (defaults to 111111)',
+  @ApiProperty({
+    example: '123456',
+    description: '6-digit security PIN',
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'security_pin is required' })
   @IsString()
   @Matches(/^\d{6}$/, { message: 'security_pin must be exactly 6 digits' })
-  security_pin?: string;
+  security_pin!: string;
 }

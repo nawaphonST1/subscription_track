@@ -22,6 +22,9 @@ const environmentSchema = z
       .min(1)
       .max(86400)
       .default(900),
+    MAINTENANCE_MODE: z
+      .preprocess((val) => val === 'true' || val === true, z.boolean())
+      .default(false),
     DB_HOST: z.string().trim().min(1, 'DB_HOST is required'),
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
     DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),

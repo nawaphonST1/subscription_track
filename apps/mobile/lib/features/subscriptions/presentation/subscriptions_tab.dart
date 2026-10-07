@@ -133,17 +133,21 @@ class SubscriptionsTab extends ConsumerWidget {
     );
     if (!shouldDelete || !context.mounted) return;
 
-    final pinVerified = await PinVerificationDialog.show(
+    // SECURITY NOTE (XC-5 / F6 Finding & Server PIN Enforcement):
+    // Client verifies PIN and propagates it in-memory to deleteSubscription,
+    // which transmits it via x-security-pin header to DELETE /subscriptions/:id.
+    // The PIN is never logged, persisted, or stored locally.
+    final pin = await PinVerificationDialog.showForPin(
       context: context,
       title: 'ยืนยันการลบบริการ',
       message: 'กรุณากรอกรหัส PIN เพื่อลบบริการ ${subscription.name}',
     );
-    if (!pinVerified || !context.mounted) return;
+    if (pin == null || !context.mounted) return;
 
     try {
       await ref
           .read(subscriptionListProvider.notifier)
-          .deleteSubscription(subscription.id);
+          .deleteSubscription(subscription.id, pin: pin);
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

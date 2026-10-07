@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
+import 'package:subscription_track/core/widgets/pin_verification_dialog.dart';
 import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
 import 'package:subscription_track/features/profile/domain/payment_card.dart';
 import 'package:subscription_track/features/profile/presentation/payment_card_ui_extensions.dart';
@@ -63,13 +65,44 @@ class _LinkedCardList extends StatelessWidget {
   }
 }
 
-class _LinkedCardTile extends StatelessWidget {
+class _LinkedCardTile extends ConsumerWidget {
   const _LinkedCardTile({required this.card});
 
   final PaymentCard card;
 
+  Future<void> _deleteCard(BuildContext context, WidgetRef ref) async {
+    final shouldDelete = await ConfirmationDialog.show(
+      context: context,
+      title: 'ยกเลิกการเชื่อมต่อบัตรหรือไม่?',
+      message: '${card.bankName} (•••• ${card.last4Digits})',
+      confirmText: 'ยกเลิกบัตร',
+      cancelText: 'ไม่ยกเลิก',
+      isDanger: true,
+      icon: Icons.delete_outline_rounded,
+    );
+    if (!shouldDelete || !context.mounted) return;
+
+    final pin = await PinVerificationDialog.showForPin(
+      context: context,
+      title: 'ยืนยันการยกเลิกบัตร',
+      message: 'กรุณากรอกรหัส PIN เพื่อยกเลิกบัตร ${card.bankName}',
+    );
+    if (pin == null || !context.mounted) return;
+
+    try {
+      await ref
+          .read(linkedPaymentCardsProvider.notifier)
+          .deleteCard(card.id, pin: pin);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ยกเลิกบัตรไม่สำเร็จ กรุณาลองอีกครั้ง')),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
       leading: DecoratedBox(
         decoration: BoxDecoration(
@@ -89,7 +122,11 @@ class _LinkedCardTile extends StatelessWidget {
         '•••• ${card.last4Digits} · '
         '${card.detectedSubscriptions.length} Subscription',
       ),
-      trailing: Icon(Icons.sync_rounded, color: card.displayColor),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline_rounded),
+        tooltip: 'ยกเลิกการเชื่อมต่อบัตร',
+        onPressed: () => _deleteCard(context, ref),
+      ),
     );
   }
 }

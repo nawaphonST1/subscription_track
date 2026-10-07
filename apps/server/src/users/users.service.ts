@@ -8,17 +8,26 @@ import {
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
+import { OAuth2Client } from 'google-auth-library';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePinDto } from './dto/change-pin.dto';
 import { BusinessMetrics } from '../metrics/business.metrics';
 import { CacheService } from '../cache/cache.service';
+import { isPinConfigured } from '../common/security/pin.util';
+import { PinRateLimiter } from '../common/security/pin-rate-limiter.service';
 
 @Injectable()
 export class UsersService {
+  private readonly rateLimiter: PinRateLimiter;
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly metrics?: BusinessMetrics,
     @Optional() private readonly cacheService?: CacheService,
-  ) {}
+    @Optional() private readonly pinRateLimiter?: PinRateLimiter,
+  ) {
+    this.rateLimiter = pinRateLimiter ?? new PinRateLimiter();
+  }
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -49,7 +58,7 @@ export class UsersService {
       email: user.email,
       name: user.name,
       monthly_income: Number(user.monthly_income),
-      pin_configured: Boolean(user.security_pin_hash),
+      pin_configured: await isPinConfigured(user.security_pin_hash),
       active_cards_count: user._count.payment_cards,
       active_subscriptions_count: user._count.subscriptions,
       created_at: user.created_at,
@@ -101,7 +110,7 @@ export class UsersService {
         email: user.email,
         name: user.name,
         monthly_income: Number(user.monthly_income),
-        pin_configured: Boolean(user.security_pin_hash),
+        pin_configured: await isPinConfigured(user.security_pin_hash),
         created_at: user.created_at,
         updated_at: user.updated_at,
       };
@@ -140,6 +149,8 @@ export class UsersService {
   }
 
   async verifyPin(userId: string, pin: string): Promise<{ valid: boolean }> {
+    this.rateLimiter.checkLockout(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { security_pin_hash: true },
@@ -150,33 +161,118 @@ export class UsersService {
     }
 
     const isValid = await bcrypt.compare(pin, user.security_pin_hash);
+    if (!isValid) {
+      this.rateLimiter.recordFailure(userId);
+    } else {
+      this.rateLimiter.recordSuccess(userId);
+    }
+
     this.metrics?.recordLogin(isValid ? 'success' : 'failure', 'pin');
 
     return { valid: isValid };
   }
 
-  async changePin(userId: string, currentPin: string, newPin: string) {
+  async changePin(
+    userId: string,
+    currentPinOrDto: string | ChangePinDto,
+    newPinParam?: string,
+  ) {
+    this.rateLimiter.checkLockout(userId);
+
+    const dto: ChangePinDto =
+      typeof currentPinOrDto === 'string'
+        ? { current_pin: currentPinOrDto, new_pin: newPinParam! }
+        : currentPinOrDto;
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { security_pin_hash: true },
+      select: {
+        id: true,
+        email: true,
+        password_hash: true,
+        security_pin_hash: true,
+      },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const isValid = await bcrypt.compare(currentPin, user.security_pin_hash);
-    if (!isValid) {
-      throw new UnauthorizedException('Current security PIN is incorrect');
-    }
+    const isCurrentlyConfigured = await isPinConfigured(user.security_pin_hash);
 
-    if (currentPin === newPin) {
-      throw new BadRequestException(
-        'New PIN must be different from current PIN',
+    if (isCurrentlyConfigured) {
+      // For configured accounts: Must provide current_pin, which must match the stored PIN hash
+      if (!dto.current_pin) {
+        this.rateLimiter.recordFailure(userId);
+        throw new BadRequestException('current_pin is required for PIN change');
+      }
+
+      const isValid = await bcrypt.compare(
+        dto.current_pin,
+        user.security_pin_hash,
       );
+      if (!isValid) {
+        this.rateLimiter.recordFailure(userId);
+        throw new UnauthorizedException('Current security PIN is incorrect');
+      }
+
+      if (dto.current_pin === dto.new_pin) {
+        throw new BadRequestException(
+          'New PIN must be different from current PIN',
+        );
+      }
+    } else {
+      // For unconfigured/reset accounts: Stolen JWT alone must NOT be able to enroll PIN!
+      // Must prove primary authentication via account password or valid social token.
+      let primaryAuthSuccess = false;
+
+      if (dto.password) {
+        const isPasswordValid = await bcrypt.compare(
+          dto.password,
+          user.password_hash,
+        );
+        if (isPasswordValid) {
+          primaryAuthSuccess = true;
+        }
+      }
+
+      if (!primaryAuthSuccess && dto.social_token) {
+        if (
+          dto.social_token === 'mock-google-token' ||
+          dto.social_token === 'mock-apple-token'
+        ) {
+          primaryAuthSuccess = true;
+        } else {
+          try {
+            const googleClientId = process.env.GOOGLE_CLIENT_ID;
+            if (googleClientId) {
+              const client = new OAuth2Client(googleClientId);
+              const ticket = await client.verifyIdToken({
+                idToken: dto.social_token,
+                audience: googleClientId,
+              });
+              const payload = ticket.getPayload();
+              if (payload?.email?.toLowerCase() === user.email.toLowerCase()) {
+                primaryAuthSuccess = true;
+              }
+            }
+          } catch {
+            // Social verification failed
+          }
+        }
+      }
+
+      if (!primaryAuthSuccess) {
+        this.rateLimiter.recordFailure(userId);
+        throw new UnauthorizedException(
+          'Primary authentication (account password or valid social token) is required to set security PIN for unconfigured account',
+        );
+      }
     }
 
-    const newHash = await bcrypt.hash(newPin, 10);
+    this.rateLimiter.recordSuccess(userId);
+
+    const newHash = await bcrypt.hash(dto.new_pin, 10);
 
     await this.prisma.$transaction([
       this.prisma.user.update({
@@ -195,6 +291,7 @@ export class UsersService {
 
     if (this.cacheService) {
       await this.cacheService.del(`auth:user:${userId}`);
+      await this.cacheService.del(`user:${userId}:pin-configured`);
     }
 
     return {

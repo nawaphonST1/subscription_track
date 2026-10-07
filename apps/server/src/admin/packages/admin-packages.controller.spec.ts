@@ -15,6 +15,8 @@ describe('AdminPackagesController (BE-305)', () => {
     updatePackageStatus: ReturnType<typeof vi.fn>;
     deletePackage: ReturnType<typeof vi.fn>;
     createPackage: ReturnType<typeof vi.fn>;
+    updatePackage: ReturnType<typeof vi.fn>;
+    getAllPackages: ReturnType<typeof vi.fn>;
   };
 
   const mockPackageResponse: AdminPackageResponseDto = {
@@ -39,6 +41,8 @@ describe('AdminPackagesController (BE-305)', () => {
       updatePackageStatus: vi.fn(),
       deletePackage: vi.fn(),
       createPackage: vi.fn(),
+      updatePackage: vi.fn(),
+      getAllPackages: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -59,6 +63,18 @@ describe('AdminPackagesController (BE-305)', () => {
     expect(controller).toBeDefined();
   });
 
+  describe('GET /', () => {
+    it('should return list of all packages', async () => {
+      service.getAllPackages.mockResolvedValue([mockPackageResponse]);
+
+      const result = await controller.findAll();
+
+      expect(service.getAllPackages).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(mockPackageResponse.id);
+    });
+  });
+
   describe('POST / (BE-303)', () => {
     it('should create a package and return response', async () => {
       service.createPackage.mockResolvedValue(mockPackageResponse);
@@ -75,6 +91,24 @@ describe('AdminPackagesController (BE-305)', () => {
       expect(service.createPackage).toHaveBeenCalledWith(dto);
       expect(result.id).toBe(mockPackageResponse.id);
       expect(result.name).toBe(mockPackageResponse.name);
+    });
+  });
+
+  describe('PATCH :id', () => {
+    it('should update the package and return updated response', async () => {
+      const updatedResponse: AdminPackageResponseDto = {
+        ...mockPackageResponse,
+        name: 'Netflix Premium 4K',
+        defaultPrice: 449.0,
+      };
+      service.updatePackage.mockResolvedValue(updatedResponse);
+
+      const dto = { name: 'Netflix Premium 4K', default_price: 449.0 };
+      const result = await controller.update('pkg-123', dto);
+
+      expect(service.updatePackage).toHaveBeenCalledWith('pkg-123', dto);
+      expect(result.name).toBe('Netflix Premium 4K');
+      expect(result.defaultPrice).toBe(449.0);
     });
   });
 

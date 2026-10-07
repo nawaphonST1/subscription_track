@@ -1,20 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/core/security/pin_repository.dart';
+import 'package:subscription_track/core/security/remote_pin_repository.dart';
+import 'package:subscription_track/features/auth/application/auth_provider.dart';
 
-final securityPinProvider = NotifierProvider<SecurityPinNotifier, String>(() {
-  return SecurityPinNotifier();
+final pinRepositoryProvider = Provider<PinRepository>((ref) {
+  return RemotePinRepository(
+    client: ref.watch(authenticatedHttpClientProvider),
+  );
 });
 
-class SecurityPinNotifier extends Notifier<String> {
-  @override
-  String build() => '111111';
-
-  void updatePin(String newPin) {
-    if (newPin.length == 6 && RegExp(r'^\d+$').hasMatch(newPin)) {
-      state = newPin;
-    }
-  }
-
-  bool verifyPin(String pin) {
-    return state == pin;
-  }
-}

@@ -190,13 +190,14 @@ flowchart LR
         SecSemgrep["🛡️ Semgrep SAST<br/>(Continuous: Code & Build)"]:::sec
         SecAudit["🛡️ pnpm audit<br/>(Dependency Check) [Build]"]:::sec
         SecTest["🛡️ OWASP ZAP (DAST) & MobSF (Mobile SAST/DAST) [Test]"]:::sec
-        SecRelease["🛡️ Syft SBOM (Software Bill of Materials) [Release]"]:::sec
-        SecBuildDeploy["🛡️ Trivy (Container & IaC Scan) & Ansible Vault [Build & Deploy]"]:::sec
+        SecRelease["🛡️ Trivy SBOM (CycloneDX / SPDX) [Release]"]:::sec
+        SecBuildDeploy["🛡️ Trivy (OS & IaC Scan) & Ansible Vault [Build & Deploy]"]:::sec
         SecWazuh["🛡️ Wazuh Unified SIEM Platform<br/>(Host/K8s Security & Log Analysis: Operate & Monitor)"]:::sec
     end
 
     %% Linkages
     P3 -.-> Jenkins
+    P3 -.-> MobBuildTest
     Jenkins -.-> MobBuildTest
     Jenkins -.-> TestCloud
     ArgoCD -.-> K8s
@@ -215,14 +216,14 @@ flowchart LR
    - **`ArgoCD`** *(Deploy)*: ทำ Declarative GitOps ดึง Manifest จาก Git เพื่อ Deploy สู่ Production แบบ Automated Sync
    - **`Kubernetes Clusters, Traefik & Terraform`** *(Operate)*: คลัสเตอร์รันแอปพลิเคชัน, Traefik ทำหน้าที่เป็น Modern Ingress Controller/Reverse Proxy และจัดการ Cloud Infrastructure ด้วย Terraform
    - **`Prometheus, Grafana, Loki & Sentry`** *(Monitor)*: สังเกตการณ์ระบบแบบ Full Observability (Metrics: Prometheus/Grafana, Logs: Loki, Application Error Tracking: Sentry)
-4. **Cross-Cutting Security Layer (DevSecOps):**
+4. **Cross-Cutting Security Layer (DevSecOps - Optimized & De-duplicated):**
    - **`OWASP Threat Dragon`** *(Plan)*: ออกแบบและวิเคราะห์โมเดลภัยคุกคามตั้งแต่ขั้นวางแผน
-   - **`Gitleaks`** *(Code)*: ตรวจจับและป้องกัน Secret/Token/Private Key หลุดเข้า Git Repository
-   - **`Semgrep`** *(Code & Build)*: ทำ Static Application Security Testing (SAST) วิเคราะห์ช่องโหว่ซอร์สโค้ดแบบครอบคลุมต่อเนื่อง
-   - **`pnpm audit`** *(Build)*: สแกนช่องโหว่ของ Dependencies (CVE Audit) ฝั่ง Node.js/Backend
+   - **`Gitleaks`** *(Code)*: เครื่องมือตรวจจับ Secret และ Token หลุดสู่ Git แบบเฉพาะทาง (Shannon Entropy & Allowlist)
+   - **`Semgrep`** *(Code & Build)*: ทำ Static Application Security Testing (SAST) วิเคราะห์ช่องโหว่ซอร์สโค้ดเชิง Logic (OWASP Top 10) โดยไม่สแกน Secret ซ้ำซ้อนกับ Gitleaks
+   - **`pnpm audit`** *(Build)*: สแกนช่องโหว่ Dependency (Shift-Left SCA) ฝั่ง Node.js/Backend โดยตรงจาก Lockfile
    - **`OWASP ZAP & MobSF`** *(Test)*: ทำ DAST สแกน Web API Security (ZAP) และตรวจจับความปลอดภัยของ Mobile App Binary (MobSF)
-   - **`Syft SBOM`** *(Release)*: สร้าง Software Bill of Materials (SBOM) ตรวจสอบความโปร่งใสของแพ็กเกจก่อนเผยแพร่
-   - **`Trivy & Ansible Vault`** *(Build & Deploy)*: สแกน Container Image & IaC Misconfigurations (Trivy) ร่วมกับการเข้ารหัสลับค่าคอนฟิก (Ansible Vault)
+   - **`Trivy SBOM`** *(Release)*: สร้าง Software Bill of Materials (CycloneDX / SPDX) ผ่าน Trivy ในตัว (ลด Tool Redundancy ไม่ต้องพึ่งพา Syft)
+   - **`Trivy & Ansible Vault`** *(Build & Deploy)*: สแกนช่องโหว่ OS/Container Base Image แบบเจาะจง (Trivy `--pkg-types os`) ร่วมกับการเข้ารหัสลับค่าคอนฟิก (Ansible Vault)
    - **`Wazuh`** *(Operate & Monitor)*: แพลตฟอร์มความมั่นคงปลอดภัยแบบรวมศูนย์ (XDR & SIEM) ตรวจจับการบุกรุกของ Host/Container ใน Operate และวิเคราะห์ Log Security ใน Monitor
 
 ---
@@ -273,8 +274,8 @@ flowchart LR
 | **SAST** | **Semgrep** | Code, Build | สแกนช่องโหว่ความปลอดภัยระดับ Source Code เชิงลึกแบบต่อเนื่อง |
 | **Dependency Audit** | **pnpm audit** | Build | ตรวจสอบช่องโหว่ Known Vulnerabilities ของไลบรารีภายนอก |
 | **DAST & Mobile Sec** | **OWASP ZAP & MobSF** | Test | ทดสอบเจาะระบบ Web API แบบ Dynamic และสแกนช่องโหว่ไฟล์ Mobile App |
-| **Software Supply Chain** | **Syft SBOM** | Release | สร้างเอกสารแสดงรายการส่วนประกอบซอฟต์แวร์ทั้งหมด (Software Bill of Materials) |
-| **Image/IaC Scan & Secrets** | **Trivy & Ansible Vault** | Build, Deploy | สแกนช่องโหว่ Docker Image & IaC Code ร่วมกับการเข้ารหัส Sensitive Config |
+| **Software Supply Chain** | **Trivy SBOM** | Release | สร้างเอกสารแสดงรายการส่วนประกอบซอฟต์แวร์ทั้งหมด (CycloneDX / SPDX) |
+| **Image/IaC Scan & Secrets** | **Trivy & Ansible Vault** | Build, Deploy | สแกนช่องโหว่ OS/Container Image (`--pkg-types os`) ร่วมกับการเข้ารหัส Sensitive Config |
 | **XDR / SIEM Platform** | **Wazuh** | Operate, Monitor | แพลตฟอร์มตรวจจับและตอบสนองภัยคุกคามระดับ Host/Container และวิเคราะห์ Log |
 
 ---

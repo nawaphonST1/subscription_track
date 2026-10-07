@@ -6,4 +6,6 @@ abstract interface class PaymentCardRepository {
   Future<List<PaymentCard>> getAvailableCards();
 
   Future<PaymentCard> linkCard(String id);
+
+  Future<void> deleteCard(String id, {String? pin});
 }

@@ -39,8 +39,8 @@ ThemeData buildLightTheme() {
     brightness: Brightness.light,
     colorScheme: colorScheme,
     textTheme: _buildLightTextTheme(),
-    scaffoldBackgroundColor: const Color(0xFFF4F6F9),
-    canvasColor: const Color(0xFFF4F6F9),
+    scaffoldBackgroundColor: const Color(0xFFE9EEF5),
+    canvasColor: const Color(0xFFE9EEF5),
     cardColor: Colors.white,
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
@@ -53,11 +53,15 @@ ThemeData buildLightTheme() {
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      shadowColor: const Color(0xFF0F172A).withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.3),
+      ),
     ),
     dividerTheme: const DividerThemeData(
-      color: Color(0xFFE5E7EB),
+      color: Color(0xFFCBD5E1),
       thickness: 1,
     ),
     listTileTheme: const ListTileThemeData(
@@ -76,7 +80,7 @@ ThemeData buildLightTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
-        side: const BorderSide(color: Color(0xFFE5E7EB)),
+        side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
@@ -89,26 +93,27 @@ ThemeData buildLightTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFF3F4F6),
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.3),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.3),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.danger, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger, width: 1.2),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger, width: 1.6),
       ),
     ),
     bottomSheetTheme: const BottomSheetThemeData(

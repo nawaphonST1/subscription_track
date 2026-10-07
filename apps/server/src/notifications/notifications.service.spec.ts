@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NotFoundException } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
 import { NotificationsService } from './notifications.service';
 
@@ -16,6 +17,8 @@ describe('NotificationsService', () => {
         updateMany: vi.fn(),
         upsert: vi.fn(),
         findUniqueOrThrow: vi.fn(),
+        delete: vi.fn(),
+        deleteMany: vi.fn(),
       },
     };
     service = new NotificationsService(prismaMock);
@@ -55,6 +58,51 @@ describe('NotificationsService', () => {
       const selectArg = prismaMock.notification.update.mock.calls[0][0].select;
       expect(selectArg.dedupe_key).toBeUndefined();
       expect(selectArg.subscription_id).toBeUndefined();
+    });
+  });
+
+  describe('removeOne', () => {
+    it('deletes a notification that belongs to the requesting user', async () => {
+      prismaMock.notification.findFirst.mockResolvedValue({
+        id: 'n1',
+        user_id: 'user-1',
+      });
+      prismaMock.notification.delete.mockResolvedValue({ id: 'n1' });
+
+      const result = await service.removeOne('user-1', 'n1');
+
+      expect(prismaMock.notification.findFirst).toHaveBeenCalledWith({
+        where: { id: 'n1', user_id: 'user-1' },
+      });
+      expect(prismaMock.notification.delete).toHaveBeenCalledWith({
+        where: { id: 'n1' },
+      });
+      expect(result).toEqual({ message: 'Notification deleted successfully' });
+    });
+
+    it("throws NotFoundException and never deletes when the notification doesn't belong to the user (or doesn't exist)", async () => {
+      prismaMock.notification.findFirst.mockResolvedValue(null);
+
+      await expect(service.removeOne('user-1', 'n-other-user')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prismaMock.notification.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeAll', () => {
+    it("deletes only the requesting user's notifications and reports the count", async () => {
+      prismaMock.notification.deleteMany.mockResolvedValue({ count: 3 });
+
+      const result = await service.removeAll('user-1');
+
+      expect(prismaMock.notification.deleteMany).toHaveBeenCalledWith({
+        where: { user_id: 'user-1' },
+      });
+      expect(result).toEqual({
+        message: 'All notifications deleted',
+        deleted_count: 3,
+      });
     });
   });
 

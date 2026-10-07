@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SavingsService } from './savings.service';
 import { BillingCycle, SubscriptionStatus, UsageStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, HttpException } from '@nestjs/common';
 
 describe('SavingsService', () => {
   let service: SavingsService;
@@ -92,9 +92,49 @@ describe('SavingsService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
+    it('should lockout user from batchCancel after 5 failed PIN attempts', async () => {
+      const userId = 'user-batch-lockout';
+      const realPinHash = await bcrypt.hash('123456', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        security_pin_hash: realPinHash,
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await expect(
+          service.batchCancel(userId, {
+            subscription_ids: ['sub-1'],
+            security_pin: '000000',
+          }),
+        ).rejects.toThrow(ForbiddenException);
+      }
+
+      // 6th attempt is blocked by rate limiter with 429
+      await expect(
+        service.batchCancel(userId, {
+          subscription_ids: ['sub-1'],
+          security_pin: '000000',
+        }),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should reject batch cancellation if account is on default PIN (111111)', async () => {
+      const userId = 'user-default-pin';
+      const defaultHash = await bcrypt.hash('111111', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        security_pin_hash: defaultHash,
+      });
+
+      await expect(
+        service.batchCancel(userId, {
+          subscription_ids: ['sub-1'],
+          security_pin: '111111',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('should cancel subscriptions and log audit records when PIN is valid', async () => {
       const userId = 'user-1';
-      const realPinHash = await bcrypt.hash('111111', 10);
+      const realPinHash = await bcrypt.hash('654321', 10);
       prismaMock.user.findUnique.mockResolvedValue({
         security_pin_hash: realPinHash,
       });
@@ -113,7 +153,7 @@ describe('SavingsService', () => {
 
       const result = await service.batchCancel(userId, {
         subscription_ids: ['sub-1'],
-        security_pin: '111111',
+        security_pin: '654321',
       });
 
       expect(result.cancelled_count).toBe(1);

@@ -6,67 +6,95 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/network/api_config.dart';
+import 'package:subscription_track/core/network/authenticated_http_client.dart';
+import 'package:subscription_track/core/network/response_envelope.dart';
 import 'package:subscription_track/core/utils/logger.dart';
 import 'package:subscription_track/features/auth/domain/auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
+
+/// payload ที่ 3 endpoint ของ auth คืนมาใน `data` ของ envelope
+typedef _AuthPayload = ({String? token, User user});
 
 class RemoteAuthRepository implements AuthRepository {
   final http.Client _client;
   final String _baseUrl;
   final GoogleSignIn? _googleSignIn;
 
+  /// [client] ที่ส่งเข้ามาจะถูกห่อด้วย [AuthenticatedHttpClient] เสมอ เพื่อให้
+  /// request ที่ไม่ใช่ public path ได้ Bearer token ติดไปด้วยอัตโนมัติ
+  /// (3 endpoint ของ auth เองเป็น public จึงไม่ได้รับผลตรงนี้ แต่การห่อไว้ทำให้
+  /// repository ตัวอื่นที่จะมาทีหลังใช้ pattern เดียวกันได้)
   RemoteAuthRepository({
     http.Client? client,
     String? baseUrl,
     GoogleSignIn? googleSignIn,
-  })  : _client = client ?? http.Client(),
+    void Function()? onUnauthorized,
+  })  : _client = AuthenticatedHttpClient(
+          readToken: readStoredAuthToken,
+          inner: client,
+          onUnauthorized: onUnauthorized,
+        ),
         _baseUrl = baseUrl ?? ApiConfig.baseUrl,
         // ignore: prefer_initializing_formals
         _googleSignIn = googleSignIn;
 
   static const String _tokenKey = 'auth_token';
 
+  /// อ่าน token ที่เก็บไว้ ใช้เป็น [AuthenticatedHttpClient.readToken]
+  ///
+  /// ยังเก็บใน SharedPreferences ตามเดิม — การย้ายไป secure storage อยู่นอก
+  /// ขอบเขตงานนี้
+  static Future<String?> readStoredAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_tokenKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Future<Either<Failure, User>> registerWithEmail({
     required String email,
     required String password,
     String? name,
+    String? securityPin,
   }) async {
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/auth/register');
       logger.i('Calling API: POST $uri');
-      final response = await _client.post(
+      response = await _client.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
           'password': password,
           if (name != null && name.isNotEmpty) 'name': name,
+          if (securityPin != null && securityPin.isNotEmpty)
+            'security_pin': securityPin,
         }),
       );
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final token = data['token'] as String?;
-        if (token != null) {
-          await _saveToken(token);
-        }
-        final userJson = data['user'] as Map<String, dynamic>? ?? {};
-        return right(_mapJsonToUser(userJson,
-            fallbackEmail: email, fallbackName: name));
-      } else if (response.statusCode == 409) {
-        return left(
-            const Failure.serverError('อีเมลนี้ถูกลงทะเบียนไว้แล้วในระบบ'));
-      } else {
-        final errorMsg = _extractErrorMessage(response.body) ??
-            'การสมัครสมาชิกล้มเหลว (Status: ${response.statusCode})';
-        return left(Failure.serverError(errorMsg));
-      }
     } catch (e, stack) {
       logger.e('Error connecting to register API',
           error: e, stackTrace: stack);
       return left(Failure.serverError(
           'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+    }
+
+    try {
+      return await _resolveAuthResponse(
+        response,
+        fallbackEmail: email,
+        fallbackName: name,
+        statusOverrides: const {
+          409: Failure.serverError('อีเมลนี้ถูกลงทะเบียนไว้แล้วในระบบ'),
+        },
+      );
+    } catch (e, stack) {
+      logger.e('Error parsing register response', error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -75,10 +103,11 @@ class RemoteAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/auth/login');
       logger.i('Calling API: POST $uri');
-      final response = await _client.post(
+      response = await _client.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -86,26 +115,19 @@ class RemoteAuthRepository implements AuthRepository {
           'password': password,
         }),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final token = data['token'] as String?;
-        if (token != null) {
-          await _saveToken(token);
-        }
-        final userJson = data['user'] as Map<String, dynamic>? ?? {};
-        return right(_mapJsonToUser(userJson, fallbackEmail: email));
-      } else if (response.statusCode == 401) {
-        return left(const Failure.unauthorized());
-      } else {
-        final errorMsg = _extractErrorMessage(response.body) ??
-            'การเข้าสู่ระบบล้มเหลว (Status: ${response.statusCode})';
-        return left(Failure.serverError(errorMsg));
-      }
     } catch (e, stack) {
       logger.e('Error connecting to login API', error: e, stackTrace: stack);
       return left(Failure.serverError(
           'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+    }
+
+    try {
+      // 401 ถูก map เป็น Failure.unauthorized() อยู่แล้วใน unwrapEnvelope
+      return await _resolveAuthResponse(response, fallbackEmail: email);
+    } catch (e, stack) {
+      logger.e('Error parsing login response', error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -133,7 +155,7 @@ class RemoteAuthRepository implements AuthRepository {
       final String tokenToSend =
           auth.idToken ?? auth.accessToken ?? 'mock-google-token';
 
-      return _socialLogin(
+      return await _socialLogin(
         provider: 'google',
         email: account.email,
         token: tokenToSend,
@@ -151,16 +173,19 @@ class RemoteAuthRepository implements AuthRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, User>> loginWithApple() async {
-    // Mock Apple Sign-In (ตามที่ระบุ: apple ใช้ mock เหมือนเดิม)
-    return _socialLogin(
-      provider: 'apple',
-      email: 'user@icloud.com',
-      token: 'mock-apple-token',
-      name: 'Jane Doe (Apple User)',
-    );
-  }
+  @visibleForTesting
+  Future<Either<Failure, User>> executeSocialLogin({
+    required String provider,
+    required String email,
+    required String token,
+    required String name,
+  }) =>
+      _socialLogin(
+        provider: provider,
+        email: email,
+        token: token,
+        name: name,
+      );
 
   Future<Either<Failure, User>> _socialLogin({
     required String provider,
@@ -168,10 +193,11 @@ class RemoteAuthRepository implements AuthRepository {
     required String token,
     required String name,
   }) async {
+    final http.Response response;
     try {
       final uri = Uri.parse('$_baseUrl/auth/social');
       logger.i('Calling API: POST $uri ($provider)');
-      final response = await _client.post(
+      response = await _client.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -181,26 +207,61 @@ class RemoteAuthRepository implements AuthRepository {
           'name': name,
         }),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final jwtToken = data['token'] as String?;
-        if (jwtToken != null) {
-          await _saveToken(jwtToken);
-        }
-        final userJson = data['user'] as Map<String, dynamic>? ?? {};
-        return right(_mapJsonToUser(userJson,
-            fallbackEmail: email, fallbackName: name, provider: provider));
-      } else {
-        final errorMsg = _extractErrorMessage(response.body) ??
-            'การเข้าสู่ระบบด้วย $provider ล้มเหลว';
-        return left(Failure.serverError(errorMsg));
-      }
     } catch (e, stack) {
       logger.e('Error connecting to social login API',
           error: e, stackTrace: stack);
       return left(Failure.serverError(
           'ไม่สามารถเชื่อมต่อกับ Server ได้ ($_baseUrl) กรุณาตรวจสอบว่า Backend API กำลังทำงานอยู่'));
+    }
+
+    try {
+      return await _resolveAuthResponse(
+        response,
+        fallbackEmail: email,
+        fallbackName: name,
+        provider: provider,
+      );
+    } catch (e, stack) {
+      logger.e('Error parsing social login response',
+          error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> getCurrentUser() async {
+    // ไม่มี token = ไม่เคย login (หรือ logout ไปแล้ว) ⇒ ตอบทันทีโดยไม่ยิง network
+    // ถ้าปล่อยให้ยิงไป backend จะตอบ 401 อยู่ดี แต่เสียเวลารอเน็ตตอนเปิดแอป
+    final token = await readStoredAuthToken();
+    if (token == null || token.isEmpty) {
+      return left(const Failure.unauthorized());
+    }
+
+    final http.Response response;
+    try {
+      final uri = Uri.parse('$_baseUrl/users/me');
+      logger.i('Calling API: GET $uri');
+      // `/users/me` ไม่อยู่ใน kPublicAuthPaths ⇒ _client แนบ Bearer ให้เอง
+      response = await _client.get(uri);
+    } catch (e, stack) {
+      logger.e('Error connecting to current-user API',
+          error: e, stackTrace: stack);
+      // แยกจาก serverError โดยตั้งใจ: ผู้เรียกใช้สัญญาใน AuthRepository เพื่อ
+      // ตัดสินว่าจะล้าง token หรือไม่ — เคสนี้ต้องไม่ล้าง
+      return left(const Failure.networkError());
+    }
+
+    try {
+      // ต่างจาก 3 endpoint ของ auth: `/users/me` คืน user object ไว้ที่ `data`
+      // ตรง ๆ ไม่ได้ซ้อนใต้คีย์ `user` อีกชั้น ⇒ ส่ง _mapJsonToUser เป็น
+      // parseData ได้เลย
+      return unwrapEnvelope<User>(response, (data) => _mapJsonToUser(data));
+    } catch (e, stack) {
+      logger.e('Error parsing current-user response',
+          error: e, stackTrace: stack);
+      return left(
+          const Failure.serverError('รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'));
     }
   }
 
@@ -222,12 +283,25 @@ class RemoteAuthRepository implements AuthRepository {
     } catch (_) {}
   }
 
+  static bool _parsePinConfigured(Object? raw) {
+    if (raw is bool) return raw;
+    if (raw is String) {
+      final s = raw.trim().toLowerCase();
+      if (s == 'true' || s == '1') return true;
+      if (s == 'false' || s == '0') return false;
+    }
+    if (raw is num) return raw != 0;
+    return false; // fail-closed default
+  }
+
   User _mapJsonToUser(
     Map<String, dynamic> json, {
     String? fallbackEmail,
     String? fallbackName,
     String provider = 'email',
   }) {
+    final pinConfigured = _parsePinConfigured(json['pin_configured']);
+
     return User(
       id: json['id'] as String? ??
           'user-${DateTime.now().millisecondsSinceEpoch}',
@@ -237,23 +311,52 @@ class RemoteAuthRepository implements AuthRepository {
       authProvider: provider,
       currency: 'THB',
       creditCards: const [],
+      pinConfigured: pinConfigured,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
     );
   }
 
-  String? _extractErrorMessage(String body) {
-    try {
-      final parsed = jsonDecode(body);
-      if (parsed is Map<String, dynamic>) {
-        if (parsed['message'] is String) return parsed['message'] as String;
-        if (parsed['message'] is List &&
-            (parsed['message'] as List).isNotEmpty) {
-          return (parsed['message'] as List).join(', ');
+  /// แกะ envelope ของ response จาก 3 endpoint auth แล้วเซฟ token
+  ///
+  /// payload ของจริงอยู่ที่ `body['data']` ซึ่งมีรูป `{token, user}` ส่วน
+  /// [_mapJsonToUser] รับ `body['data']['user']` (ลึกไปอีกชั้น) จึงต้องแกะสองชั้น
+  /// ใน closure นี้ ไม่ใช่ส่ง [_mapJsonToUser] เป็น parseData ตรง ๆ
+  Future<Either<Failure, User>> _resolveAuthResponse(
+    http.Response response, {
+    required String fallbackEmail,
+    String? fallbackName,
+    String provider = 'email',
+    Map<int, Failure> statusOverrides = const {},
+  }) {
+    final parsed = unwrapEnvelope<_AuthPayload>(
+      response,
+      (data) => (
+        token: data['token'] as String?,
+        user: _mapJsonToUser(
+          data['user'] as Map<String, dynamic>? ?? const {},
+          fallbackEmail: fallbackEmail,
+          fallbackName: fallbackName,
+          provider: provider,
+        ),
+      ),
+      statusOverrides: statusOverrides,
+    );
+
+    return parsed.fold<Future<Either<Failure, User>>>(
+      (failure) async => left(failure),
+      (payload) async {
+        final token = payload.token;
+        if (token == null || token.isEmpty) {
+          // envelope ถูกต้องแต่ไม่มี token = contract ฝั่ง backend เพี้ยน
+          // ห้ามคืน User สำเร็จ ไม่งั้นจะได้ "login สำเร็จแต่ไม่มี token" แบบ bug เดิม
+          return left(const Failure.serverError(
+              'เซิร์ฟเวอร์ไม่ได้ส่ง token กลับมา ไม่สามารถเข้าสู่ระบบได้'));
         }
-      }
-    } catch (_) {}
-    return null;
+        await _saveToken(token);
+        return right(payload.user);
+      },
+    );
   }
 }
