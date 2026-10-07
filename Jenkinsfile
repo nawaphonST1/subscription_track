@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'node:22-alpine'
-            args '-u 0:0 -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-pnpm-store:/root/.local/share/pnpm/store -v subtracker-npm-cache:/root/.npm -v subtracker-corepack:/root/.cache/node/corepack'
+            image 'node:22-bookworm-slim'
+            args '-u 0:0 --entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-pnpm-store:/root/.local/share/pnpm/store -v subtracker-npm-cache:/root/.npm -v subtracker-corepack:/root/.cache/node/corepack'
         }
     }
 
@@ -11,7 +11,7 @@ pipeline {
         REPO_OWNER = "${env.REPO_OWNER ?: 'nawaphonst1'}"
         GHCR_REGISTRY = 'ghcr.io'
         NODE_ENV = 'test'
-        PATH = "${WORKSPACE}/scripts/bin:${env.PATH}"
+        PATH = "${WORKSPACE}/scripts/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     }
 
     triggers {
@@ -33,10 +33,18 @@ pipeline {
                     chmod +x scripts/bin/* 2>/dev/null || true
                     chmod +x scripts/cicd/* 2>/dev/null || true
                     if ! command -v docker >/dev/null 2>&1; then
-                        apk add --no-cache docker-cli docker-cli-compose >/dev/null 2>&1 || true
+                        if command -v apt-get >/dev/null 2>&1; then
+                            apt-get update >/dev/null 2>&1 && apt-get install -y --no-install-recommends docker.io openssh-client curl >/dev/null 2>&1 || true
+                        elif command -v apk >/dev/null 2>&1; then
+                            apk add --no-cache docker-cli docker-cli-compose openssh-client >/dev/null 2>&1 || true
+                        fi
                     fi
                     if ! command -v ssh >/dev/null 2>&1; then
-                        apk add --no-cache openssh-client >/dev/null 2>&1 || true
+                        if command -v apt-get >/dev/null 2>&1; then
+                            apt-get update >/dev/null 2>&1 && apt-get install -y --no-install-recommends openssh-client >/dev/null 2>&1 || true
+                        elif command -v apk >/dev/null 2>&1; then
+                            apk add --no-cache openssh-client >/dev/null 2>&1 || true
+                        fi
                     fi
                     if ! command -v pnpm >/dev/null 2>&1; then
                         corepack enable 2>/dev/null || npm install -g pnpm@10.2.1 2>/dev/null || true
