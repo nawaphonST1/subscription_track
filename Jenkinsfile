@@ -108,7 +108,7 @@ pipeline {
                             if command -v gitleaks >/dev/null 2>&1; then
                                 gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json
                             elif command -v docker >/dev/null 2>&1; then
-                                docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                docker run --rm -v subtracker-jenkins_jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
                                     zricethezav/gitleaks:latest detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path "${WORKSPACE}/gitleaks-report.json"
                             elif [ -x "${WORKSPACE}/scripts/bin/gitleaks" ]; then
                                 "${WORKSPACE}/scripts/bin/gitleaks" detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json
@@ -124,13 +124,14 @@ pipeline {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
                         echo "==> [${env.APP_NAME}] Running Semgrep OWASP Top-10 static code security analysis (real scan)..."
                         sh '''
-                            # Separation of concerns: Exclude generic secret rules to eliminate false-positive overlap with Gitleaks
                             # --error: semgrep's own default exit code is always 0 regardless of findings; this makes it reflect findings.
-                            SEMGREP_RULES="--config=p/owasp-top-ten --exclude-rule='*secret*' --exclude-rule='*credential*' --exclude-rule='*token*' --error"
+                            # No --exclude-rule flags: Semgrep only accepts exact rule IDs there, never wildcards like '*secret*',
+                            # so the previous exclusion attempt never worked. Gitleaks already covers secret-pattern detection.
+                            SEMGREP_RULES="--config=p/owasp-top-ten --error"
                             if command -v semgrep >/dev/null 2>&1; then
                                 semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src
                             elif command -v docker >/dev/null 2>&1; then
-                                docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                docker run --rm -v subtracker-jenkins_jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
                                     semgrep/semgrep:latest semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src
                             elif [ -x "${WORKSPACE}/scripts/bin/semgrep" ]; then
                                 "${WORKSPACE}/scripts/bin/semgrep" scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src
@@ -148,30 +149,38 @@ pipeline {
                         echo "==> [${env.APP_NAME}] Running dependency vulnerability audit (pnpm audit - Shift-Left SCA)..."
                         dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                             sh '''
+                                # pnpm's own exit code ignores --audit-level (unlike npm's), so it exits non-zero on ANY
+                                # finding regardless of severity. `|| true` here prevents that from killing the step under
+                                # `set -e`; the node script below gates on the PARSED critical/high counts instead.
                                 if command -v pnpm >/dev/null 2>&1; then
-                                    pnpm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null
+                                    pnpm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null || true
                                 else
-                                    npm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null
+                                    npm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null || true
                                 fi
-                                AUDIT_EXIT=$?
 
                                 node -e '
                                     const fs = require("fs");
                                     const path = require("path");
                                     const auditPath = path.resolve(process.env.WORKSPACE || ".", "pnpm-audit.json");
+                                    let critical = 0, high = 0;
                                     if (fs.existsSync(auditPath) && fs.statSync(auditPath).size > 0) {
                                         try {
                                             const data = JSON.parse(fs.readFileSync(auditPath, "utf8"));
                                             const vulns = (data.metadata && data.metadata.vulnerabilities) || {};
-                                            console.log(`[pnpm audit] Summary: Critical: ${vulns.critical || 0}, High: ${vulns.high || 0}, Moderate: ${vulns.moderate || 0}`);
+                                            critical = vulns.critical || 0;
+                                            high = vulns.high || 0;
+                                            console.log(`[pnpm audit] Summary: Critical: ${critical}, High: ${high}, Moderate: ${vulns.moderate || 0}`);
                                         } catch (e) {
                                             console.log("[pnpm audit] Audit report captured.");
                                         }
                                     } else {
                                         fs.writeFileSync(auditPath, "{}");
                                     }
+                                    if (critical > 0 || high > 0) {
+                                        console.error(`[pnpm audit] BLOCKING: ${critical} critical, ${high} high severity finding(s).`);
+                                        process.exit(1);
+                                    }
                                 '
-                                exit $AUDIT_EXIT
                             '''
                         }
                     }
@@ -185,8 +194,10 @@ pipeline {
                             sh '''
                                 if command -v pnpm >/dev/null 2>&1; then
                                     pnpm lint
+                                    pnpm format:check
                                 else
                                     npm run lint
+                                    npm run format:check
                                 fi
                             '''
                         }
@@ -297,9 +308,9 @@ pipeline {
                             trivy image \${TRIVY_OS_FLAGS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
                             trivy image \${TRIVY_OS_FLAGS} --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         elif command -v docker >/dev/null 2>&1; then
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v subtracker-jenkins_jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
                                 aquasec/trivy:latest image \${TRIVY_OS_FLAGS} --format sarif --output "${WORKSPACE}/trivy-results.sarif" "${env.IMAGE_TAG}" || true
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v subtracker-jenkins_jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
                                 aquasec/trivy:latest image \${TRIVY_OS_FLAGS} --format json --output "${WORKSPACE}/trivy-report.json" "${env.IMAGE_TAG}" || true
                         elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
                             "${WORKSPACE}/scripts/bin/trivy" image \${TRIVY_OS_FLAGS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
@@ -326,9 +337,9 @@ pipeline {
                             trivy image --format cyclonedx --output subtracker-api.cdx.json ${env.IMAGE_TAG} 2>/dev/null || true
                             trivy image --format spdx-json --output subtracker-api.spdx.json ${env.IMAGE_TAG} 2>/dev/null || true
                         elif command -v docker >/dev/null 2>&1; then
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v subtracker-jenkins_jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
                                 aquasec/trivy:latest image --format cyclonedx --output "${WORKSPACE}/subtracker-api.cdx.json" "${env.IMAGE_TAG}" || true
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v subtracker-jenkins_jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
                                 aquasec/trivy:latest image --format spdx-json --output "${WORKSPACE}/subtracker-api.spdx.json" "${env.IMAGE_TAG}" || true
                         elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
                             "${WORKSPACE}/scripts/bin/trivy" image --format cyclonedx --output subtracker-api.cdx.json ${env.IMAGE_TAG} 2>/dev/null || true
@@ -353,7 +364,7 @@ pipeline {
                         TARGET_URL="${APP_TARGET_URL:-http://localhost:8080}"
                         if command -v docker >/dev/null 2>&1; then
                             echo "==> Executing OWASP ZAP baseline scan against: ${TARGET_URL}..."
-                            docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" -t zaproxy/zap-stable zap-baseline.py \
+                            docker run --rm -v subtracker-jenkins_jenkins_home:/var/jenkins_home -w "${WORKSPACE}" -t zaproxy/zap-stable zap-baseline.py \
                                 -t "${TARGET_URL}" \
                                 -r zap-report.html \
                                 -J zap-report.json \
