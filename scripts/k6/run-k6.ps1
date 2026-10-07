@@ -15,16 +15,11 @@ Write-Host "==========================================================" -Foregro
 Write-Host "  Subscription Track - k6 Load & Performance Testing" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# Auto-detect target port if not explicitly passed
+# Default to production Azure VM FQDN if not explicitly specified
 if ([string]::IsNullOrWhiteSpace($TargetUrl)) {
-    try {
-        $tcpCheck = Test-NetConnection -ComputerName "localhost" -Port 8080 -InformationLevel Quiet -WarningAction SilentlyContinue
-        if ($tcpCheck) {
-            $TargetUrl = "http://localhost:8080"
-        } else {
-            $TargetUrl = "https://subscription-track-dev.malaysiawest.cloudapp.azure.com"
-        }
-    } catch {
+    if ($env:TARGET_URL) {
+        $TargetUrl = $env:TARGET_URL
+    } else {
         $TargetUrl = "https://subscription-track-dev.malaysiawest.cloudapp.azure.com"
     }
 }
