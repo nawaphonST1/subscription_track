@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subscription_track/features/app_update/application/app_update_controller.dart';
@@ -114,6 +115,84 @@ void main() {
       expect(state.isDownloading, isFalse);
       expect(state.isDownloadCompleted, isTrue);
       expect(state.downloadProgress, 1.0);
+    });
+
+    test('downloadAndInstallApk downloads and invokes install when URL is present', () async {
+      const mockInfo = AppUpdateInfo(
+        latestVersion: '1.2.0',
+        latestBuildNumber: 2,
+        minRequiredVersion: '1.0.0',
+        minRequiredBuildNumber: 1,
+        downloadUrl: 'https://example.com/app.apk',
+        releaseNotes: 'Update notes',
+      );
+
+      final tempFile = File('${Directory.systemTemp.path}/test_app.apk');
+      await tempFile.writeAsString('mock apk binary content');
+      addTearDown(() async {
+        if (await tempFile.exists()) await tempFile.delete();
+      });
+
+      final mockRepo = MockAppUpdateRepository(
+        mockUpdateInfo: mockInfo,
+        mockDownloadedFile: tempFile,
+        mockInstallSuccess: true,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          appUpdateRepositoryProvider.overrideWithValue(mockRepo),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(appUpdateControllerProvider.notifier);
+      await controller.checkForUpdates();
+      await controller.downloadAndInstallApk();
+
+      final state = container.read(appUpdateControllerProvider);
+      expect(mockRepo.downloadApkCalled, isTrue);
+      expect(mockRepo.installApkCalled, isTrue);
+      expect(state.isDownloading, isFalse);
+      expect(state.isDownloadCompleted, isTrue);
+    });
+
+    test('downloadAndInstallApk falls back to browser open when install fails', () async {
+      const mockInfo = AppUpdateInfo(
+        latestVersion: '1.2.0',
+        latestBuildNumber: 2,
+        minRequiredVersion: '1.0.0',
+        minRequiredBuildNumber: 1,
+        downloadUrl: 'https://example.com/app.apk',
+        releaseNotes: 'Update notes',
+      );
+
+      final tempFile = File('${Directory.systemTemp.path}/test_app_fallback.apk');
+      await tempFile.writeAsString('mock apk');
+      addTearDown(() async {
+        if (await tempFile.exists()) await tempFile.delete();
+      });
+
+      final mockRepo = MockAppUpdateRepository(
+        mockUpdateInfo: mockInfo,
+        mockDownloadedFile: tempFile,
+        mockInstallSuccess: false, // installation fails -> fallback to browser
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          appUpdateRepositoryProvider.overrideWithValue(mockRepo),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(appUpdateControllerProvider.notifier);
+      await controller.checkForUpdates();
+      await controller.downloadAndInstallApk();
+
+      expect(mockRepo.downloadApkCalled, isTrue);
+      expect(mockRepo.installApkCalled, isTrue);
+      expect(mockRepo.openDownloadUrlCalled, isTrue);
     });
   });
 }
