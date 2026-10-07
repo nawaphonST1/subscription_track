@@ -387,7 +387,7 @@ pipeline {
 
                         # Deploy production stack: check for Remote Production VM via SSH first (Dedicated CI/CD VM pattern)
                         PROD_TARGET_HOST="${PROD_VM_HOST:-${PROD_SSH_HOST:-85.211.231.93}}"
-                        PROD_TARGET_USER="${PROD_SSH_USER:-azureuser}"
+                        PROD_TARGET_USER="${PROD_SSH_USER:-jatupat}"
                         PROD_TARGET_PATH="${PROD_APP_PATH:-subscription_track}"
 
                         # Detect available SSH Key
