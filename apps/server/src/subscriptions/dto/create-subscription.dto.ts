@@ -118,7 +118,7 @@ export class CreateSubscriptionDto {
   @ApiPropertyOptional({
     example: 'Premium',
     description:
-      'Plan tier chosen from the preset catalog\'s available_plans (requires preset_id)',
+      "Plan tier chosen from the preset catalog's available_plans (requires preset_id)",
   })
   @IsOptional()
   @IsString()

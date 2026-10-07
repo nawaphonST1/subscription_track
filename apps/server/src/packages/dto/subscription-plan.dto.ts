@@ -12,10 +12,16 @@ export class SubscriptionPlanDto {
   @ApiProperty({ example: 419.0, description: 'Monthly price for this tier' })
   monthlyPrice!: number;
 
-  @ApiPropertyOptional({ example: 4190.0, description: 'Yearly price for this tier, if offered' })
+  @ApiPropertyOptional({
+    example: 4190.0,
+    description: 'Yearly price for this tier, if offered',
+  })
   yearlyPrice?: number | null;
 
-  @ApiProperty({ example: 4, description: 'Maximum number of shared slots/screens for this tier' })
+  @ApiProperty({
+    example: 4,
+    description: 'Maximum number of shared slots/screens for this tier',
+  })
   maxSlots!: number;
 
   @ApiProperty({

@@ -38,7 +38,8 @@ export function parseAvailablePlans(
           : null;
 
     const rawMaxSlots = Number(item.max_slots ?? item.maxSlots);
-    const maxSlots = Number.isFinite(rawMaxSlots) && rawMaxSlots > 0 ? rawMaxSlots : 1;
+    const maxSlots =
+      Number.isFinite(rawMaxSlots) && rawMaxSlots > 0 ? rawMaxSlots : 1;
 
     const rawFeatures = item.features;
     const features = Array.isArray(rawFeatures)

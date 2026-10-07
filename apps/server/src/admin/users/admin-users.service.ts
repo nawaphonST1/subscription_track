@@ -144,10 +144,7 @@ export class AdminUsersService {
   /**
    * แก้ไขข้อมูลผู้ใช้ (Admin action)
    */
-  async updateUser(
-    id: string,
-    dto: UpdateAdminUserDto,
-  ) {
+  async updateUser(id: string, dto: UpdateAdminUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`User with ID '${id}' not found`);
@@ -280,9 +277,7 @@ export class AdminUsersService {
       dto.billing_cycle ?? dto.billingCycle ?? BillingCycle.MONTHLY;
 
     const rawRenewal = dto.next_renewal_date ?? dto.nextRenewalDate;
-    const nextRenewal = rawRenewal
-      ? new Date(rawRenewal)
-      : new Date(startDate);
+    const nextRenewal = rawRenewal ? new Date(rawRenewal) : new Date(startDate);
 
     if (!rawRenewal) {
       if (billingCycle === BillingCycle.YEARLY) {
