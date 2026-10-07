@@ -14,7 +14,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { AllowWithoutPin } from '../common/decorators/allow-without-pin.decorator';
 import { UpdateIncomeDto } from './dto/update-income.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -104,9 +104,9 @@ export class UsersController {
     description: 'Current security PIN or primary auth password is incorrect',
   })
   async changePin(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePinDto,
   ) {
-    return this.usersService.changePin(userId, dto);
+    return this.usersService.changePin(user.id, dto, undefined, user.provider);
   }
 }

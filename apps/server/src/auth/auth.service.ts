@@ -241,6 +241,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      provider: dto.provider,
     });
 
     this.metrics?.recordLogin('success', 'password');

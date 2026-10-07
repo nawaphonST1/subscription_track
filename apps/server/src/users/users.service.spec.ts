@@ -380,20 +380,52 @@ describe('UsersService', () => {
       expect(result.message).toBe('Security PIN changed successfully');
     });
 
-    it('should evict auth user cache when PIN is changed', async () => {
-      const mockCache = { del: vi.fn().mockResolvedValue(true) };
-      const serviceWithCache = new UsersService(
-        prismaMock,
-        undefined,
-        mockCache as any,
+    it('should allow Google login user with default PIN 111111 to set a new PIN', async () => {
+      const defaultHash = await bcrypt.hash('111111', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'google-user-1',
+        security_pin_hash: defaultHash,
+        notifications: [
+          { message: 'Your account has been connected with Google.' },
+        ],
+      });
+      prismaMock.user.update.mockResolvedValue({ id: 'google-user-1' });
+
+      const result = await service.changePin(
+        'google-user-1',
+        '111111',
+        '654321',
+        'google',
       );
+      expect(result.message).toBe('Security PIN changed successfully');
+    });
 
-      const hash = await bcrypt.hash('123456', 10);
-      prismaMock.user.findUnique.mockResolvedValue({ security_pin_hash: hash });
-      prismaMock.user.update.mockResolvedValue({ id: 'user-1' });
+    it('should reject Google login user if current PIN is incorrect', async () => {
+      const defaultHash = await bcrypt.hash('111111', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'google-user-2',
+        security_pin_hash: defaultHash,
+        notifications: [
+          { message: 'Your account has been connected with Google.' },
+        ],
+      });
 
-      await serviceWithCache.changePin('user-1', '123456', '654321');
-      expect(mockCache.del).toHaveBeenCalledWith('auth:user:user-1');
+      await expect(
+        service.changePin('google-user-2', '999999', '654321', 'google'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should reject unconfigured non-social user without password', async () => {
+      const defaultHash = await bcrypt.hash('111111', 10);
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'regular-unconfigured',
+        security_pin_hash: defaultHash,
+        notifications: [],
+      });
+
+      await expect(
+        service.changePin('regular-unconfigured', '111111', '654321'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 });

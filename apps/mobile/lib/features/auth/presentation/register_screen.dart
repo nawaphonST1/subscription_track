@@ -25,7 +25,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _pinFormKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-  final _incomeController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -57,7 +56,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _incomeController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -97,14 +95,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
 
-      final incomeText = _incomeController.text.replaceAll(',', '').trim();
-      final monthlyIncome = double.tryParse(incomeText);
-
       ref.read(authProvider.notifier).registerWithEmail(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             name: _nameController.text.trim(),
-            monthlyIncome: monthlyIncome,
             securityPin: _pinController.text.trim(),
           );
     }
@@ -254,32 +248,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
 
-          // --- Monthly Income Field ---
-          _buildInputField(
-            key: const Key('register_income_field'),
-            controller: _incomeController,
-            label: 'รายได้ต่อเดือน (บาท)',
-            hint: 'เช่น 25,000',
-            icon: Icons.account_balance_wallet_outlined,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
-            ],
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) {
-                return 'กรุณากรอกรายได้ต่อเดือน';
-              }
-              final clean = val.replaceAll(',', '').trim();
-              final amount = double.tryParse(clean);
-              if (amount == null || amount < 0) {
-                return 'กรุณาระบุจำนวนเงินที่ถูกต้อง';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
 
           // --- Phone Field ---
           _buildInputField(

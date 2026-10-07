@@ -58,7 +58,9 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
     if (_isLoading) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final currentPin = _currentPinController.text.trim();
+    final currentPin = _currentPinController.text.trim().isNotEmpty
+        ? _currentPinController.text.trim()
+        : '111111';
     final newPin = _newPinController.text.trim();
 
     setState(() {
