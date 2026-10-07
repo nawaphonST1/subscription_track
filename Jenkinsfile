@@ -17,8 +17,8 @@ pipeline {
     }
 
     triggers {
-        // DP-400: SCM polling trigger (checks GitHub periodically without requiring public webhook)
-        pollSCM('H/5 * * * *')
+        // DP-400: SCM polling trigger (checks GitHub every minute for automated builds immediately on git push)
+        pollSCM('* * * * *')
     }
 
     options {
