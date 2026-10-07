@@ -122,6 +122,7 @@ class _FakeRestoreAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async =>
       right(User(

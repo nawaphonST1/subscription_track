@@ -58,6 +58,7 @@ class RemoteAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async {
     final http.Response response;
@@ -71,6 +72,7 @@ class RemoteAuthRepository implements AuthRepository {
           'email': email,
           'password': password,
           if (name != null && name.isNotEmpty) 'name': name,
+          if (monthlyIncome != null) 'monthly_income': monthlyIncome,
           if (securityPin != null && securityPin.isNotEmpty)
             'security_pin': securityPin,
         }),

@@ -38,9 +38,10 @@ class StubAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async =>
-      right(User(id: 'stub-register', email: email, name: name ?? ''));
+      right(User(id: 'stub-register', email: email, name: name ?? '', income: monthlyIncome ?? 0.0));
 
   @override
   Future<Either<Failure, User>> loginWithGoogle() async =>

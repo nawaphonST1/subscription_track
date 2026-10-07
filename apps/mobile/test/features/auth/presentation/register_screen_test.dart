@@ -18,20 +18,23 @@ class _TrackingAuthRepository extends StubAuthRepository {
   String? capturedName;
   String? capturedSecurityPin;
   int registerCallCount = 0;
+  double? capturedMonthlyIncome;
 
   @override
   Future<Either<Failure, User>> registerWithEmail({
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async {
     registerCallCount++;
     capturedEmail = email;
     capturedPassword = password;
     capturedName = name;
+    capturedMonthlyIncome = monthlyIncome;
     capturedSecurityPin = securityPin;
-    return right(User(id: 'new-user', email: email, name: name ?? ''));
+    return right(User(id: 'new-user', email: email, name: name ?? '', income: monthlyIncome ?? 0.0));
   }
 }
 
@@ -83,6 +86,8 @@ void main() {
 
       // Check input labels
       expect(find.text('ชื่อ-นามสกุล'), findsOneWidget);
+      expect(find.text('รายได้ต่อเดือน (บาท)'), findsOneWidget);
+      expect(find.text('เบอร์โทรศัพท์ (ถ้ามี)'), findsOneWidget);
       expect(find.text('อีเมล'), findsOneWidget);
       expect(find.text('รหัสผ่าน'), findsOneWidget);
       expect(find.text('ยืนยันรหัสผ่าน'), findsOneWidget);
@@ -110,6 +115,7 @@ void main() {
 
       // Expect validation error messages
       expect(find.text('กรุณากรอกชื่อของคุณ'), findsOneWidget);
+      expect(find.text('กรุณากรอกรายได้ต่อเดือน'), findsOneWidget);
       expect(find.text('กรุณากรอกอีเมล'), findsOneWidget);
       expect(find.text('กรุณากรอกรหัสผ่าน'), findsOneWidget);
     });
@@ -125,6 +131,8 @@ void main() {
 
       await tester.enterText(
           find.byKey(const Key('register_name_field')), 'สมชาย ใจดี');
+      await tester.enterText(
+          find.byKey(const Key('register_income_field')), '30000');
       await tester.enterText(
           find.byKey(const Key('register_email_field')), 'somchai@example.com');
       await tester.enterText(
@@ -151,6 +159,8 @@ void main() {
 
       await tester.enterText(
           find.byKey(const Key('register_name_field')), 'สมชาย ใจดี');
+      await tester.enterText(
+          find.byKey(const Key('register_income_field')), '30000');
       await tester.enterText(
           find.byKey(const Key('register_email_field')), 'somchai@example.com');
       await tester.enterText(
@@ -179,6 +189,8 @@ void main() {
       // Fill valid Step 1
       await tester.enterText(
           find.byKey(const Key('register_name_field')), 'สมชาย ใจดี');
+      await tester.enterText(
+          find.byKey(const Key('register_income_field')), '30000');
       await tester.enterText(
           find.byKey(const Key('register_email_field')), 'somchai@example.com');
       await tester.enterText(
@@ -225,6 +237,8 @@ void main() {
       await tester.enterText(
           find.byKey(const Key('register_name_field')), 'สมชาย ใจดี');
       await tester.enterText(
+          find.byKey(const Key('register_income_field')), '30000');
+      await tester.enterText(
           find.byKey(const Key('register_email_field')), 'somchai@example.com');
       await tester.enterText(
           find.byKey(const Key('register_password_field')), 'Password123');
@@ -262,6 +276,8 @@ void main() {
       await tester.enterText(
           find.byKey(const Key('register_name_field')), 'สมชาย ใจดี');
       await tester.enterText(
+          find.byKey(const Key('register_income_field')), '30000');
+      await tester.enterText(
           find.byKey(const Key('register_email_field')), 'somchai@example.com');
       await tester.enterText(
           find.byKey(const Key('register_password_field')), 'Password123');
@@ -285,6 +301,7 @@ void main() {
       expect(trackingRepo.registerCallCount, 1);
       expect(trackingRepo.capturedEmail, 'somchai@example.com');
       expect(trackingRepo.capturedName, 'สมชาย ใจดี');
+      expect(trackingRepo.capturedMonthlyIncome, 30000.0);
       expect(trackingRepo.capturedPassword, 'Password123');
       expect(trackingRepo.capturedSecurityPin, testPin);
     });
