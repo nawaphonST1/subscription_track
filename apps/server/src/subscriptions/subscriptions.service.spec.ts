@@ -21,6 +21,7 @@ describe('SubscriptionsService', () => {
       },
       subscriptionPreset: {
         findMany: vi.fn(),
+        findUnique: vi.fn(),
       },
     };
 
@@ -299,6 +300,137 @@ describe('SubscriptionsService', () => {
     });
   });
 
+  describe('create with tiered plans and slot sharing', () => {
+    const mockPreset = {
+      id: 'preset-1',
+      name: 'Netflix',
+      available_plans: [
+        {
+          tier: 'Standard',
+          monthly_price: 349,
+          yearly_price: 3490,
+          max_slots: 2,
+          features: ['1080p Full HD'],
+        },
+        {
+          tier: 'Premium',
+          monthly_price: 419,
+          yearly_price: 4190,
+          max_slots: 4,
+          features: ['4K UHD'],
+        },
+      ],
+    };
+
+    it('should throw NotFoundException if preset_id does not exist', async () => {
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.create('user-1', {
+          payment_card_id: 'card-1',
+          preset_id: 'missing-preset',
+          name: 'Netflix',
+          category: 'Streaming',
+          price: 419,
+          billing_cycle: BillingCycle.MONTHLY,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prismaMock.userSubscription.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if plan_tier is not offered by the preset', async () => {
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(mockPreset);
+
+      await expect(
+        service.create('user-1', {
+          payment_card_id: 'card-1',
+          preset_id: 'preset-1',
+          plan_tier: 'Mobile',
+          name: 'Netflix',
+          category: 'Streaming',
+          price: 99,
+          billing_cycle: BillingCycle.MONTHLY,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaMock.userSubscription.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if shared_members exceeds the plan max_slots', async () => {
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(mockPreset);
+
+      await expect(
+        service.create('user-1', {
+          payment_card_id: 'card-1',
+          preset_id: 'preset-1',
+          plan_tier: 'Standard',
+          shared_members: 3,
+          name: 'Netflix',
+          category: 'Streaming',
+          price: 349,
+          billing_cycle: BillingCycle.MONTHLY,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaMock.userSubscription.create).not.toHaveBeenCalled();
+    });
+
+    it('should calculate price_per_slot and persist plan_tier/shared_members', async () => {
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.subscriptionPreset.findUnique.mockResolvedValue(mockPreset);
+      prismaMock.userSubscription.create.mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'sub-shared',
+          ...data,
+        }),
+      );
+
+      const result = await service.create('user-1', {
+        payment_card_id: 'card-1',
+        preset_id: 'preset-1',
+        plan_tier: 'Premium',
+        shared_members: 4,
+        name: 'Netflix',
+        category: 'Streaming',
+        price: 419,
+        billing_cycle: BillingCycle.MONTHLY,
+      });
+
+      expect(prismaMock.userSubscription.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          plan_tier: 'Premium',
+          shared_members: 4,
+          price_per_slot: 104.75,
+        }),
+      });
+      expect(result.price_per_slot).toBe(104.75);
+    });
+
+    it('should default shared_members to 1 and leave price_per_slot equal to price when not shared', async () => {
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.userSubscription.create.mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'sub-solo',
+          ...data,
+        }),
+      );
+
+      const result = await service.create('user-1', {
+        payment_card_id: 'card-1',
+        name: 'Spotify',
+        category: 'Music',
+        price: 139,
+        billing_cycle: BillingCycle.MONTHLY,
+      });
+
+      expect(result.price_per_slot).toBe(139);
+      expect(prismaMock.userSubscription.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ shared_members: 1 }),
+      });
+    });
+  });
+
   describe('findUpcoming', () => {
     it('should return upcoming renewals with calculated days_until_renewal', async () => {
       const futureDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
@@ -358,6 +490,17 @@ describe('SubscriptionsService', () => {
           brand_color: '#E50914',
           icon_url: 'https://example.com/netflix.png',
           description: 'Streaming service',
+          features: ['4K UHD + HDR'],
+          max_slots: 4,
+          available_plans: [
+            {
+              tier: 'Premium',
+              monthly_price: 419,
+              yearly_price: 4190,
+              max_slots: 4,
+              features: ['4K UHD + HDR'],
+            },
+          ],
         },
       ]);
 
@@ -369,6 +512,16 @@ describe('SubscriptionsService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].default_price).toBe(419);
       expect(typeof result[0].default_price).toBe('number');
+      expect(result[0].max_slots).toBe(4);
+      expect(result[0].available_plans).toEqual([
+        {
+          tier: 'Premium',
+          monthlyPrice: 419,
+          yearlyPrice: 4190,
+          maxSlots: 4,
+          features: ['4K UHD + HDR'],
+        },
+      ]);
     });
   });
 

@@ -26,6 +26,10 @@ _Subscription _$SubscriptionFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const [],
       reminderEnabled: json['reminderEnabled'] as bool? ?? true,
+      presetId: json['presetId'] as String?,
+      planTier: json['planTier'] as String?,
+      sharedMembers: (json['sharedMembers'] as num?)?.toInt() ?? 1,
+      pricePerSlot: (json['pricePerSlot'] as num?)?.toDouble(),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -48,6 +52,10 @@ Map<String, dynamic> _$SubscriptionToJson(_Subscription instance) =>
       'isSelected': instance.isSelected,
       'customFields': instance.customFields,
       'reminderEnabled': instance.reminderEnabled,
+      'presetId': instance.presetId,
+      'planTier': instance.planTier,
+      'sharedMembers': instance.sharedMembers,
+      'pricePerSlot': instance.pricePerSlot,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };

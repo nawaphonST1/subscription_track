@@ -4,6 +4,7 @@ import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -113,4 +114,23 @@ export class CreateSubscriptionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    example: 'Premium',
+    description:
+      'Plan tier chosen from the preset catalog\'s available_plans (requires preset_id)',
+  })
+  @IsOptional()
+  @IsString()
+  plan_tier?: string;
+
+  @ApiPropertyOptional({
+    example: 2,
+    default: 1,
+    description: 'Number of people sharing/splitting this subscription',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  shared_members?: number = 1;
 }

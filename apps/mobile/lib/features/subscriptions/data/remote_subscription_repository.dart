@@ -126,6 +126,7 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
     return {
       'payment_card_id': subscription.paymentCardId,
       'card_id': subscription.paymentCardId,
+      if (subscription.presetId != null) 'preset_id': subscription.presetId,
       'name': subscription.name,
       'category': subscription.category,
       'price': subscription.price,
@@ -133,6 +134,8 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
       if (subscription.nextBillingDate != null)
         'next_renewal_date': subscription.nextBillingDate!.toIso8601String(),
       'usage_status': usageStatusToBackend(subscription.usageStatus),
+      if (subscription.planTier != null) 'plan_tier': subscription.planTier,
+      'shared_members': subscription.sharedMembers,
     };
   }
 
@@ -168,6 +171,10 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
     final paymentCardId = paymentCard is Map<String, dynamic>
         ? paymentCard['id'] as String?
         : json['payment_card_id'] as String?;
+    final preset = json['preset'];
+    final presetId = preset is Map<String, dynamic>
+        ? preset['id'] as String?
+        : json['preset_id'] as String?;
 
     return Subscription(
       id: json['id'] as String? ?? '',
@@ -184,6 +191,10 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
         json['usage_status'] as String? ?? 'FREQUENT',
       ),
       paymentCardId: paymentCardId,
+      presetId: presetId,
+      planTier: json['plan_tier'] as String?,
+      sharedMembers: (json['shared_members'] as num?)?.toInt() ?? 1,
+      pricePerSlot: (json['price_per_slot'] as num?)?.toDouble(),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

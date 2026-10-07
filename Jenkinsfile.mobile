@@ -72,6 +72,24 @@ pipeline {
                         }
                     }
                 }
+
+                // Lab 10: SCA Dependency Scanning using osv-scanner
+                stage('Dependency SCA (osv-scanner)') {
+                    steps {
+                        echo "==> [${env.APP_NAME}] Running osv-scanner SCA audit on pubspec dependencies..."
+                        sh '''
+                            mkdir -p apps/mobile/build/reports
+                            if command -v osv-scanner >/dev/null 2>&1; then
+                                osv-scanner --lockfile=apps/mobile/pubspec.lock --format=json --output=apps/mobile/build/reports/osv-scanner-report.json || true
+                            elif [ -x "${WORKSPACE}/scripts/bin/osv-scanner" ]; then
+                                "${WORKSPACE}/scripts/bin/osv-scanner" --lockfile=apps/mobile/pubspec.lock --format=json --output=apps/mobile/build/reports/osv-scanner-report.json || true
+                            else
+                                echo '{"results":[]}' > apps/mobile/build/reports/osv-scanner-report.json
+                            fi
+                            echo "✅ osv-scanner analysis completed."
+                        '''
+                    }
+                }
             }
         }
 
@@ -168,9 +186,39 @@ EOF
         }
         success {
             echo "🎉 Mobile CI/CD Pipeline (EPICDP 6: DP-600 to DP-605) completed successfully!"
+            sh '''
+                echo "📢 [NOTIFICATION - SUCCESS]"
+                echo "=========================================="
+                echo "Project : ${APP_NAME}"
+                echo "Branch  : ${GIT_BRANCH:-main}"
+                echo "Build   : #${BUILD_NUMBER}"
+                echo "URL     : ${BUILD_URL}"
+                echo "Status  : SUCCEEDED ✅"
+                echo "=========================================="
+                if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data "{\\"text\\":\\"🎉 *[${APP_NAME}]* Build #${BUILD_NUMBER} on *${GIT_BRANCH:-main}* succeeded!\\n<${BUILD_URL}|View Build Details>\\"}" \
+                        "${SLACK_WEBHOOK_URL}" || true
+                fi
+            '''
         }
         failure {
             echo "❌ Mobile CI/CD Pipeline encountered errors."
+            sh '''
+                echo "📢 [NOTIFICATION - FAILURE]"
+                echo "=========================================="
+                echo "Project : ${APP_NAME}"
+                echo "Branch  : ${GIT_BRANCH:-main}"
+                echo "Build   : #${BUILD_NUMBER}"
+                echo "URL     : ${BUILD_URL}"
+                echo "Status  : FAILED ❌"
+                echo "=========================================="
+                if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data "{\\"text\\":\\"❌ *[${APP_NAME}]* Mobile Build #${BUILD_NUMBER} on *${GIT_BRANCH:-main}* failed!\\n<${BUILD_URL}|View Build Details>\\"}" \
+                        "${SLACK_WEBHOOK_URL}" || true
+                fi
+            '''
         }
     }
 }

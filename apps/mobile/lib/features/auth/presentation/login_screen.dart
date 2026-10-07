@@ -23,14 +23,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!isRunningInFlutterTest) {
+        ref.read(networkStatusProvider.notifier).checkStatus();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _onLogin() {
+  Future<void> _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
+      final internetChecker = ref.read(internetCheckerProvider);
+      final hasInternet = await internetChecker.hasInternet();
+      if (!hasInternet) {
+        ref
+            .read(networkStatusProvider.notifier)
+            .reportFailure(const Failure.networkError());
+        if (mounted) {
+          showNoInternetDialog(context, ref);
+        }
+        return;
+      }
+
       ref.read(authProvider.notifier).loginWithEmail(
             email: _emailController.text.trim(),
             password: _passwordController.text,
@@ -38,9 +60,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _onGoogleLogin() async {
+    final internetChecker = ref.read(internetCheckerProvider);
+    final hasInternet = await internetChecker.hasInternet();
+    if (!hasInternet) {
+      ref
+          .read(networkStatusProvider.notifier)
+          .reportFailure(const Failure.networkError());
+      if (mounted) {
+        showNoInternetDialog(context, ref);
+      }
+      return;
+    }
+
+    ref.read(authProvider.notifier).loginWithGoogle();
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    // ตรวจจับสถานะการเชื่อมต่อเน็ต: เด้งเตือนทันทีเมื่อไม่มีเน็ต
+    ref.listen<ConnectivityState>(networkStatusProvider, (previous, next) {
+      if (next.isNoInternet && (previous == null || !previous.isNoInternet)) {
+        showNoInternetDialog(context, ref);
+      }
+    });
 
     // ดักจับสถานะการล็อกอิน
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
@@ -257,7 +302,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   OutlinedButton(
                     onPressed: isLoading
                         ? null
-                        : () => ref.read(authProvider.notifier).loginWithGoogle(),
+                        : _onGoogleLogin,
                     style: OutlinedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black87,

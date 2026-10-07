@@ -24,20 +24,8 @@ echo "==> [$(date)] Initiating Database Disaster Recovery restoration from Azure
 
 # 1. Determine target backup file
 if [ "${RESTORE_TARGET}" = "latest" ]; then
-    echo "==> Resolving latest backup from Azure Blob Storage (${BLOB_BASE_URL}/${AZURE_PREFIX}/)..."
-    if command -v az >/dev/null 2>&1; then
-        AUTH_ARGS=""
-        if [ -n "${AZURE_STORAGE_KEY:-}" ]; then
-            AUTH_ARGS="--account-key ${AZURE_STORAGE_KEY}"
-        elif [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
-            AUTH_ARGS="--sas-token ${AZURE_STORAGE_SAS_TOKEN}"
-        fi
-        LATEST_BLOB=$(az storage blob list --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_CONTAINER}" --prefix "${AZURE_PREFIX}/" --query "[?ends_with(name, '.dump.gz')].name | sort(@) | [-1]" -o tsv ${AUTH_ARGS})
-        RESTORE_FILE=$(basename "${LATEST_BLOB}")
-    else
-        echo "⚠️  Azure CLI (az) not found for automatic latest resolution. Please specify exact backup filename as first argument."
-        exit 1
-    fi
+    RESTORE_FILE="${DB_NAME}_backup_latest.dump.gz"
+    echo "==> Targeting latest backup snapshot: ${RESTORE_FILE} from Azure Blob Storage (${BLOB_BASE_URL}/${AZURE_PREFIX}/)..."
 else
     RESTORE_FILE="$(basename "${RESTORE_TARGET}")"
 fi

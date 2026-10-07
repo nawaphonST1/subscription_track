@@ -30,6 +30,17 @@ describe('PackagesService', () => {
     brand_color: '#E50914',
     icon_url: 'https://example.com/icon.png',
     description: 'HD Streaming',
+    features: ['1080p Full HD', '2 Screens simultaneously'],
+    max_slots: 2,
+    available_plans: [
+      {
+        tier: 'Standard',
+        monthly_price: 349,
+        yearly_price: 3490,
+        max_slots: 2,
+        features: ['1080p Full HD', '2 Screens simultaneously'],
+      },
+    ],
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),
   };
@@ -49,6 +60,17 @@ describe('PackagesService', () => {
         brand_color: '#E50914',
         icon_url: 'https://example.com/icon.png',
         description: 'HD Streaming',
+        features: ['1080p Full HD', '2 Screens simultaneously'],
+        max_slots: 2,
+        available_plans: [
+          {
+            tier: 'Standard',
+            monthlyPrice: 349,
+            yearlyPrice: 3490,
+            maxSlots: 2,
+            features: ['1080p Full HD', '2 Screens simultaneously'],
+          },
+        ],
         created_at: expect.any(Date),
         updated_at: expect.any(Date),
       });
@@ -56,6 +78,40 @@ describe('PackagesService', () => {
         where: {},
         orderBy: [{ category: 'asc' }, { name: 'asc' }],
       });
+    });
+
+    it('should tolerate null available_plans', async () => {
+      prismaMock.subscriptionPreset.findMany.mockResolvedValue([
+        { ...mockPreset, available_plans: null },
+      ]);
+
+      const result = await service.findAll();
+      expect(result[0].available_plans).toEqual([]);
+    });
+
+    it('should skip malformed entries in available_plans', async () => {
+      prismaMock.subscriptionPreset.findMany.mockResolvedValue([
+        {
+          ...mockPreset,
+          available_plans: [
+            { tier: 'Valid', monthly_price: 100, max_slots: 1, features: [] },
+            { tier: 'Missing price' },
+            'not-an-object',
+            null,
+          ],
+        },
+      ]);
+
+      const result = await service.findAll();
+      expect(result[0].available_plans).toEqual([
+        {
+          tier: 'Valid',
+          monthlyPrice: 100,
+          yearlyPrice: null,
+          maxSlots: 1,
+          features: [],
+        },
+      ]);
     });
 
     it('should filter by category and search keyword', async () => {

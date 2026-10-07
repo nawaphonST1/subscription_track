@@ -7,6 +7,10 @@ async function main() {
   console.log('Seeding database with Subscription Presets and Mock Bank Cards...');
 
   // 1. Subscription Presets Catalog
+  // `default_price`/`billing_cycle` always mirror one entry of `available_plans`
+  // (the service's existing default tier) so denormalized UserSubscription rows,
+  // dashboard and savings readers keep working unchanged for callers that don't
+  // yet understand multi-tier plans.
   const presets = [
     {
       name: 'Netflix Premium',
@@ -16,6 +20,13 @@ async function main() {
       brand_color: '#E50914',
       icon_url: 'https://assets.nflxext.com/ffe/siteui/common/icons/nficon2016.ico',
       description: 'Ultra HD 4K streaming, 4 simultaneous screens, download on 6 devices.',
+      max_slots: 4,
+      features: ['4K UHD + HDR', '4 Screens', 'Spatial Audio', 'Download on 6 devices'],
+      available_plans: [
+        { tier: 'Mobile', monthly_price: 99.0, yearly_price: 990.0, max_slots: 1, features: ['480p SD', '1 Phone/Tablet'] },
+        { tier: 'Standard', monthly_price: 349.0, yearly_price: 3490.0, max_slots: 2, features: ['1080p Full HD', '2 Screens simultaneously'] },
+        { tier: 'Premium', monthly_price: 419.0, yearly_price: 4190.0, max_slots: 4, features: ['4K UHD + HDR', '4 Screens', 'Spatial Audio', 'Download on 6 devices'] },
+      ],
     },
     {
       name: 'Spotify Premium',
@@ -25,6 +36,13 @@ async function main() {
       brand_color: '#1DB954',
       icon_url: 'https://open.spotifycdn.com/cdn/images/favicon.0f31d2ea.ico',
       description: 'Ad-free music listening, offline playback, on-demand playback.',
+      max_slots: 6,
+      features: ['Ad-free music', 'Offline playback', 'Individual account'],
+      available_plans: [
+        { tier: 'Individual', monthly_price: 139.0, yearly_price: 1390.0, max_slots: 1, features: ['Ad-free music', 'Offline playback', 'Individual account'] },
+        { tier: 'Duo', monthly_price: 189.0, yearly_price: 1890.0, max_slots: 2, features: ['2 Premium accounts for couples', 'Ad-free'] },
+        { tier: 'Family', monthly_price: 219.0, yearly_price: 2190.0, max_slots: 6, features: ['Up to 6 Premium accounts', 'Spotify Kids', 'Explicit content filter'] },
+      ],
     },
     {
       name: 'YouTube Premium',
@@ -34,6 +52,12 @@ async function main() {
       brand_color: '#FF0000',
       icon_url: 'https://www.youtube.com/s/desktop/9b48c66e/img/favicon.ico',
       description: 'Ad-free videos, background playback, and YouTube Music Premium.',
+      max_slots: 5,
+      features: ['Ad-free videos', 'Background playback', 'YouTube Music Premium'],
+      available_plans: [
+        { tier: 'Individual', monthly_price: 179.0, yearly_price: 1790.0, max_slots: 1, features: ['Ad-free videos', 'Background playback', 'YouTube Music Premium'] },
+        { tier: 'Family', monthly_price: 339.0, yearly_price: 3390.0, max_slots: 5, features: ['Up to 5 family members (13+)', 'Background play', 'YouTube Music included'] },
+      ],
     },
     {
       name: 'ChatGPT Plus',
@@ -43,6 +67,11 @@ async function main() {
       brand_color: '#10A37F',
       icon_url: 'https://oaistatic-cdn.azureedge.net/favicon.ico',
       description: 'Access to GPT-4o, canvas, image generation, web browsing, advanced voice.',
+      max_slots: 1,
+      features: ['GPT-4o access', 'Canvas & image generation', 'Web browsing', 'Advanced voice'],
+      available_plans: [
+        { tier: 'Plus', monthly_price: 720.0, yearly_price: null, max_slots: 1, features: ['GPT-4o access', 'Canvas & image generation', 'Web browsing', 'Advanced voice'] },
+      ],
     },
     {
       name: 'Disney+ Hotstar',
@@ -52,6 +81,11 @@ async function main() {
       brand_color: '#113CCF',
       icon_url: 'https://www.hotstar.com/favicon.ico',
       description: 'Blockbusters from Disney, Pixar, Marvel, Star Wars, and National Geographic.',
+      max_slots: 1,
+      features: ['Disney, Pixar, Marvel, Star Wars & Nat Geo', 'Full HD streaming'],
+      available_plans: [
+        { tier: 'Standard', monthly_price: 289.0, yearly_price: 2890.0, max_slots: 1, features: ['Disney, Pixar, Marvel, Star Wars & Nat Geo', 'Full HD streaming'] },
+      ],
     },
     {
       name: 'Apple One',
@@ -61,6 +95,11 @@ async function main() {
       brand_color: '#000000',
       icon_url: 'https://www.apple.com/favicon.ico',
       description: 'Apple Music, Apple TV+, Apple Arcade, and 50GB iCloud storage bundle.',
+      max_slots: 1,
+      features: ['Apple Music', 'Apple TV+', 'Apple Arcade', '50GB iCloud storage'],
+      available_plans: [
+        { tier: 'Individual', monthly_price: 379.0, yearly_price: null, max_slots: 1, features: ['Apple Music', 'Apple TV+', 'Apple Arcade', '50GB iCloud storage'] },
+      ],
     },
     {
       name: 'iCloud+ 200GB',
@@ -70,6 +109,11 @@ async function main() {
       brand_color: '#3399FF',
       icon_url: 'https://www.icloud.com/favicon.ico',
       description: '200GB cloud storage, Private Relay, Hide My Email, custom email domain.',
+      max_slots: 1,
+      features: ['200GB cloud storage', 'Private Relay', 'Hide My Email', 'Custom email domain'],
+      available_plans: [
+        { tier: '200GB', monthly_price: 99.0, yearly_price: null, max_slots: 1, features: ['200GB cloud storage', 'Private Relay', 'Hide My Email', 'Custom email domain'] },
+      ],
     },
     {
       name: 'GitHub Copilot',
@@ -79,6 +123,11 @@ async function main() {
       brand_color: '#24292E',
       icon_url: 'https://github.githubassets.com/favicons/favicon.png',
       description: 'AI pair programmer providing code completions and chat in your IDE.',
+      max_slots: 1,
+      features: ['AI code completions', 'In-IDE chat'],
+      available_plans: [
+        { tier: 'Individual', monthly_price: 350.0, yearly_price: null, max_slots: 1, features: ['AI code completions', 'In-IDE chat'] },
+      ],
     },
   ];
 
