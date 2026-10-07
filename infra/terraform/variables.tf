@@ -82,3 +82,9 @@ variable "aks_vm_size" {
   default     = "Standard_B2s"
 }
 
+variable "kubernetes_version" {
+  type        = string
+  description = "เวอร์ชัน Kubernetes สำหรับ AKS (null หรือปล่อยว่างไว้เพื่อให้ Azure เลือกเวอร์ชัน LTS ล่าสุดที่เสถียรใน Region)"
+  default     = null
+}
+
