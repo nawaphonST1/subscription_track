@@ -223,9 +223,7 @@ export class SavingsService {
         await this.cacheService.delByPattern(
           `cache:user:${userId}:subscriptions:*`,
         );
-        await this.cacheService.delByPattern(
-          `cache:user:${userId}:upcoming:*`,
-        );
+        await this.cacheService.delByPattern(`cache:user:${userId}:upcoming:*`);
       }
     }
 
