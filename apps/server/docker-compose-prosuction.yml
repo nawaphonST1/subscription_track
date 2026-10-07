@@ -146,8 +146,10 @@ services:
 
   # DP-300 / DP-301: Modern Cloud-Native Reverse Proxy & Ingress Controller
   traefik:
-    image: traefik:v3.1
+    image: traefik:v3.3
     restart: unless-stopped
+    environment:
+      - DOCKER_API_VERSION=1.44
     command:
       - "--api.insecure=false"
       - "--api.dashboard=true"
