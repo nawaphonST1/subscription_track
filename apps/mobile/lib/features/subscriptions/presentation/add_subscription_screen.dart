@@ -32,6 +32,10 @@ class _AddSubscriptionScreenState
   IconData _selectedIcon = Icons.play_circle_fill;
   Color _selectedColor = const Color(0xFF3B82F6);
   String? _selectedCardId;
+  String? _presetId;
+  String? _planTier;
+  int _sharedMembers = 1;
+  double? _pricePerSlot;
 
   @override
   void dispose() {
@@ -41,26 +45,57 @@ class _AddSubscriptionScreenState
   }
 
   Future<void> _pickFromPresets() async {
-    final result = await Navigator.push<PresetPackage>(
+    final result = await Navigator.push<Object>(
       context,
       MaterialPageRoute(builder: (_) => const SelectPackageScreen()),
     );
     if (result == null || !mounted) return;
 
-    setState(() {
-      _nameController.text = result.name;
-      _priceController.text = result.price.toStringAsFixed(0);
-      _billingPeriod = result.billingPeriod;
-      _category = result.category;
-      _selectedIcon = serviceIconData(
-        serviceName: result.name,
-        category: result.category,
-      );
-      _selectedColor = serviceIconColor(
-        serviceName: result.name,
-        category: result.category,
-      );
-    });
+    // The picker pops either a plain PresetPackage (single-plan services,
+    // direct pick) or a pre-filled Subscription draft (tiered services,
+    // built by SelectPackageController after the user chooses a plan).
+    if (result is Subscription) {
+      setState(() {
+        _nameController.text = result.name;
+        _priceController.text = result.price.toStringAsFixed(0);
+        _billingPeriod = result.billingPeriod == 'yearly' ? 'Yearly' : 'Monthly';
+        _category = result.category;
+        _presetId = result.presetId;
+        _planTier = result.planTier;
+        _sharedMembers = result.sharedMembers;
+        _pricePerSlot = result.pricePerSlot;
+        _selectedIcon = serviceIconData(
+          serviceName: result.name,
+          category: result.category,
+        );
+        _selectedColor = serviceIconColor(
+          serviceName: result.name,
+          category: result.category,
+        );
+      });
+      return;
+    }
+
+    if (result is PresetPackage) {
+      setState(() {
+        _nameController.text = result.name;
+        _priceController.text = result.price.toStringAsFixed(0);
+        _billingPeriod = result.billingPeriod;
+        _category = result.category;
+        _presetId = result.id;
+        _planTier = null;
+        _sharedMembers = 1;
+        _pricePerSlot = null;
+        _selectedIcon = serviceIconData(
+          serviceName: result.name,
+          category: result.category,
+        );
+        _selectedColor = serviceIconColor(
+          serviceName: result.name,
+          category: result.category,
+        );
+      });
+    }
   }
 
   void _saveForm() {
@@ -80,6 +115,10 @@ class _AddSubscriptionScreenState
       billingPeriod: _billingPeriod.toLowerCase(),
       category: _category,
       paymentCardId: _selectedCardId,
+      presetId: _presetId,
+      planTier: _planTier,
+      sharedMembers: _sharedMembers,
+      pricePerSlot: _pricePerSlot,
     );
     Navigator.pop(context, subscription);
   }

@@ -39,6 +39,14 @@ abstract class Subscription with _$Subscription {
     @Default(false) bool isSelected,
     @Default([]) List<Map<String, String>> customFields,
     @Default(true) bool reminderEnabled,
+    // set when this subscription was created from a catalog preset's tiered
+    // plan (see SelectPackageController.toSubscriptionDraft); required by the
+    // backend to validate planTier/sharedMembers against the preset's
+    // available_plans
+    String? presetId,
+    String? planTier,
+    @Default(1) int sharedMembers,
+    double? pricePerSlot,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) = _Subscription;

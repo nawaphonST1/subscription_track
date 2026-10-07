@@ -16,6 +16,7 @@ import {
   UsageStatus,
 } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
+import { parseAvailablePlans } from '../packages/utils/subscription-plan.util';
 
 @Injectable()
 export class SubscriptionsService {
@@ -67,6 +68,9 @@ export class SubscriptionsService {
       name: sub.name,
       category: sub.category,
       price: Number(sub.price),
+      plan_tier: sub.plan_tier,
+      shared_members: sub.shared_members,
+      price_per_slot: sub.price_per_slot ? Number(sub.price_per_slot) : null,
       billing_cycle: sub.billing_cycle,
       start_date: sub.start_date,
       next_renewal_date: sub.next_renewal_date,
@@ -141,6 +145,9 @@ export class SubscriptionsService {
       brand_color: p.brand_color,
       icon_url: p.icon_url,
       description: p.description,
+      features: p.features,
+      max_slots: p.max_slots,
+      available_plans: parseAvailablePlans(p.available_plans),
     }));
 
     if (this.cacheService) {
@@ -168,6 +175,9 @@ export class SubscriptionsService {
       name: sub.name,
       category: sub.category,
       price: Number(sub.price),
+      plan_tier: sub.plan_tier,
+      shared_members: sub.shared_members,
+      price_per_slot: sub.price_per_slot ? Number(sub.price_per_slot) : null,
       billing_cycle: sub.billing_cycle,
       start_date: sub.start_date,
       next_renewal_date: sub.next_renewal_date,
@@ -211,6 +221,44 @@ export class SubscriptionsService {
       );
     }
 
+    let planMaxSlots: number | undefined;
+
+    if (dto.preset_id) {
+      const preset = await this.prisma.subscriptionPreset.findUnique({
+        where: { id: dto.preset_id },
+      });
+
+      if (!preset) {
+        throw new NotFoundException(
+          `Preset with ID ${dto.preset_id} not found`,
+        );
+      }
+
+      if (dto.plan_tier) {
+        const plan = parseAvailablePlans(preset.available_plans).find(
+          (p) => p.tier === dto.plan_tier,
+        );
+
+        if (!plan) {
+          throw new BadRequestException(
+            `Plan tier "${dto.plan_tier}" is not offered by preset "${preset.name}"`,
+          );
+        }
+
+        planMaxSlots = plan.maxSlots;
+      }
+    }
+
+    const sharedMembers = dto.shared_members ?? 1;
+
+    if (planMaxSlots !== undefined && sharedMembers > planMaxSlots) {
+      throw new BadRequestException(
+        `shared_members (${sharedMembers}) exceeds this plan's max_slots (${planMaxSlots})`,
+      );
+    }
+
+    const pricePerSlot = dto.price / sharedMembers;
+
     const startDateStr = dto.start_date || dto.first_bill_date;
     const startDate = startDateStr ? new Date(startDateStr) : new Date();
     const nextRenewal = dto.next_renewal_date
@@ -232,9 +280,12 @@ export class SubscriptionsService {
         user_id: userId,
         payment_card_id: cardId,
         preset_id: dto.preset_id,
+        plan_tier: dto.plan_tier,
         name: dto.name,
         category: dto.category,
         price: dto.price,
+        shared_members: sharedMembers,
+        price_per_slot: pricePerSlot,
         billing_cycle: dto.billing_cycle,
         start_date: startDate,
         next_renewal_date: nextRenewal,
@@ -254,6 +305,7 @@ export class SubscriptionsService {
     return {
       ...sub,
       price: Number(sub.price),
+      price_per_slot: sub.price_per_slot ? Number(sub.price_per_slot) : null,
     };
   }
 
