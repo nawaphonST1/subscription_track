@@ -447,9 +447,10 @@ pipeline {
                                     set -e
                                     cd ${PROD_TARGET_PATH}
                                     echo '==> [Remote Production VM] Updating codebase from Git...'
+                                    TARGET_BRANCH=\$(echo '${GIT_BRANCH:-feat/system-integration-test-and-fix}' | sed 's|^origin/||')
                                     git fetch origin
-                                    git checkout ${GIT_BRANCH:-feat/system-integration-test-and-fix} || git checkout feat/system-integration-test-and-fix || true
-                                    git pull origin ${GIT_BRANCH:-feat/system-integration-test-and-fix} || git pull origin feat/system-integration-test-and-fix || true
+                                    git checkout \${TARGET_BRANCH} 2>/dev/null || git checkout -b \${TARGET_BRANCH} origin/\${TARGET_BRANCH} 2>/dev/null || true
+                                    git pull origin \${TARGET_BRANCH} || true
                                     echo '==> [Remote Production VM] Triggering production stack update via docker compose...'
                                     docker compose -f docker-compose-prosuction.yml up -d --remove-orphans || docker compose -f docker-compose-prosuction.yml up -d
                                     docker compose -f docker-compose-prosuction.yml run --rm migrate || true
