@@ -12,10 +12,13 @@ services:
       - "50000:50000"
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - PROD_VM_HOST=85.211.231.93
+      - PROD_SSH_USER=azureuser
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - ./apps/server:/var/jenkins_home/host_apps_server:ro
+      - ${HOME:-/root}/.ssh:/root/.ssh:ro
 
 volumes:
   jenkins_home:

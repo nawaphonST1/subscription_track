@@ -35,6 +35,9 @@ pipeline {
                     if ! command -v docker >/dev/null 2>&1; then
                         apk add --no-cache docker-cli docker-cli-compose >/dev/null 2>&1 || true
                     fi
+                    if ! command -v ssh >/dev/null 2>&1; then
+                        apk add --no-cache openssh-client >/dev/null 2>&1 || true
+                    fi
                     if ! command -v pnpm >/dev/null 2>&1; then
                         corepack enable 2>/dev/null || npm install -g pnpm@10.2.1 2>/dev/null || true
                     fi
@@ -382,9 +385,50 @@ pipeline {
                             fi
                         fi
 
-                        # Deploy production stack via Docker Compose
-                        if [ -f "docker-compose-prosuction.yml" ]; then
-                            echo "==> Starting production stack containers via docker compose..."
+                        # Deploy production stack: check for Remote Production VM via SSH first (Dedicated CI/CD VM pattern)
+                        PROD_TARGET_HOST="${PROD_VM_HOST:-${PROD_SSH_HOST:-85.211.231.93}}"
+                        PROD_TARGET_USER="${PROD_SSH_USER:-azureuser}"
+                        PROD_TARGET_PATH="${PROD_APP_PATH:-subscription_track}"
+
+                        # Detect available SSH Key
+                        SSH_KEY_FLAG=""
+                        if [ -f "/var/jenkins_home/.ssh/id_ed25519" ]; then
+                            SSH_KEY_FLAG="-i /var/jenkins_home/.ssh/id_ed25519"
+                        elif [ -f "/var/jenkins_home/.ssh/id_rsa" ]; then
+                            SSH_KEY_FLAG="-i /var/jenkins_home/.ssh/id_rsa"
+                        elif [ -f "/root/.ssh/id_ed25519" ]; then
+                            SSH_KEY_FLAG="-i /root/.ssh/id_ed25519"
+                        elif [ -f "/root/.ssh/id_rsa" ]; then
+                            SSH_KEY_FLAG="-i /root/.ssh/id_rsa"
+                        fi
+
+                        DEPLOYED_REMOTE=false
+                        if [ -n "${PROD_TARGET_HOST}" ]; then
+                            echo "==> Testing SSH connection to Production VM (${PROD_TARGET_USER}@${PROD_TARGET_HOST})..."
+                            if ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=5 "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "echo ok" >/dev/null 2>&1; then
+                                echo "==> 🚀 Dedicated CI/CD VM detected: Deploying to Remote Production VM (${PROD_TARGET_HOST}) via SSH..."
+                                ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "
+                                    set -e
+                                    cd ${PROD_TARGET_PATH}
+                                    echo '==> [Remote Production VM] Updating codebase from Git...'
+                                    git fetch origin
+                                    git checkout ${GIT_BRANCH:-feat/system-integration-test-and-fix} || true
+                                    git pull origin ${GIT_BRANCH:-feat/system-integration-test-and-fix} || true
+                                    echo '==> [Remote Production VM] Triggering production stack update via docker compose...'
+                                    docker compose -f docker-compose-prosuction.yml up -d --remove-orphans || docker compose -f docker-compose-prosuction.yml up -d
+                                    docker compose -f docker-compose-prosuction.yml run --rm migrate || true
+                                    echo '✅ [Remote Production VM] Production stack updated and migrations applied.'
+                                "
+                                DEPLOYED_REMOTE=true
+                                echo "✅ Remote production deployment on ${PROD_TARGET_HOST} succeeded!"
+                            else
+                                echo "==> Remote SSH to ${PROD_TARGET_HOST} not connected or key not configured yet. Falling back to local compose..."
+                            fi
+                        fi
+
+                        # Fallback to local Docker Compose deployment if not deployed remotely
+                        if [ "${DEPLOYED_REMOTE}" != "true" ] && [ -f "docker-compose-prosuction.yml" ]; then
+                            echo "==> Starting production stack containers via local docker compose..."
                             docker compose -f docker-compose-prosuction.yml up -d --remove-orphans || docker-compose -f docker-compose-prosuction.yml up -d || true
 
                             echo "==> Applying Prisma migrations to production database..."
