@@ -5,6 +5,7 @@ import { CreatePackageDto } from '../../packages/dto/create-package.dto';
 import { UpdatePackageDto } from '../../packages/dto/update-package.dto';
 import { UpdatePackageStatusDto } from './dto/update-package-status.dto';
 import { AdminPackageResponseDto } from './dto/package-response.dto';
+import { parseAvailablePlans } from '../../packages/utils/subscription-plan.util';
 
 @Injectable()
 export class AdminPackagesService {
@@ -45,6 +46,7 @@ export class AdminPackagesService {
       brandColor: created.brand_color,
       iconUrl: created.icon_url,
       description: created.description,
+      availablePlans: (created as any).available_plans ?? (created as any).availablePlans,
       isActive: true,
       deletedAt: null,
       createdAt: created.created_at,
@@ -70,6 +72,7 @@ export class AdminPackagesService {
       brandColor: updated.brand_color,
       iconUrl: updated.icon_url,
       description: updated.description,
+      availablePlans: (updated as any).available_plans ?? (updated as any).availablePlans,
       isActive,
       deletedAt: isActive ? null : new Date(),
       createdAt: updated.created_at,
@@ -171,6 +174,7 @@ export class AdminPackagesService {
       brand_color: string;
       icon_url: string | null;
       description: string | null;
+      available_plans?: any;
       created_at: Date;
       updated_at: Date;
     },
@@ -193,6 +197,7 @@ export class AdminPackagesService {
       brandColor: preset.brand_color,
       iconUrl: preset.icon_url,
       description: preset.description,
+      availablePlans: parseAvailablePlans(preset.available_plans),
       isActive,
       deletedAt: isActive ? null : new Date(),
       createdAt: preset.created_at,

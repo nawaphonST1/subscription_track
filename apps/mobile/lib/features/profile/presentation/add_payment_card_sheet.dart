@@ -263,7 +263,7 @@ class _AddPaymentCardSheetState
                               ),
                               title: Text(card.bankName),
                               subtitle: Text(
-                                '•••• ${card.last4Digits} (ID: ${card.id.length > 8 ? "${card.id.substring(0, 8)}..." : card.id})',
+                                '•••• ${card.last4Digits} · ยอดเงิน ฿${card.currentBalance.toStringAsFixed(0)} (ID: ${card.id.length > 8 ? "${card.id.substring(0, 8)}..." : card.id})',
                               ),
                               trailing: TextButton(
                                 onPressed: _isLinking

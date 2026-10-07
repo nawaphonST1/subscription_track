@@ -38,9 +38,16 @@ class _SavingsContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(savingsActionsProvider);
+    final potentialSavings = state.totalYearlySavingsProjection ??
+        state.items.fold<double>(
+          0,
+          (sum, i) => sum + (i.yearlySavingsProjection ?? (i.monthlyPrice * 12)),
+        );
     final summary = SavingsSummary(
       selectedCount: state.selectedCount,
       yearlySavings: state.yearlySavings,
+      totalPotentialSavings: potentialSavings,
+      totalItemsCount: state.items.length,
       onCancelSelected: state.hasSelection
           ? () => _confirmCancellation(context, actions)
           : null,

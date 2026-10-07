@@ -6,15 +6,20 @@ class SavingsSummary extends StatelessWidget {
     required this.selectedCount,
     required this.yearlySavings,
     required this.onCancelSelected,
+    this.totalPotentialSavings = 0,
+    this.totalItemsCount = 0,
     super.key,
   });
 
   final int selectedCount;
   final double yearlySavings;
   final VoidCallback? onCancelSelected;
+  final double totalPotentialSavings;
+  final int totalItemsCount;
 
   @override
   Widget build(BuildContext context) {
+    final hasSelection = selectedCount > 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -29,17 +34,20 @@ class SavingsSummary extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'เป้าหมายการประหยัด',
-                style: TextStyle(
+              Text(
+                hasSelection ? 'เป้าหมายการประหยัด' : 'โอกาสประหยัดค่าบริการ',
+                style: const TextStyle(
                   color: AppColors.success,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'ยกเลิก $selectedCount รายการ '
-                'ประหยัด ฿${yearlySavings.toStringAsFixed(0)}/ปี',
+                hasSelection
+                    ? 'ยกเลิก $selectedCount รายการ ประหยัด ฿${yearlySavings.toStringAsFixed(0)}/ปี'
+                    : totalItemsCount > 0
+                        ? 'ตรวจพบ $totalItemsCount บริการที่ไม่ได้ใช้งาน • ประหยัดได้สูงสุด ฿${totalPotentialSavings.toStringAsFixed(0)}/ปี'
+                        : 'ยกเลิก 0 รายการ ประหยัด ฿0/ปี',
                 key: const Key('savings-goal-value'),
                 style: const TextStyle(
                   fontSize: 18,
@@ -54,8 +62,14 @@ class SavingsSummary extends StatelessWidget {
           key: const Key('cancel-selected-button'),
           onPressed: onCancelSelected,
           icon: const Icon(Icons.delete_sweep_rounded),
-          label: const Text('ยกเลิกรายการที่เลือกทั้งหมด'),
-          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+          label: Text(
+            hasSelection
+                ? 'ยกเลิก $selectedCount รายการที่เลือก'
+                : 'เลือกรายการด้านล่างเพื่อยกเลิก',
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: hasSelection ? AppColors.danger : Colors.grey.shade600,
+          ),
         ),
       ],
     );

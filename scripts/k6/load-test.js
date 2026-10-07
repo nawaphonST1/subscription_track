@@ -25,6 +25,10 @@ const PROFILE = __ENV.TEST_PROFILE || 'combined';
 
 function getStages(profile) {
   switch (profile) {
+    case 'smoke':
+      return [
+        { duration: '10s', target: 2 }, // Quick 10s smoke test with 2 VUs
+      ];
     case 'realistic':
       return [
         { duration: '30s', target: 15 }, // Warm-up
@@ -76,12 +80,13 @@ export const options = {
   thresholds: {
     // Overall HTTP errors must remain < 5% during stress and < 1% normally
     system_error_rate: ['rate<0.05'],
-    // 95% of requests should complete within 350ms (taking Redis caching into account)
-    http_req_duration: ['p(95)<350', 'p(99)<1200'],
+    http_req_failed: ['rate<0.05'],
+    // 95% of requests should complete within 600ms (accounting for internet RTT to Azure VM)
+    http_req_duration: ['p(95)<600', 'p(99)<1500'],
     // Dashboard bundle response time
-    dashboard_total_latency: ['p(95)<600'],
-    // Creep score (cached) should be fast (< 150ms taking cold start into account)
-    creep_score_latency: ['p(95)<150'],
+    dashboard_total_latency: ['p(95)<800'],
+    // Creep score (cached) response time
+    creep_score_latency: ['p(95)<400'],
   },
 };
 

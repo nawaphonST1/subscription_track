@@ -7,6 +7,8 @@ import 'package:subscription_track/features/subscriptions/application/subscripti
 
 final creepScoreFutureProvider =
     FutureProvider.autoDispose<CreepScoreReport?>((ref) async {
+  // Watch subscriptions so whenever subscriptions change, creep score is re-fetched automatically
+  ref.watch(subscriptionReadModelsProvider);
   try {
     return await ref.watch(creepScoreRepositoryProvider).getCreepScore();
   } catch (e) {
@@ -18,7 +20,7 @@ final creepScoreFutureProvider =
 final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
   final subscriptionsAsync = ref.watch(subscriptionReadModelsProvider);
   final creepScoreAsync = ref.watch(creepScoreFutureProvider);
-  final income = ref.watch(userIncomeProvider);
+  final income = ref.watch(effectiveIncomeProvider);
 
   return subscriptionsAsync.when(
     loading: () => const AsyncLoading(),
@@ -38,7 +40,12 @@ final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
       );
 
       return creepScoreAsync.when(
-        loading: () => const AsyncLoading(),
+        loading: () => AsyncData(
+          DashboardSummary.fromSubscriptions(
+            subscriptions: subscriptions,
+            monthlyIncome: income,
+          ),
+        ),
         error: (_, __) => AsyncData(
           DashboardSummary.fromSubscriptions(
             subscriptions: subscriptions,

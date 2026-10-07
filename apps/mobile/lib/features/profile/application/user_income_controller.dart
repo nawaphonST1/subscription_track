@@ -1,9 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
+import 'package:subscription_track/features/profile/domain/payment_card.dart';
 
 final userIncomeProvider = NotifierProvider<UserIncomeController, double>(
   UserIncomeController.new,
 );
+
+/// รายได้หรือยอดเงินที่ใช้แสดงผลจริงในแอป:
+/// 1. หากผู้ใช้ระบุ monthly_income (หรือแก้ผ่าน Controller) ให้ใช้ค่านั้น
+/// 2. หากยังไม่มีรายได้ ให้คำนวณอัตโนมัติจากผลรวมยอดเงินคงเหลือในบัตรที่ผูกไว้ (linkedPaymentCardsProvider)
+/// 3. หากยังไม่มีบัตร ให้ fallback เป็น 0.0
+final effectiveIncomeProvider = Provider<double>((ref) {
+  final baseIncome = ref.watch(userIncomeProvider);
+  if (baseIncome > 0) return baseIncome;
+
+  final cardsAsync = ref.watch(linkedPaymentCardsProvider);
+  return cardsAsync.maybeWhen(
+    data: (cards) {
+      if (cards.isNotEmpty) {
+        return cards.fold<double>(
+          0,
+          (sum, card) => sum + card.currentBalance,
+        );
+      }
+      return 0.0;
+    },
+    orElse: () {
+      final user = ref.watch(authProvider).value;
+      if (user != null && user.creditCards.isNotEmpty) {
+        final totalBalance = user.creditCards.fold<double>(
+          0,
+          (sum, card) => sum + card.currentBalance,
+        );
+        if (totalBalance > 0) return totalBalance;
+      }
+      return 0.0;
+    },
+  );
+});
 
 final class UserIncomeController extends Notifier<double> {
   static const double fallbackIncome = 0.0;
@@ -17,31 +52,13 @@ final class UserIncomeController extends Notifier<double> {
       return user.income;
     }
 
-    // 2. หากยังไม่มี monthly_income ให้ดูจากผลรวมวงเงิน/ยอดในบัตรเครดิต (ถ้ามี)
-    if (user != null && user.creditCards.isNotEmpty) {
-      final totalBalance = user.creditCards.fold<double>(
-        0,
-        (sum, card) => sum + card.currentBalance,
-      );
-      if (totalBalance > 0) return totalBalance;
-    }
-
-    // 3. คืนค่าเริ่มต้น 0.0 (ไม่มีข้อมูลรายได้หรือบัตร ไม่ฮาร์ดโค้ด 35,000)
     return fallbackIncome;
   }
 
   /// อัปเดตรายได้ในหน่วยความจำ
-  ///
-  /// หมายเหตุการตัดสินใจ (Product Decision):
-  /// ใน `income_editor_sheet.dart` ระบุชัดเจนว่า TextField เป็น readOnly พร้อมคำอธิบาย
-  /// "ดึงข้อมูลจาก CreditCard ในระบบ ไม่อนุญาตให้แก้ไขโดยตรง" แสดงว่า intent เดิมของ Product
-  /// คือให้คำนวณจากบัตรเครดิตที่ผูกไว้ จึงยังไม่ยิง `PATCH /users/income` โดยตรงจาก UI
-  /// ในระหว่างรอข้อสรุป Product requirement ว่าจะเปิดให้พิมพ์แก้ไขหรือไม่
-  /// คงฟังก์ชัน `update(income)` สำหรับการทำงานในหน่วยความจำและทดสอบไว้ตามเดิม
   bool update(double income) {
     if (!income.isFinite || income <= 0) return false;
     state = income;
     return true;
   }
 }
-

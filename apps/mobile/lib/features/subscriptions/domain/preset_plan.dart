@@ -31,3 +31,13 @@ abstract class PresetPlan with _$PresetPlan {
     );
   }
 }
+
+extension PresetPlanJsonExtension on PresetPlan {
+  Map<String, dynamic> toJson() => {
+        'tier': tier,
+        'monthlyPrice': monthlyPrice,
+        if (yearlyPrice != null) 'yearlyPrice': yearlyPrice,
+        'maxSlots': maxSlots,
+        if (features.isNotEmpty) 'features': features,
+      };
+}

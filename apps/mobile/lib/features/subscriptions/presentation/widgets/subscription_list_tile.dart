@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/widgets/service_icon.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/features/subscriptions/presentation/subscription_ui_extensions.dart';
 
-class SubscriptionListTile extends StatelessWidget {
+class SubscriptionListTile extends ConsumerWidget {
   const SubscriptionListTile({
     required this.subscription,
     required this.onToggle,
@@ -19,9 +21,16 @@ class SubscriptionListTile extends StatelessWidget {
   final VoidCallback onShowDetails;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final linkedCards =
+        ref.watch(linkedPaymentCardsProvider).value ?? const [];
+    final card = subscription.paymentCardId != null
+        ? linkedCards
+            .where((c) => c.id == subscription.paymentCardId)
+            .firstOrNull
+        : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -66,7 +75,9 @@ class SubscriptionListTile extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '${subscription.billingPeriod} • ${subscription.usageStatusText}',
+            card != null
+                ? '${subscription.billingPeriod} • ${subscription.usageStatusText} • ${card.bankName} (•••• ${card.last4Digits})'
+                : '${subscription.billingPeriod} • ${subscription.usageStatusText}',
             style: TextStyle(
               color: subscription.usageStatusColor,
               fontSize: 11,

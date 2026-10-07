@@ -148,7 +148,7 @@ describe('E2E: PIN Change Flow HTTP API (PATCH /users/me/pin & POST /users/verif
 
   afterAll(async () => {
     try {
-      await app.close();
+      await app?.close();
     } finally {
       vi.unstubAllEnvs();
     }

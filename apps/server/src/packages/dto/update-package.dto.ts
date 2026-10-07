@@ -72,4 +72,13 @@ export class UpdatePackageDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'Updated list of recommended plan tiers',
+  })
+  @IsOptional()
+  available_plans?: any[];
+
+  @IsOptional()
+  availablePlans?: any[];
 }

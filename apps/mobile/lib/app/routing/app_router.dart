@@ -186,7 +186,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: RouteConstants.profile,
                 builder: (context, state) => ProfileTab(
                   onEditIncome: () {
-                    final income = ref.read(userIncomeProvider);
+                    final income = ref.read(effectiveIncomeProvider);
                     showIncomeEditorSheet(
                       context: context,
                       currentIncome: income,

@@ -32,7 +32,7 @@ class MainNavigationShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(currentTabProvider);
     final selectedIndex = navigationShell?.currentIndex ?? currentTab;
-    final income = ref.watch(userIncomeProvider);
+    final income = ref.watch(effectiveIncomeProvider);
     final theme = Theme.of(context);
 
     // Sync tab controller when currentTabProvider changes programmatically

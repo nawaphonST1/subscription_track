@@ -67,7 +67,16 @@ fi
 export PGPASSWORD="${DB_PASSWORD}"
 
 echo "==> Restoring database ${DB_NAME} on ${DB_HOST}:${DB_PORT}..."
-gunzip -c "${LOCAL_BACKUP}" | pg_restore -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" --clean --if-exists --no-owner --no-privileges || true
+if command -v pg_restore >/dev/null 2>&1; then
+    gunzip -c "${LOCAL_BACKUP}" | pg_restore -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" --clean --if-exists --no-owner --no-privileges || true
+elif docker ps --format '{{.Names}}' | grep -q "postgres"; then
+    CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep "postgres" | head -n 1)
+    echo "==> Using Docker container (${CONTAINER_NAME}) to run pg_restore..."
+    gunzip -c "${LOCAL_BACKUP}" | docker exec -e PGPASSWORD="${DB_PASSWORD}" -i "${CONTAINER_NAME}" pg_restore -U "${DB_USER}" -d "${DB_NAME}" --clean --if-exists --no-owner --no-privileges || true
+else
+    echo "❌ Error: Neither pg_restore nor running postgres docker container found!"
+    exit 1
+fi
 
 echo "✅ Database restored successfully from Azure!"
 rm -rf "${BACKUP_DIR}"

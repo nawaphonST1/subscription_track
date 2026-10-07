@@ -8,6 +8,7 @@ import 'package:subscription_track/features/admin/domain/admin_package.dart';
 import 'package:subscription_track/features/admin/domain/admin_stats.dart';
 import 'package:subscription_track/features/admin/domain/admin_user.dart';
 import 'package:subscription_track/features/admin/domain/admin_user_detail.dart';
+import 'package:subscription_track/features/subscriptions/domain/preset_plan.dart';
 
 class FakeAdminRepository implements AdminRepository {
   FakeAdminRepository() {
@@ -88,6 +89,7 @@ class FakeAdminRepository implements AdminRepository {
     String brandColor = '#3B82F6',
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   }) async {
     if (shouldFail) return left(const Failure.serverError('Error creating package'));
     final newPkg = AdminPackage(
@@ -100,6 +102,7 @@ class FakeAdminRepository implements AdminRepository {
       iconUrl: iconUrl,
       description: description,
       isActive: true,
+      plans: plans ?? const [],
     );
     packages.add(newPkg);
     return right(newPkg);
@@ -115,6 +118,7 @@ class FakeAdminRepository implements AdminRepository {
     String? brandColor,
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   }) async {
     if (shouldFail) return left(const Failure.serverError('Error updating package'));
     final idx = packages.indexWhere((p) => p.id == id);
@@ -129,6 +133,7 @@ class FakeAdminRepository implements AdminRepository {
         iconUrl: iconUrl ?? packages[idx].iconUrl,
         description: description ?? packages[idx].description,
         isActive: packages[idx].isActive,
+        plans: plans ?? packages[idx].plans,
       );
       packages[idx] = updated;
       return right(updated);
@@ -197,6 +202,25 @@ class FakeAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<Either<Failure, void>> createSubscription(
+    String userId, {
+    required String name,
+    required String category,
+    required double price,
+    String billingCycle = 'MONTHLY',
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
+    DateTime? nextRenewalDate,
+    String? status,
+    String? notes,
+    String? brandColor,
+  }) async {
+    if (shouldFail) return left(const Failure.serverError('Error creating subscription'));
+    return right(null);
+  }
+
+  @override
   Future<Either<Failure, void>> updateSubscription(
     String subId, {
     String? name,
@@ -207,6 +231,9 @@ class FakeAdminRepository implements AdminRepository {
     DateTime? nextRenewalDate,
     String? notes,
     String? brandColor,
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
   }) async {
     if (shouldFail) return left(const Failure.serverError('Error updating subscription'));
     return right(null);
@@ -337,9 +364,28 @@ void main() {
       expect(container.read(adminControllerProvider).successMessage, contains('สำเร็จ'));
     });
 
-    test('updateSubscription succeeds and sets success message', () async {
+    test('createSubscription succeeds with packet planTier and sets success message', () async {
       final controller = container.read(adminControllerProvider.notifier);
-      final success = await controller.updateSubscription('sub1', name: 'Netflix Premium 4K', price: 449);
+      final success = await controller.createSubscription(
+        'u1',
+        name: 'YouTube Premium',
+        category: 'Entertainment',
+        price: 179,
+        planTier: 'Individual',
+        presetId: 'p1',
+      );
+      expect(success, isTrue);
+      expect(container.read(adminControllerProvider).successMessage, contains('สำเร็จ'));
+    });
+
+    test('updateSubscription succeeds with planTier and sets success message', () async {
+      final controller = container.read(adminControllerProvider.notifier);
+      final success = await controller.updateSubscription(
+        'sub1',
+        name: 'YouTube Premium Family',
+        price: 339,
+        planTier: 'Family',
+      );
       expect(success, isTrue);
       expect(container.read(adminControllerProvider).successMessage, contains('สำเร็จ'));
     });
