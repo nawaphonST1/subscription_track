@@ -65,36 +65,57 @@ class _LinkedCardList extends StatelessWidget {
   }
 }
 
-class _LinkedCardTile extends ConsumerWidget {
-  const _LinkedCardTile({required this.card});
+class _LinkedCardTile extends ConsumerStatefulWidget {
+  const _LinkedCardTile({super.key, required this.card});
 
   final PaymentCard card;
 
-  Future<void> _deleteCard(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<_LinkedCardTile> createState() => _LinkedCardTileState();
+}
+
+class _LinkedCardTileState extends ConsumerState<_LinkedCardTile> {
+  bool _isDeleting = false;
+
+  Future<void> _deleteCard(BuildContext context) async {
+    if (_isDeleting) return;
+
     final shouldDelete = await ConfirmationDialog.show(
       context: context,
       title: 'ยกเลิกการเชื่อมต่อบัตรหรือไม่?',
-      message: '${card.bankName} (•••• ${card.last4Digits})',
+      message: '${widget.card.bankName} (•••• ${widget.card.last4Digits})',
       confirmText: 'ยกเลิกบัตร',
       cancelText: 'ไม่ยกเลิก',
       isDanger: true,
       icon: Icons.delete_outline_rounded,
     );
-    if (!shouldDelete || !context.mounted) return;
+    if (!shouldDelete || !mounted) return;
 
     final pin = await PinVerificationDialog.showForPin(
       context: context,
       title: 'ยืนยันการยกเลิกบัตร',
-      message: 'กรุณากรอกรหัส PIN เพื่อยกเลิกบัตร ${card.bankName}',
+      message: 'กรุณากรอกรหัส PIN เพื่อยกเลิกบัตร ${widget.card.bankName}',
     );
-    if (pin == null || !context.mounted) return;
+    if (pin == null || !mounted) return;
+
+    setState(() => _isDeleting = true);
 
     try {
       await ref
           .read(linkedPaymentCardsProvider.notifier)
-          .deleteCard(card.id, pin: pin);
-    } catch (_) {
-      if (!context.mounted) return;
+          .deleteCard(widget.card.id, pin: pin);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'ยกเลิกการเชื่อมต่อบัตร ${widget.card.bankName} เรียบร้อยแล้ว',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ยกเลิกบัตรไม่สำเร็จ กรุณาลองอีกครั้ง')),
       );
@@ -102,31 +123,40 @@ class _LinkedCardTile extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return ListTile(
       leading: DecoratedBox(
         decoration: BoxDecoration(
-          color: card.displayColor.withValues(alpha: 0.15),
+          color: widget.card.displayColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(Icons.credit_card_rounded, color: card.displayColor),
+          child: Icon(Icons.credit_card_rounded, color: widget.card.displayColor),
         ),
       ),
       title: Text(
-        card.bankName,
+        widget.card.bankName,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        '•••• ${card.last4Digits} · '
-        '${card.detectedSubscriptions.length} Subscription',
+        '•••• ${widget.card.last4Digits} · ยอดเงินคงเหลือ ฿${widget.card.currentBalance.toStringAsFixed(0)} · '
+        '${widget.card.detectedSubscriptions.length} บริการ',
       ),
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline_rounded),
-        tooltip: 'ยกเลิกการเชื่อมต่อบัตร',
-        onPressed: () => _deleteCard(context, ref),
-      ),
+      trailing: _isDeleting
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: Padding(
+                padding: EdgeInsets.all(4.0),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : IconButton(
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'ยกเลิกการเชื่อมต่อบัตร',
+              onPressed: () => _deleteCard(context),
+            ),
     );
   }
 }

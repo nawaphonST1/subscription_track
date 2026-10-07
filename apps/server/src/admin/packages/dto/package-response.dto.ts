@@ -34,6 +34,11 @@ export class AdminPackageResponseDto {
   })
   deletedAt?: Date | null;
 
+  @ApiPropertyOptional({
+    description: 'Tier plans available under this package',
+  })
+  availablePlans?: any[];
+
   @ApiProperty({ example: '2026-09-22T00:00:00.000Z' })
   createdAt!: Date;
 

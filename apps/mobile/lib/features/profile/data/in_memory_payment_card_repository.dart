@@ -4,10 +4,13 @@ import 'package:subscription_track/features/profile/domain/payment_card_reposito
 final class InMemoryPaymentCardRepository implements PaymentCardRepository {
   InMemoryPaymentCardRepository({
     this.ioDelay = const Duration(milliseconds: 250),
-  });
+    Set<String>? initialLinkedCardIds,
+  }) : _linkedCardIds = initialLinkedCardIds != null
+            ? Set<String>.from(initialLinkedCardIds)
+            : <String>{};
 
   final Duration ioDelay;
-  final Set<String> _linkedCardIds = {'kbank-4242', 'scb-8888'};
+  final Set<String> _linkedCardIds;
 
   @override
   Future<List<PaymentCard>> getLinkedCards() async {

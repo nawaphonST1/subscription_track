@@ -6,6 +6,7 @@ import 'package:subscription_track/features/admin/application/admin_controller.d
 import 'package:subscription_track/features/admin/domain/admin_package.dart';
 import 'package:subscription_track/features/admin/domain/admin_user.dart';
 import 'package:subscription_track/features/admin/domain/admin_user_detail.dart';
+import 'package:subscription_track/features/subscriptions/domain/preset_plan.dart';
 
 class AdminPortalScreen extends ConsumerStatefulWidget {
   const AdminPortalScreen({super.key});
@@ -24,6 +25,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
       TextEditingController(text: 'AdminPassword123!');
   bool _obscurePassword = true;
   String _searchQuery = '';
+  String _packageFilter = 'ALL';
 
   @override
   void initState() {
@@ -270,7 +272,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
               ),
             )
           else
-            ...users.map((user) => _buildUserCard(user, notifier)),
+            ...users.map((user) => _buildUserCard(user, notifier, state.packages)),
         ],
       ),
     );
@@ -323,7 +325,11 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
     );
   }
 
-  Widget _buildUserCard(AdminUser user, AdminController notifier) {
+  Widget _buildUserCard(
+    AdminUser user,
+    AdminController notifier,
+    List<AdminPackage> packages,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -335,7 +341,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () => _showUserDetailSheet(context, user, notifier),
+          onTap: () => _showUserDetailSheet(context, user, notifier, packages),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -389,7 +395,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                 ),
                 IconButton(
                   icon: const Icon(Icons.tune_rounded, color: Color(0xFF3B82F6), size: 20),
-                  onPressed: () => _showUserDetailSheet(context, user, notifier),
+                  onPressed: () => _showUserDetailSheet(context, user, notifier, packages),
                   tooltip: 'จัดการและแก้ไขข้อมูลผู้ใช้',
                 ),
                 IconButton(
@@ -421,6 +427,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
     BuildContext context,
     AdminUser user,
     AdminController notifier,
+    List<AdminPackage> packages,
   ) {
     showModalBottomSheet(
       context: context,
@@ -434,6 +441,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
         userEmail: user.email,
         userName: user.name,
         notifier: notifier,
+        packages: packages,
       ),
     );
   }
@@ -453,6 +461,11 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
   }
 
   Widget _buildPackagesTab(AdminState state, AdminController notifier) {
+    final recommendedPackages =
+        state.packages.where((p) => p.plans.isNotEmpty).toList();
+    final generalPackages =
+        state.packages.where((p) => p.plans.isEmpty).toList();
+
     return RefreshIndicator(
       onRefresh: notifier.loadAll,
       child: ListView(
@@ -461,14 +474,27 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'บริการกลางในระบบ (${state.packages.length})',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'จัดการบริการ & แพ็กเกจ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ทั้งหมด ${state.packages.length} รายการ (แพ็กเกจแนะนำ ${recommendedPackages.length} • บริการกลางทั่วไป ${generalPackages.length})',
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _showAddPackageSheet(context, notifier),
                 icon: const Icon(Icons.add_rounded, size: 16),
@@ -476,7 +502,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -486,25 +512,420 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
           ),
           const SizedBox(height: 16),
 
-          if (state.packages.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
+          // Filter bar on the same screen
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip(
+                  label: 'ทั้งหมด (${state.packages.length})',
+                  selected: _packageFilter == 'ALL',
+                  onTap: () => setState(() => _packageFilter = 'ALL'),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: '✨ แพ็กเกจแนะนำใหม่ (${recommendedPackages.length})',
+                  selected: _packageFilter == 'RECOMMENDED',
+                  activeColor: const Color(0xFFF59E0B),
+                  onTap: () => setState(() => _packageFilter = 'RECOMMENDED'),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: '🏢 บริการกลางทั่วไป (${generalPackages.length})',
+                  selected: _packageFilter == 'GENERAL',
+                  activeColor: const Color(0xFF3B82F6),
+                  onTap: () => setState(() => _packageFilter = 'GENERAL'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // SECTION 1: RECOMMENDED PACKAGES
+          if (_packageFilter == 'ALL' || _packageFilter == 'RECOMMENDED') ...[
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.auto_awesome, color: Color(0xFFF59E0B), size: 18),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'แพ็กเกจแนะนำใหม่',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${recommendedPackages.length}',
+                    style: const TextStyle(
+                      color: Color(0xFFF59E0B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'บริการที่มีระดับสมาชิก (Pro, Plus, Family ฯลฯ) แนะนำให้ผู้ใช้เลือกได้ง่ายขึ้น',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+
+            if (recommendedPackages.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131C2E),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF243049)),
+                ),
+                child: const Row(
                   children: [
-                    Icon(Icons.inventory_2_outlined, size: 48, color: Colors.white.withAlpha(50)),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'ยังไม่มีบริการในระบบ กดปุ่ม "เพิ่มบริการใหม่" เพื่อเริ่มต้น',
-                      style: TextStyle(color: Color(0xFF94A3B8)),
+                    Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B), size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ยังไม่มีบริการที่ตั้งค่าแพ็กเกจแนะนำ',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'กดปุ่ม "ทำเป็นแพ็กเกจแนะนำ" ที่บริการกลางด้านล่าง เพื่อเพิ่ม Tiers เช่น Pro, Plus, Family',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            )
-          else
-            ...state.packages.map((pkg) => _buildPackageCard(pkg, notifier)),
+              )
+            else
+              ...recommendedPackages.map((pkg) => _buildRecommendedPackageCard(pkg, notifier)),
+          ],
+
+          // SECTION DIVIDER IF SHOWING ALL
+          if (_packageFilter == 'ALL') ...[
+            const SizedBox(height: 20),
+            const Divider(color: Color(0xFF1E293B), height: 1),
+            const SizedBox(height: 20),
+          ],
+
+          // SECTION 2: GENERAL CENTRAL SERVICES
+          if (_packageFilter == 'ALL' || _packageFilter == 'GENERAL') ...[
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.hub_rounded, color: Color(0xFF3B82F6), size: 18),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'บริการกลางในระบบ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${generalPackages.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF60A5FA),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'บริการมาตรฐานกลาง สามารถกดเพิ่มระดับสมาชิกเพื่อเปลี่ยนเป็นแพ็กเกจแนะนำได้',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+
+            if (generalPackages.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131C2E),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF243049)),
+                ),
+                child: const Center(
+                  child: Text(
+                    'บริการกลางทั้งหมดได้รับการจัดทำเป็นแพ็กเกจแนะนำแล้ว',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                  ),
+                ),
+              )
+            else
+              ...generalPackages.map((pkg) => _buildPackageCard(pkg, notifier)),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    Color activeColor = const Color(0xFF3B82F6),
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? activeColor.withValues(alpha: 0.2) : const Color(0xFF131C2E),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? activeColor : const Color(0xFF243049),
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected
+                ? (activeColor == const Color(0xFFF59E0B)
+                    ? const Color(0xFFFCD34D)
+                    : Colors.white)
+                : const Color(0xFF94A3B8),
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendedPackageCard(AdminPackage pkg, AdminController notifier) {
+    Color cardBrandColor = const Color(0xFF3B82F6);
+    try {
+      final hex = pkg.brandColor.replaceAll('#', '');
+      cardBrandColor = Color(int.parse('FF$hex', radix: 16));
+    } catch (_) {}
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131C2E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: pkg.isActive
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+              : const Color(0xFFEF4444).withValues(alpha: 0.3),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showEditPackageSheet(context, pkg, notifier),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: cardBrandColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cardBrandColor.withValues(alpha: 0.4)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          pkg.name.isNotEmpty ? pkg.name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            color: cardBrandColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                pkg.name,
+                                style: TextStyle(
+                                  color: pkg.isActive ? Colors.white : const Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  decoration: pkg.isActive ? null : TextDecoration.lineThrough,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.star_rounded, size: 12, color: Color(0xFFF59E0B)),
+                                    SizedBox(width: 2),
+                                    Text(
+                                      'แนะนำ',
+                                      style: TextStyle(
+                                        color: Color(0xFFF59E0B),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${pkg.category} • เริ่มต้น ฿${pkg.defaultPrice.toStringAsFixed(0)}/${pkg.billingCycle == 'YEARLY' ? 'ปี' : 'เดือน'} • ${pkg.plans.length} ระดับสมาชิก',
+                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_rounded, color: Color(0xFF3B82F6), size: 20),
+                      onPressed: () => _showEditPackageSheet(context, pkg, notifier),
+                      tooltip: 'แก้ไขแพ็กเกจ',
+                    ),
+                    Switch(
+                      value: pkg.isActive,
+                      activeThumbColor: const Color(0xFF10B981),
+                      onChanged: (val) => notifier.togglePackageActive(pkg.id, val),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                      onPressed: () async {
+                        final confirmed = await ConfirmationDialog.show(
+                          context: context,
+                          title: 'ยืนยันการลบบริการ',
+                          message: 'ต้องการลบบริการ ${pkg.name} ออกจากระบบอย่างถาวรหรือไม่?',
+                          confirmText: 'ลบบริการ',
+                          cancelText: 'ยกเลิก',
+                          isDanger: true,
+                        );
+                        if (confirmed) {
+                          await notifier.deletePackage(pkg.id);
+                        }
+                      },
+                      tooltip: 'ลบบริการ',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(color: Color(0xFF1E293B), height: 1),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: pkg.plans.map((plan) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            plan.tier,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '฿${plan.monthlyPrice.toStringAsFixed(0)}/ด.',
+                            style: const TextStyle(
+                              color: Color(0xFF60A5FA),
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (plan.maxSlots > 1) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${plan.maxSlots} คน)',
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -583,6 +1004,37 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
                 '${pkg.category} • ฿${pkg.defaultPrice.toStringAsFixed(0)}/${pkg.billingCycle == 'YEARLY' ? 'ปี' : 'เดือน'}',
                 style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
               ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () => _showEditPackageSheet(context, pkg, notifier),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_circle_outline_rounded, size: 13, color: Color(0xFF60A5FA)),
+                      SizedBox(width: 4),
+                      Text(
+                        'ทำเป็นแพ็กเกจแนะนำ (เพิ่ม Tiers)',
+                        style: TextStyle(
+                          color: Color(0xFF60A5FA),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           onTap: () => _showEditPackageSheet(context, pkg, notifier),
@@ -624,6 +1076,322 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
     );
   }
 
+  Future<void> _showPlanInputDialog(
+    BuildContext context, {
+    PresetPlan? initialPlan,
+    required void Function(PresetPlan plan) onSave,
+  }) async {
+    final formKey = GlobalKey<FormState>();
+    final tierCtrl = TextEditingController(text: initialPlan?.tier ?? '');
+    final monthlyPriceCtrl = TextEditingController(
+      text: initialPlan != null ? initialPlan.monthlyPrice.toStringAsFixed(0) : '',
+    );
+    final yearlyPriceCtrl = TextEditingController(
+      text: initialPlan?.yearlyPrice != null
+          ? initialPlan!.yearlyPrice!.toStringAsFixed(0)
+          : '',
+    );
+    final slotsCtrl = TextEditingController(
+      text: initialPlan != null ? initialPlan.maxSlots.toString() : '1',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          initialPlan == null ? 'เพิ่มแพ็กเกจย่อย' : 'แก้ไขแพ็กเกจย่อย',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: tierCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'ชื่อแพ็กเกจ / Tier (เช่น Pro, Plus, Family, Student)',
+                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อแพ็กเกจ' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: monthlyPriceCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'ราคารายเดือน (บาท)',
+                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'กรุณาระบุราคา';
+                    if (double.tryParse(v) == null) return 'ตัวเลขไม่ถูกต้อง';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: yearlyPriceCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'ราคารายปี (บาท, ไม่บังคับ)',
+                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: slotsCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'จำนวนผู้ใช้สูงสุด (เช่น 1, 4, 6 คน)',
+                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                  ),
+                  validator: (v) {
+                    if (v != null && v.isNotEmpty && int.tryParse(v) == null) {
+                      return 'ต้องเป็นจำนวนเต็ม';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('ยกเลิก', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                final yearlyParsed = double.tryParse(yearlyPriceCtrl.text.trim());
+                final slotsParsed = int.tryParse(slotsCtrl.text.trim()) ?? 1;
+                final plan = PresetPlan(
+                  tier: tierCtrl.text.trim(),
+                  monthlyPrice: double.parse(monthlyPriceCtrl.text.trim()),
+                  yearlyPrice: yearlyParsed,
+                  maxSlots: slotsParsed,
+                  features: const [],
+                );
+                onSave(plan);
+                Navigator.pop(dlgCtx);
+              }
+            },
+            child: const Text('ตกลง', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlansSection({
+    required BuildContext context,
+    required List<PresetPlan> plans,
+    required StateSetter setSheetState,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 20),
+                  SizedBox(width: 6),
+                  Text(
+                    'แพ็กเกจแนะนำ / ระดับสมาชิก (Tiers)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '${plans.length} แพ็กเกจ',
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'ตั้งค่าตัวเลือกแพ็กเกจล่วงหน้า เช่น Pro, Plus, Family เพื่อให้ผู้ใช้เลือกได้ทันที',
+            style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              ActionChip(
+                avatar: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF60A5FA)),
+                label: const Text('+ Pro (฿199)', style: TextStyle(fontSize: 12, color: Color(0xFF60A5FA))),
+                backgroundColor: const Color(0xFF1E293B),
+                side: const BorderSide(color: Color(0xFF3B82F6), width: 0.8),
+                onPressed: () {
+                  setSheetState(() {
+                    plans.add(const PresetPlan(tier: 'Pro', monthlyPrice: 199, maxSlots: 1));
+                  });
+                },
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF60A5FA)),
+                label: const Text('+ Plus (฿299)', style: TextStyle(fontSize: 12, color: Color(0xFF60A5FA))),
+                backgroundColor: const Color(0xFF1E293B),
+                side: const BorderSide(color: Color(0xFF3B82F6), width: 0.8),
+                onPressed: () {
+                  setSheetState(() {
+                    plans.add(const PresetPlan(tier: 'Plus', monthlyPrice: 299, maxSlots: 1));
+                  });
+                },
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF60A5FA)),
+                label: const Text('+ Family (฿399)', style: TextStyle(fontSize: 12, color: Color(0xFF60A5FA))),
+                backgroundColor: const Color(0xFF1E293B),
+                side: const BorderSide(color: Color(0xFF3B82F6), width: 0.8),
+                onPressed: () {
+                  setSheetState(() {
+                    plans.add(const PresetPlan(tier: 'Family', monthlyPrice: 399, maxSlots: 6));
+                  });
+                },
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.add_circle_outline_rounded, size: 16, color: Colors.white),
+                label: const Text('กำหนดเอง...', style: TextStyle(fontSize: 12, color: Colors.white)),
+                backgroundColor: const Color(0xFF3B82F6),
+                onPressed: () {
+                  _showPlanInputDialog(
+                    context,
+                    onSave: (newPlan) {
+                      setSheetState(() {
+                        plans.add(newPlan);
+                      });
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+          if (plans.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFF334155), height: 1),
+            const SizedBox(height: 8),
+            ...plans.asMap().entries.map((entry) {
+              final index = entry.key;
+              final p = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                p.tier,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              if (p.maxSlots > 1) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '${p.maxSlots} ผู้ใช้',
+                                    style: const TextStyle(
+                                      color: Color(0xFF10B981),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '฿${p.monthlyPrice.toStringAsFixed(0)}/เดือน'
+                            '${p.yearlyPrice != null ? ' • ฿${p.yearlyPrice!.toStringAsFixed(0)}/ปี' : ''}',
+                            style: const TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: Color(0xFF60A5FA), size: 18),
+                      tooltip: 'แก้ไข',
+                      onPressed: () {
+                        _showPlanInputDialog(
+                          context,
+                          initialPlan: p,
+                          onSave: (updated) {
+                            setSheetState(() {
+                              plans[index] = updated;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                      tooltip: 'ลบ',
+                      onPressed: () {
+                        setSheetState(() {
+                          plans.removeAt(index);
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
   void _showEditPackageSheet(
     BuildContext context,
     AdminPackage pkg,
@@ -636,6 +1404,7 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
     final brandColorCtrl = TextEditingController(text: pkg.brandColor);
     final descCtrl = TextEditingController(text: pkg.description ?? '');
     String billingCycle = pkg.billingCycle;
+    final List<PresetPlan> plans = List<PresetPlan>.from(pkg.plans);
 
     showModalBottomSheet(
       context: context,
@@ -645,138 +1414,152 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        builder: (ctx, setSheetState) => ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.88,
           ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'แก้ไขบริการ / แพ็กเกจกลาง',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'แก้ไขบริการ / แพ็กเกจกลาง',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'ชื่อบริการ (เช่น Netflix, Spotify, ChatGPT)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อบริการ' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: categoryCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'หมวดหมู่ (เช่น Entertainment, Music, Productivity)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุหมวดหมู่' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: priceCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'ราคาปกติ (บาท)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'กรุณาระบุราคา';
+                        if (double.tryParse(v) == null) return 'กรุณาระบุตัวเลขที่ถูกต้อง';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: billingCycle,
+                      dropdownColor: const Color(0xFF131C2E),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'รอบบิล',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'MONTHLY', child: Text('รายเดือน (MONTHLY)')),
+                        DropdownMenuItem(value: 'YEARLY', child: Text('รายปี (YEARLY)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setSheetState(() => billingCycle = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: brandColorCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'สีแบรนด์ (HEX เช่น #E50914, #1DB954)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white),
-                      onPressed: () => Navigator.pop(ctx),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: descCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'รายละเอียด / หมายเหตุบริการ (ไม่บังคับ)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPlansSection(
+                      context: ctx,
+                      plans: plans,
+                      setSheetState: setSheetState,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState?.validate() ?? false) {
+                          final success = await notifier.updatePackage(
+                            pkg.id,
+                            name: nameCtrl.text.trim(),
+                            category: categoryCtrl.text.trim(),
+                            defaultPrice: double.parse(priceCtrl.text.trim()),
+                            billingCycle: billingCycle,
+                            brandColor: brandColorCtrl.text.trim().isNotEmpty
+                                ? brandColorCtrl.text.trim()
+                                : '#3B82F6',
+                            description: descCtrl.text.trim().isNotEmpty
+                                ? descCtrl.text.trim()
+                                : null,
+                            plans: plans,
+                          );
+                          if (success && ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('บันทึกการแก้ไข', style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: nameCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'ชื่อบริการ (เช่น Netflix, Spotify, ChatGPT)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อบริการ' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: categoryCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'หมวดหมู่ (เช่น Entertainment, Music, Productivity)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุหมวดหมู่' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: priceCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'ราคาปกติ (บาท)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'กรุณาระบุราคา';
-                    if (double.tryParse(v) == null) return 'กรุณาระบุตัวเลขที่ถูกต้อง';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: billingCycle,
-                  dropdownColor: const Color(0xFF131C2E),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'รอบบิล',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'MONTHLY', child: Text('รายเดือน (MONTHLY)')),
-                    DropdownMenuItem(value: 'YEARLY', child: Text('รายปี (YEARLY)')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setSheetState(() => billingCycle = val);
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: brandColorCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'สีแบรนด์ (HEX เช่น #E50914, #1DB954)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: descCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'รายละเอียด / หมายเหตุบริการ (ไม่บังคับ)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState?.validate() ?? false) {
-                      final success = await notifier.updatePackage(
-                        pkg.id,
-                        name: nameCtrl.text.trim(),
-                        category: categoryCtrl.text.trim(),
-                        defaultPrice: double.parse(priceCtrl.text.trim()),
-                        billingCycle: billingCycle,
-                        brandColor: brandColorCtrl.text.trim().isNotEmpty
-                            ? brandColorCtrl.text.trim()
-                            : '#3B82F6',
-                        description: descCtrl.text.trim().isNotEmpty
-                            ? descCtrl.text.trim()
-                            : null,
-                      );
-                      if (success && ctx.mounted) {
-                        Navigator.pop(ctx);
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text('บันทึกการแก้ไข', style: TextStyle(color: Colors.white)),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -785,13 +1568,13 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
   }
 
   void _showAddPackageSheet(BuildContext context, AdminController notifier) {
-
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController();
     final categoryCtrl = TextEditingController(text: 'Entertainment');
     final priceCtrl = TextEditingController();
     final brandColorCtrl = TextEditingController(text: '#3B82F6');
     String billingCycle = 'MONTHLY';
+    final List<PresetPlan> plans = <PresetPlan>[];
 
     showModalBottomSheet(
       context: context,
@@ -801,116 +1584,139 @@ class _AdminPortalScreenState extends ConsumerState<AdminPortalScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        builder: (ctx, setSheetState) => ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.88,
           ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'เพิ่มบริการ / แพ็กเกจใหม่',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: nameCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'ชื่อบริการ (เช่น Netflix, Spotify, ChatGPT)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อบริการ' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: categoryCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'หมวดหมู่ (เช่น Entertainment, Music, Productivity)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุหมวดหมู่' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: priceCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'ราคาปกติ (บาท)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'กรุณาระบุราคา';
-                    if (double.tryParse(v) == null) return 'กรุณาระบุตัวเลขที่ถูกต้อง';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: billingCycle,
-                  dropdownColor: const Color(0xFF131C2E),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'รอบบิล',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'MONTHLY', child: Text('รายเดือน (MONTHLY)')),
-                    DropdownMenuItem(value: 'YEARLY', child: Text('รายปี (YEARLY)')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setSheetState(() => billingCycle = val);
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: brandColorCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'สีแบรนด์ (HEX เช่น #E50914, #1DB954)',
-                    labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState?.validate() ?? false) {
-                      final success = await notifier.createPackage(
-                        name: nameCtrl.text.trim(),
-                        category: categoryCtrl.text.trim(),
-                        defaultPrice: double.parse(priceCtrl.text.trim()),
-                        billingCycle: billingCycle,
-                        brandColor: brandColorCtrl.text.trim().isNotEmpty
-                            ? brandColorCtrl.text.trim()
-                            : '#3B82F6',
-                      );
-                      if (success && ctx.mounted) {
-                        Navigator.pop(ctx);
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'เพิ่มบริการ / แพ็กเกจใหม่',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
                     ),
-                  ),
-                  child: const Text('บันทึกบริการใหม่', style: TextStyle(color: Colors.white)),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'ชื่อบริการ (เช่น Netflix, Spotify, ChatGPT)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อบริการ' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: categoryCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'หมวดหมู่ (เช่น Entertainment, Music, Productivity)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุหมวดหมู่' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: priceCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'ราคาปกติ (บาท)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'กรุณาระบุราคา';
+                        if (double.tryParse(v) == null) return 'กรุณาระบุตัวเลขที่ถูกต้อง';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: billingCycle,
+                      dropdownColor: const Color(0xFF131C2E),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'รอบบิล',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'MONTHLY', child: Text('รายเดือน (MONTHLY)')),
+                        DropdownMenuItem(value: 'YEARLY', child: Text('รายปี (YEARLY)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setSheetState(() => billingCycle = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: brandColorCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'สีแบรนด์ (HEX เช่น #E50914, #1DB954)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPlansSection(
+                      context: ctx,
+                      plans: plans,
+                      setSheetState: setSheetState,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState?.validate() ?? false) {
+                          final success = await notifier.createPackage(
+                            name: nameCtrl.text.trim(),
+                            category: categoryCtrl.text.trim(),
+                            defaultPrice: double.parse(priceCtrl.text.trim()),
+                            billingCycle: billingCycle,
+                            brandColor: brandColorCtrl.text.trim().isNotEmpty
+                                ? brandColorCtrl.text.trim()
+                                : '#3B82F6',
+                            plans: plans,
+                          );
+                          if (success && ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('บันทึกบริการใหม่', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1183,12 +1989,14 @@ class _AdminUserDetailView extends StatefulWidget {
   final String userEmail;
   final String? userName;
   final AdminController notifier;
+  final List<AdminPackage> packages;
 
   const _AdminUserDetailView({
     required this.userId,
     required this.userEmail,
     this.userName,
     required this.notifier,
+    this.packages = const [],
   });
 
   @override
@@ -1372,6 +2180,19 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.add_rounded, size: 16),
+                                label: const Text('เพิ่ม Subscription', style: TextStyle(fontSize: 12)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF3B82F6),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () => _showAddSubscriptionDialog(context, _detail!),
                               ),
                             ],
                           ),
@@ -1612,6 +2433,28 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (sub.planTier != null && sub.planTier!.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withAlpha(35),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFF8B5CF6).withAlpha(120)),
+                            ),
+                            child: Text(
+                              sub.planTier!,
+                              style: const TextStyle(
+                                color: Color(0xFFA78BFA),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -1882,6 +2725,413 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
     );
   }
 
+  void _showAddSubscriptionDialog(
+    BuildContext context,
+    AdminUserDetail detail,
+  ) {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController();
+    final categoryCtrl = TextEditingController(text: 'Entertainment');
+    final priceCtrl = TextEditingController();
+    final planTierCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+
+    String billingCycle = 'MONTHLY';
+    DateTime nextRenewalDate = DateTime.now().add(const Duration(days: 30));
+    String? selectedPresetId;
+    String? selectedPaymentCardId =
+        detail.paymentCards.isNotEmpty ? detail.paymentCards.first.id : null;
+
+    final defaultQuickTiers = [
+      'Basic',
+      'Standard',
+      'Pro',
+      'Plus',
+      'Family',
+      'Premium',
+      'VIP'
+    ];
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) {
+          AdminPackage? selectedPkg;
+          if (selectedPresetId != null) {
+            for (final p in widget.packages) {
+              if (p.id == selectedPresetId) {
+                selectedPkg = p;
+                break;
+              }
+            }
+          }
+
+          final availablePlans = selectedPkg?.plans ?? [];
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF131C2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.add_circle_outline_rounded, color: Color(0xFF3B82F6), size: 22),
+                SizedBox(width: 8),
+                Text(
+                  'เพิ่ม Subscription ให้ผู้ใช้',
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Preset Selector
+                    if (widget.packages.isNotEmpty) ...[
+                      DropdownButtonFormField<String?>(
+                        initialValue: selectedPresetId,
+                        dropdownColor: const Color(0xFF131C2E),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'เลือกบริการต้นแบบ (Preset)',
+                          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                          helperText: 'เลือกเพื่อดึงข้อมูลแพ็กเกจ (Tier) และราคาอัตโนมัติ',
+                          helperStyle: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('กำหนดเอง (Custom)', style: TextStyle(color: Color(0xFF94A3B8))),
+                          ),
+                          ...widget.packages.map(
+                            (pkg) => DropdownMenuItem<String?>(
+                              value: pkg.id,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(pkg.name),
+                                  if (pkg.plans.isNotEmpty)
+                                    Text(
+                                      ' (${pkg.plans.length} แผน)',
+                                      style: const TextStyle(color: Color(0xFF8B5CF6), fontSize: 12),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          setDlgState(() {
+                            selectedPresetId = val;
+                            if (val != null) {
+                              final p = widget.packages.firstWhere((element) => element.id == val);
+                              nameCtrl.text = p.name;
+                              categoryCtrl.text = p.category;
+                              billingCycle = p.billingCycle;
+                              if (p.plans.isNotEmpty) {
+                                final firstPlan = p.plans.first;
+                                planTierCtrl.text = firstPlan.tier;
+                                priceCtrl.text = (billingCycle == 'YEARLY'
+                                        ? (firstPlan.yearlyPrice ?? (firstPlan.monthlyPrice * 12))
+                                        : firstPlan.monthlyPrice)
+                                    .toStringAsFixed(0);
+                              } else {
+                                priceCtrl.text = p.defaultPrice.toStringAsFixed(0);
+                              }
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // 2. Packet / Tier Selection
+                    const Text(
+                      'เลือกระบบแพ็กเกจ (Plan / Packet)',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    if (availablePlans.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: availablePlans.map((plan) {
+                          final isSelected =
+                              planTierCtrl.text.trim().toLowerCase() == plan.tier.toLowerCase();
+                          final displayPrice = billingCycle == 'YEARLY'
+                              ? (plan.yearlyPrice ?? (plan.monthlyPrice * 12))
+                              : plan.monthlyPrice;
+                          return ChoiceChip(
+                            label: Text(
+                              '${plan.tier} (฿${displayPrice.toStringAsFixed(0)})',
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: const Color(0xFF8B5CF6),
+                            backgroundColor: const Color(0xFF0A0F1D),
+                            side: BorderSide(
+                              color: isSelected ? const Color(0xFFA78BFA) : const Color(0xFF243049),
+                            ),
+                            onSelected: (selected) {
+                              setDlgState(() {
+                                planTierCtrl.text = plan.tier;
+                                priceCtrl.text = displayPrice.toStringAsFixed(0);
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ] else ...[
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: defaultQuickTiers.map((tier) {
+                          final isSelected =
+                              planTierCtrl.text.trim().toLowerCase() == tier.toLowerCase();
+                          return ChoiceChip(
+                            label: Text(
+                              tier,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: const Color(0xFF3B82F6),
+                            backgroundColor: const Color(0xFF0A0F1D),
+                            side: BorderSide(
+                              color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF243049),
+                            ),
+                            onSelected: (selected) {
+                              setDlgState(() {
+                                planTierCtrl.text = selected ? tier : '';
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: planTierCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'แพ็กเกจ (เช่น Pro, Plus, Family, Premium)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                        hintText: 'เช่น Pro, Plus, Family',
+                        hintStyle: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Service Name
+                    TextFormField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'ชื่อบริการ / Subscription *',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อบริการ' : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Category
+                    TextFormField(
+                      controller: categoryCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'หมวดหมู่',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Price & Billing Cycle
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextFormField(
+                            controller: priceCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              labelText: 'ราคา (บาท) *',
+                              labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return 'กรุณาระบุราคา';
+                              if (double.tryParse(v) == null) return 'ตัวเลขไม่ถูกต้อง';
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            initialValue: billingCycle,
+                            dropdownColor: const Color(0xFF131C2E),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              labelText: 'รอบบิล',
+                              labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'MONTHLY', child: Text('รายเดือน')),
+                              DropdownMenuItem(value: 'YEARLY', child: Text('รายปี')),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDlgState(() {
+                                  billingCycle = val;
+                                  if (selectedPkg != null && availablePlans.isNotEmpty) {
+                                    final currentPlan = availablePlans.firstWhere(
+                                      (p) =>
+                                          p.tier.toLowerCase() ==
+                                          planTierCtrl.text.trim().toLowerCase(),
+                                      orElse: () => availablePlans.first,
+                                    );
+                                    priceCtrl.text = (billingCycle == 'YEARLY'
+                                            ? (currentPlan.yearlyPrice ??
+                                                (currentPlan.monthlyPrice * 12))
+                                            : currentPlan.monthlyPrice)
+                                        .toStringAsFixed(0);
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Payment Card
+                    if (detail.paymentCards.isNotEmpty) ...[
+                      DropdownButtonFormField<String?>(
+                        initialValue: selectedPaymentCardId,
+                        dropdownColor: const Color(0xFF131C2E),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'บัตรชำระเงิน',
+                          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text(
+                              'ไม่ระบุ (สร้างบัตรเสมือนอัตโนมัติ)',
+                              style: TextStyle(color: Color(0xFF94A3B8)),
+                            ),
+                          ),
+                          ...detail.paymentCards.map(
+                            (card) => DropdownMenuItem<String?>(
+                              value: card.id,
+                              child: Text(
+                                  '${card.nickname ?? card.brand ?? 'Card'} •••• ${card.last4 ?? ''}'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) => setDlgState(() => selectedPaymentCardId = val),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Next Renewal Date
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: dlgCtx,
+                          initialDate: nextRenewalDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2035),
+                        );
+                        if (picked != null) {
+                          setDlgState(() => nextRenewalDate = picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'วันตัดรอบถัดไป',
+                          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                          suffixIcon:
+                              Icon(Icons.calendar_month_rounded, color: Color(0xFF3B82F6)),
+                        ),
+                        child: Text(
+                          _formatDate(nextRenewalDate),
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Notes
+                    TextFormField(
+                      controller: notesCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'หมายเหตุ',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dlgCtx),
+                child: const Text('ยกเลิก', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (formKey.currentState?.validate() ?? false) {
+                    final success = await widget.notifier.createSubscription(
+                      detail.id,
+                      name: nameCtrl.text.trim(),
+                      category: categoryCtrl.text.trim().isNotEmpty
+                          ? categoryCtrl.text.trim()
+                          : 'General',
+                      price: double.parse(priceCtrl.text.trim()),
+                      billingCycle: billingCycle,
+                      planTier: planTierCtrl.text.trim().isNotEmpty
+                          ? planTierCtrl.text.trim()
+                          : null,
+                      presetId: selectedPresetId,
+                      paymentCardId: selectedPaymentCardId,
+                      nextRenewalDate: nextRenewalDate,
+                      notes: notesCtrl.text.trim().isNotEmpty
+                          ? notesCtrl.text.trim()
+                          : null,
+                    );
+                    if (success && dlgCtx.mounted) {
+                      Navigator.pop(dlgCtx);
+                      _loadDetail();
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B82F6),
+                ),
+                child: const Text('เพิ่ม Subscription', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _showEditSubscriptionDialog(
     BuildContext context,
     AdminUserSubscriptionDetail sub,
@@ -1890,10 +3140,24 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
     final nameCtrl = TextEditingController(text: sub.name);
     final categoryCtrl = TextEditingController(text: sub.category);
     final priceCtrl = TextEditingController(text: sub.price.toStringAsFixed(0));
+    final planTierCtrl = TextEditingController(text: sub.planTier ?? '');
     final notesCtrl = TextEditingController(text: sub.notes ?? '');
     String billingCycle = sub.billingCycle;
     String status = sub.status;
     DateTime nextRenewalDate = sub.nextRenewalDate ?? DateTime.now();
+
+    // Match preset package if exists
+    AdminPackage? matchedPkg;
+    for (final p in widget.packages) {
+      if ((sub.presetId != null && p.id == sub.presetId) ||
+          p.name.toLowerCase() == sub.name.toLowerCase()) {
+        matchedPkg = p;
+        break;
+      }
+    }
+
+    final availablePlans = matchedPkg?.plans ?? [];
+    final quickTiers = ['Basic', 'Standard', 'Pro', 'Plus', 'Family', 'Premium', 'VIP'];
 
     showDialog(
       context: context,
@@ -1910,6 +3174,7 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextFormField(
                     controller: nameCtrl,
@@ -1921,6 +3186,91 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณาระบุชื่อ' : null,
                   ),
                   const SizedBox(height: 12),
+
+                  // Packet / Tier Selection
+                  const Text(
+                    'เลือกระบบแพ็กเกจ (Plan / Packet)',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  if (availablePlans.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: availablePlans.map((plan) {
+                        final isSelected =
+                            planTierCtrl.text.trim().toLowerCase() == plan.tier.toLowerCase();
+                        final displayPrice = billingCycle == 'YEARLY'
+                            ? (plan.yearlyPrice ?? (plan.monthlyPrice * 12))
+                            : plan.monthlyPrice;
+                        return ChoiceChip(
+                          label: Text(
+                            '${plan.tier} (฿${displayPrice.toStringAsFixed(0)})',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF8B5CF6),
+                          backgroundColor: const Color(0xFF0A0F1D),
+                          side: BorderSide(
+                            color: isSelected ? const Color(0xFFA78BFA) : const Color(0xFF243049),
+                          ),
+                          onSelected: (selected) {
+                            setDlgState(() {
+                              planTierCtrl.text = plan.tier;
+                              priceCtrl.text = displayPrice.toStringAsFixed(0);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ] else ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: quickTiers.map((tier) {
+                        final isSelected =
+                            planTierCtrl.text.trim().toLowerCase() == tier.toLowerCase();
+                        return ChoiceChip(
+                          label: Text(
+                            tier,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF3B82F6),
+                          backgroundColor: const Color(0xFF0A0F1D),
+                          side: BorderSide(
+                            color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF243049),
+                          ),
+                          onSelected: (selected) {
+                            setDlgState(() {
+                              planTierCtrl.text = selected ? tier : '';
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: planTierCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'แพ็กเกจ (เช่น Pro, Plus, Family, Premium)',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      hintText: 'เช่น Pro, Plus, Family',
+                      hintStyle: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   TextFormField(
                     controller: categoryCtrl,
                     style: const TextStyle(color: Colors.white),
@@ -1958,7 +3308,24 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                       DropdownMenuItem(value: 'YEARLY', child: Text('รายปี (YEARLY)')),
                     ],
                     onChanged: (val) {
-                      if (val != null) setDlgState(() => billingCycle = val);
+                      if (val != null) {
+                        setDlgState(() {
+                          billingCycle = val;
+                          if (matchedPkg != null && availablePlans.isNotEmpty) {
+                            final currentPlan = availablePlans.firstWhere(
+                              (p) =>
+                                  p.tier.toLowerCase() ==
+                                  planTierCtrl.text.trim().toLowerCase(),
+                              orElse: () => availablePlans.first,
+                            );
+                            priceCtrl.text = (billingCycle == 'YEARLY'
+                                    ? (currentPlan.yearlyPrice ??
+                                        (currentPlan.monthlyPrice * 12))
+                                    : currentPlan.monthlyPrice)
+                                .toStringAsFixed(0);
+                          }
+                        });
+                      }
                     },
                   ),
                   const SizedBox(height: 12),
@@ -1996,7 +3363,8 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                       decoration: const InputDecoration(
                         labelText: 'วันรอบบิลถัดไป',
                         labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                        suffixIcon: Icon(Icons.calendar_month_rounded, color: Color(0xFF3B82F6)),
+                        suffixIcon:
+                            Icon(Icons.calendar_month_rounded, color: Color(0xFF3B82F6)),
                       ),
                       child: Text(
                         _formatDate(nextRenewalDate),
@@ -2032,6 +3400,9 @@ class _AdminUserDetailViewState extends State<_AdminUserDetailView> {
                     price: double.parse(priceCtrl.text.trim()),
                     billingCycle: billingCycle,
                     status: status,
+                    planTier: planTierCtrl.text.trim().isNotEmpty
+                        ? planTierCtrl.text.trim()
+                        : null,
                     nextRenewalDate: nextRenewalDate,
                     notes: notesCtrl.text.trim(),
                   );

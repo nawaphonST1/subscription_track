@@ -64,7 +64,24 @@ class PaymentCardSelector extends StatelessWidget {
             for (final card in cards)
               DropdownMenuItem(
                 value: card.id,
-                child: Text('${card.bankName} •••• ${card.last4Digits}'),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${card.bankName} •••• ${card.last4Digits}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '฿${card.currentBalance.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.textTheme.bodySmall?.color,
+                      ),
+                    ),
+                  ],
+                ),
               ),
           ],
           onChanged: onChanged,

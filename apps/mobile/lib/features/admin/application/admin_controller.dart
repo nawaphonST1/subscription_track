@@ -8,6 +8,7 @@ import 'package:subscription_track/features/admin/domain/admin_user.dart';
 import 'package:subscription_track/features/admin/domain/admin_user_detail.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/data/remote_auth_repository.dart';
+import 'package:subscription_track/features/subscriptions/domain/preset_plan.dart';
 
 @immutable
 class AdminState {
@@ -210,6 +211,7 @@ class AdminController extends Notifier<AdminState> {
     String brandColor = '#3B82F6',
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   }) async {
     if (!ref.mounted) return false;
     final repo = _repo;
@@ -223,6 +225,7 @@ class AdminController extends Notifier<AdminState> {
       brandColor: brandColor,
       iconUrl: iconUrl,
       description: description,
+      plans: plans,
     );
 
     if (!ref.mounted) return false;
@@ -264,6 +267,7 @@ class AdminController extends Notifier<AdminState> {
     String? brandColor,
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   }) async {
     if (!ref.mounted) return false;
     final repo = _repo;
@@ -278,6 +282,7 @@ class AdminController extends Notifier<AdminState> {
       brandColor: brandColor,
       iconUrl: iconUrl,
       description: description,
+      plans: plans,
     );
 
     if (!ref.mounted) return false;
@@ -466,6 +471,59 @@ class AdminController extends Notifier<AdminState> {
     );
   }
 
+  Future<bool> createSubscription(
+    String userId, {
+    required String name,
+    required String category,
+    required double price,
+    String billingCycle = 'MONTHLY',
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
+    DateTime? nextRenewalDate,
+    String? status,
+    String? notes,
+    String? brandColor,
+  }) async {
+    if (!ref.mounted) return false;
+    final repo = _repo;
+    state = state.copyWith(isActionLoading: true, errorMessage: null);
+
+    final result = await repo.createSubscription(
+      userId,
+      name: name,
+      category: category,
+      price: price,
+      billingCycle: billingCycle,
+      planTier: planTier,
+      presetId: presetId,
+      paymentCardId: paymentCardId,
+      nextRenewalDate: nextRenewalDate,
+      status: status,
+      notes: notes,
+      brandColor: brandColor,
+    );
+    if (!ref.mounted) return false;
+
+    return result.fold(
+      (failure) {
+        state = state.copyWith(
+          isActionLoading: false,
+          errorMessage: 'เพิ่ม Subscription ไม่สำเร็จ',
+        );
+        return false;
+      },
+      (_) async {
+        state = state.copyWith(
+          isActionLoading: false,
+          successMessage: 'เพิ่ม Subscription สำเร็จ',
+        );
+        await loadAll();
+        return true;
+      },
+    );
+  }
+
   Future<bool> updateSubscription(
     String subId, {
     String? name,
@@ -476,6 +534,9 @@ class AdminController extends Notifier<AdminState> {
     DateTime? nextRenewalDate,
     String? notes,
     String? brandColor,
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
   }) async {
     if (!ref.mounted) return false;
     final repo = _repo;
@@ -491,6 +552,9 @@ class AdminController extends Notifier<AdminState> {
       nextRenewalDate: nextRenewalDate,
       notes: notes,
       brandColor: brandColor,
+      planTier: planTier,
+      presetId: presetId,
+      paymentCardId: paymentCardId,
     );
     if (!ref.mounted) return false;
 

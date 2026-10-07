@@ -42,10 +42,25 @@ class SavingsNotifier extends AsyncNotifier<SavingsViewState> {
 
   @override
   Future<SavingsViewState> build() async {
+    // Watch subscriptions so savings optimizer updates automatically when subscriptions change
+    ref.watch(subscriptionReadModelsProvider);
     final repo = ref.watch(savingsRepositoryProvider);
     try {
       final report = await repo.getOptimizerReport();
       _cachedReport = report;
+      if (report.recommendedCancellations.isEmpty) {
+        final subs =
+            ref.watch(subscriptionReadModelsProvider).value ?? const [];
+        if (subs.isNotEmpty) {
+          final unusedSubs = subs
+              .where((s) => s.usageStatus == 'unused')
+              .toList(growable: false);
+          return SavingsViewState.fromSubscriptions(
+            unusedSubs.isNotEmpty ? unusedSubs : subs,
+            selectedIds: _selectedIds,
+          );
+        }
+      }
       return SavingsViewState.fromOptimizerReport(
         report,
         selectedIds: _selectedIds,

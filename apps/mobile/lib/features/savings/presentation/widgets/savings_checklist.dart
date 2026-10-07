@@ -15,6 +15,41 @@ class SavingsChecklist extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      final theme = Theme.of(context);
+      return Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.check_circle_outline_rounded,
+              size: 48,
+              color: AppColors.success,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'ไม่พบบริการที่ไม่ได้ใช้งาน',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'ทุกบริการที่คุณสมัครสมาชิกมีการใช้งานอย่างคุ้มค่า ไม่มีค่าบริการสิ้นเปลืองในขณะนี้',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.textTheme.bodySmall?.color,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

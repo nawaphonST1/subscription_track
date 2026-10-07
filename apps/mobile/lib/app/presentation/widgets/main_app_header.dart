@@ -15,7 +15,7 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final income = ref.watch(userIncomeProvider);
+    final income = ref.watch(effectiveIncomeProvider);
     final personalInfo = ref.watch(personalInfoProvider);
     final theme = Theme.of(context);
     final initialLetter = personalInfo.firstName.isNotEmpty ? personalInfo.firstName[0].toUpperCase() : 'N';
@@ -87,7 +87,9 @@ class MainAppHeader extends ConsumerWidget implements PreferredSizeWidget {
               color: theme.colorScheme.primary,
             ),
             label: Text(
-              '฿${(income / 1000).toStringAsFixed(0)}k',
+              income >= 1000
+                  ? '฿${(income / 1000).toStringAsFixed(income % 1000 == 0 ? 0 : 1)}k'
+                  : '฿${income.toStringAsFixed(0)}',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             backgroundColor: theme.cardColor,
