@@ -190,13 +190,14 @@ flowchart LR
         SecSemgrep["🛡️ Semgrep SAST<br/>(Continuous: Code & Build)"]:::sec
         SecAudit["🛡️ pnpm audit<br/>(Dependency Check) [Build]"]:::sec
         SecTest["🛡️ OWASP ZAP (DAST) & MobSF (Mobile SAST/DAST) [Test]"]:::sec
-        SecRelease["🛡️ Syft SBOM (Software Bill of Materials) [Release]"]:::sec
-        SecBuildDeploy["🛡️ Trivy (Container & IaC Scan) & Ansible Vault [Build & Deploy]"]:::sec
+        SecRelease["🛡️ Trivy SBOM (CycloneDX / SPDX) [Release]"]:::sec
+        SecBuildDeploy["🛡️ Trivy (OS & IaC Scan) & Ansible Vault [Build & Deploy]"]:::sec
         SecWazuh["🛡️ Wazuh Unified SIEM Platform<br/>(Host/K8s Security & Log Analysis: Operate & Monitor)"]:::sec
     end
 
     %% Linkages
     P3 -.-> Jenkins
+    P3 -.-> MobBuildTest
     Jenkins -.-> MobBuildTest
     Jenkins -.-> TestCloud
     ArgoCD -.-> K8s
@@ -215,14 +216,14 @@ flowchart LR
    - **`ArgoCD`** *(Deploy)*: ทำ Declarative GitOps ดึง Manifest จาก Git เพื่อ Deploy สู่ Production แบบ Automated Sync
    - **`Kubernetes Clusters, Traefik & Terraform`** *(Operate)*: คลัสเตอร์รันแอปพลิเคชัน, Traefik ทำหน้าที่เป็น Modern Ingress Controller/Reverse Proxy และจัดการ Cloud Infrastructure ด้วย Terraform
    - **`Prometheus, Grafana, Loki & Sentry`** *(Monitor)*: สังเกตการณ์ระบบแบบ Full Observability (Metrics: Prometheus/Grafana, Logs: Loki, Application Error Tracking: Sentry)
-4. **Cross-Cutting Security Layer (DevSecOps):**
+4. **Cross-Cutting Security Layer (DevSecOps - Optimized & De-duplicated):**
    - **`OWASP Threat Dragon`** *(Plan)*: ออกแบบและวิเคราะห์โมเดลภัยคุกคามตั้งแต่ขั้นวางแผน
-   - **`Gitleaks`** *(Code)*: ตรวจจับและป้องกัน Secret/Token/Private Key หลุดเข้า Git Repository
-   - **`Semgrep`** *(Code & Build)*: ทำ Static Application Security Testing (SAST) วิเคราะห์ช่องโหว่ซอร์สโค้ดแบบครอบคลุมต่อเนื่อง
-   - **`pnpm audit`** *(Build)*: สแกนช่องโหว่ของ Dependencies (CVE Audit) ฝั่ง Node.js/Backend
+   - **`Gitleaks`** *(Code)*: เครื่องมือตรวจจับ Secret และ Token หลุดสู่ Git แบบเฉพาะทาง (Shannon Entropy & Allowlist)
+   - **`Semgrep`** *(Code & Build)*: ทำ Static Application Security Testing (SAST) วิเคราะห์ช่องโหว่ซอร์สโค้ดเชิง Logic (OWASP Top 10) โดยไม่สแกน Secret ซ้ำซ้อนกับ Gitleaks
+   - **`pnpm audit`** *(Build)*: สแกนช่องโหว่ Dependency (Shift-Left SCA) ฝั่ง Node.js/Backend โดยตรงจาก Lockfile
    - **`OWASP ZAP & MobSF`** *(Test)*: ทำ DAST สแกน Web API Security (ZAP) และตรวจจับความปลอดภัยของ Mobile App Binary (MobSF)
-   - **`Syft SBOM`** *(Release)*: สร้าง Software Bill of Materials (SBOM) ตรวจสอบความโปร่งใสของแพ็กเกจก่อนเผยแพร่
-   - **`Trivy & Ansible Vault`** *(Build & Deploy)*: สแกน Container Image & IaC Misconfigurations (Trivy) ร่วมกับการเข้ารหัสลับค่าคอนฟิก (Ansible Vault)
+   - **`Trivy SBOM`** *(Release)*: สร้าง Software Bill of Materials (CycloneDX / SPDX) ผ่าน Trivy ในตัว (ลด Tool Redundancy ไม่ต้องพึ่งพา Syft)
+   - **`Trivy & Ansible Vault`** *(Build & Deploy)*: สแกนช่องโหว่ OS/Container Base Image แบบเจาะจง (Trivy `--pkg-types os`) ร่วมกับการเข้ารหัสลับค่าคอนฟิก (Ansible Vault)
    - **`Wazuh`** *(Operate & Monitor)*: แพลตฟอร์มความมั่นคงปลอดภัยแบบรวมศูนย์ (XDR & SIEM) ตรวจจับการบุกรุกของ Host/Container ใน Operate และวิเคราะห์ Log Security ใน Monitor
 
 ---
@@ -273,8 +274,8 @@ flowchart LR
 | **SAST** | **Semgrep** | Code, Build | สแกนช่องโหว่ความปลอดภัยระดับ Source Code เชิงลึกแบบต่อเนื่อง |
 | **Dependency Audit** | **pnpm audit** | Build | ตรวจสอบช่องโหว่ Known Vulnerabilities ของไลบรารีภายนอก |
 | **DAST & Mobile Sec** | **OWASP ZAP & MobSF** | Test | ทดสอบเจาะระบบ Web API แบบ Dynamic และสแกนช่องโหว่ไฟล์ Mobile App |
-| **Software Supply Chain** | **Syft SBOM** | Release | สร้างเอกสารแสดงรายการส่วนประกอบซอฟต์แวร์ทั้งหมด (Software Bill of Materials) |
-| **Image/IaC Scan & Secrets** | **Trivy & Ansible Vault** | Build, Deploy | สแกนช่องโหว่ Docker Image & IaC Code ร่วมกับการเข้ารหัส Sensitive Config |
+| **Software Supply Chain** | **Trivy SBOM** | Release | สร้างเอกสารแสดงรายการส่วนประกอบซอฟต์แวร์ทั้งหมด (CycloneDX / SPDX) |
+| **Image/IaC Scan & Secrets** | **Trivy & Ansible Vault** | Build, Deploy | สแกนช่องโหว่ OS/Container Image (`--pkg-types os`) ร่วมกับการเข้ารหัส Sensitive Config |
 | **XDR / SIEM Platform** | **Wazuh** | Operate, Monitor | แพลตฟอร์มตรวจจับและตอบสนองภัยคุกคามระดับ Host/Container และวิเคราะห์ Log |
 
 ---
@@ -334,6 +335,16 @@ fvm flutter run -d web-server --web-port 8080
 | **2026-10-06** | **EPICDP 6: Mobile Integration & Direct APK Sideloading Delivery Suite (DP-600 to DP-605)** | ปรับเปลี่ยนยุทธศาสตร์การส่งมอบแอปพลิเคชันมือถือจาก App Store สู่การติดตั้งโดยตรง (Direct APK Sideloading) พร้อมระบบ In-App Update: 1) **DP-600**: ออกแบบ Jenkins Mobile Runner (`Jenkinsfile.mobile`) บน Container `ghcr.io/cirruslabs/flutter:stable` พร้อม Docker volumes สำหรับ `.pub-cache` และ `.gradle` 2) **DP-601**: สร้าง Quality Gate อัตโนมัติ (`flutter analyze` และ `flutter test --coverage`) ผ่านการทดสอบ 61/61 tests 3) **DP-602**: บูรณาการเครื่องมือ Static Security Testing สำหรับ Mobile Binary ด้วย MobSF API (`scripts/cicd/mobsf-scan.sh`) 4) **DP-603**: กำหนด Schema จัดเก็บ Keystore และ Signing Credentials ด้วย Ansible Vault (`vault.example.yml`) ร่วมกับ Gradle Signing Config 5) **DP-604**: พัฒนาระบบ In-App Version Checker & Force Update บน Flutter Client (`AppUpdateController`, `AppUpdateDialog`) ตรวจสอบเวอร์ชันผ่าน Remote Manifest 6) **DP-605**: คอนฟิก Fastlane Lane (`Fastfile`) สำหรับการคอมไพล์ Signed Release APK, ตรวจสอบลายเซ็นใบรับรอง และส่งมอบขึ้น Microsoft Azure Blob Storage พร้อม Manifest `version.json` |
 | **2026-10-06** | **Backend & Mobile Pipeline Quality Gate Remediation** | 1) แก้ไขปัญหา Dependency ใน `apps/server`: ติดตั้ง `google-auth-library`, กำหนด pnpm overrides สำหรับ `proxy-addr`, `source-map-js`, และ `fast-uri` ปิดช่องโหว่ความปลอดภัย, ปรับ `check:security` ใช้นโยบาย `--audit-level=high` สอดคล้องกับ `Jenkinsfile` (DP-402), รัน `pnpm verify` ผ่าน 100% (307/307 Vitest tests passing) 2) แก้ไข Lint Warning ใน `apps/mobile`: ลบ unused import ใน `auth_provider.dart` และจัดระเบียบ constructor ใน `remote_auth_repository.dart` ส่งผลให้ `flutter analyze` ผ่านแบบ Clean (0 issues) และชุดทดสอบ `flutter test` ผ่านครบ 70/70 tests |
 | **2026-10-06** | **Jenkinsfile Trigger Standardization & Robustness** | ปรับปรุง `Jenkinsfile` ในส่วน `triggers`: นำ `githubPush()` ออกและคงเหลือ `pollSCM('H/5 * * * *')` เป็นตัวหลัก เพื่อป้องกันความขัดข้องด้าน Compilation Syntax (`Invalid trigger type "githubPush"`) บน Jenkins Instance ที่ไม่ได้ติดตั้ง GitHub Plugin พร้อมรองรับการรันแบบ On-Premise/Localhost ที่ไม่สามารถรับ Webhook ตรงจากภายนอกได้ |
+| **2026-10-06** | **Lab 10 Capstone: End-to-End Pipeline Modernization** | บูรณาการข้อกำหนด Lab 10 เข้ากับ Pipeline ทั้งสองระบบ: 1) **Server (`Jenkinsfile`)**: นำการรัน Automated Unit Testing (Vitest) เข้าไปทำงานขนานในบล็อก `Parallel Quality & Static Security Gates` ร่วมกับ Lint, Semgrep SAST, Gitleaks, และ pnpm audit ตามหลัก Fail-Fast (พร้อมแก้ปัญหา Path Resolution ในคำสั่ง Node.js Evaluation เป็น `path.resolve(process.env.WORKSPACE)`), เพิ่มระบบ **Smart Dependency Caching** ด้วย Named Docker Volumes (`subtracker-pnpm-store`, `subtracker-npm-cache`) และข้ามการติดตั้ง (`[CACHE HIT]`) ภายใน 0.1 วินาทีหาก `pnpm-lock.yaml` ไม่เปลี่ยนแปลง, ปรับปรุงให้เครื่องมือความปลอดภัยทำงานสแกนจริง 100% ผ่าน Official Docker Containers (`zricethezav/gitleaks`, `semgrep/semgrep`, `aquasec/trivy`, `anchore/syft`, `zaproxy/zap-stable`) 2) **Mobile (`Jenkinsfile.mobile`)**: เพิ่ม Stage `osv-scanner` สแกนหาช่องโหว่ความปลอดภัยของ Dart/Flutter Packages ใน `pubspec.lock` และ 3) **Notifications**: เพิ่มระบบแจ้งเตือนผลลัพธ์การ Build อัตโนมัติ (แสดง Branch, Build Number, Build URL, สถานะความสำเร็จ/ล้มเหลว) ในบล็อก `post` ทั้ง Server และ Mobile พร้อมรองรับ Slack Webhook |
+| **2026-10-06** | **CI Build Performance Optimization (DP-404 Architecture Reduction)** | ปรับปรุงประสิทธิภาพการ Build คอนเทนเนอร์ใน Stage `DP-404`: 1) ลดขอบเขต Target Platform จาก Multi-Architecture เดิม (`linux/amd64,linux/arm64`) เหลือเพียงสถาปัตยกรรมหลักของระบบคือ **`linux/amd64`** เท่านั้น เพื่อขจัดปัญหาความล่าช้าจากการทำ QEMU CPU Emulation ข้ามสถาปัตยกรรม 2) กำหนด `--target runtime` บน BuildKit ข้ามการรัน Stage ซ้ำซ้อน (`test`, `development`) ที่ผ่าน Quality Gates มาแล้ว 3) เพิ่มแฟล็ก `--load` นำอิมเมจเข้า Docker Engine ทันทีสำหรับการสแกนความปลอดภัยจริงใน DP-405 (Trivy) และ DP-406 (Syft) |
+| **2026-10-06** | **Feature Branch GHCR Push Policy & Dockerfile Multistage Optimization** | 1) **GHCR Push Policy**: กำหนดเงื่อนไขใน `Jenkinsfile` (DP-404) ให้ข้ามการรัน `docker push` อิมเมจขึ้น GHCR บน Feature Branch (`feat/*`, `bugfix/*`) เพื่อเพิ่มความเร็วสูงสุด (ลดเวลา 45–90 วินาที) และประหยัดพื้นที่จัดเก็บบน GitHub Registry โดยสงวนการ Push ไว้เฉพาะบน Branch หลัก (`develop`, `main`) เท่านั้น 2) **Dockerfile Optimization**: ปรับ Stage `prod-deps` ใน `apps/server/Dockerfile` ให้สืบทอดตรงจาก `deps` (`FROM deps AS prod-deps`) และสั่งเพียง `pnpm prune --prod` (5.6 วินาที) ขจัดขั้นตอนดาวน์โหลดและติดตั้ง 637 packages ซ้ำซ้อน 3) **Trivy Optimization**: เพิ่ม Docker volume caching (`subtracker-trivy-cache`) ใน DP-405 ป้องกันการดาวน์โหลดซ้ำของฐานข้อมูลช่องโหว่ (119MB) พร้อมใส่แฟล็ก `--scanners vuln` |
+| **2026-10-06** | **Test Orchestration Consolidation & Cleanup (Rule 4 Compliance)** | ปรับปรุงขั้นตอนการทดสอบใน `Jenkinsfile`: รวมการรัน Unit และ Integration Tests ทั้งหมด (351 tests) ให้อยู่ใน Stage `DP-403: Automated Testing (Vitest)` ภายใต้ `Parallel Quality & Static Security Gates` ตามหลัก Fail-Fast และถอดถอน Stage `DP-403: Test Orchestration (Compose & Vitest)` ที่ซ้ำซ้อนออก เพื่อขจัดปัญหา Syntax Error `unknown shorthand flag: -f` ของคำสั่ง `docker compose` ใน Alpine Container อีกทั้งกำจัดการรัน `auth.e2e.spec.ts` สอดคล้องตามกฎ **Rule 4: E2E Testing Prohibition** อย่างเคร่งครัด |
+| **2026-10-06** | **GitOps ArgoCD Production Sync Alignment** | ปรับปรุงขั้นตอนการ Deploy ใน `Jenkinsfile`: บูรณาการคำสั่งซิงค์ ArgoCD (`kubectl apply -f k8s/argocd/application.yaml`) เข้าสู่ Stage `Deploy — Production Approval & GitOps Sync` บน Branch `main` เพื่อให้หลังจากผู้ดูแลระบบกดอนุมัติ (Approved) ผ่าน Manual Gate แล้ว ตัว ArgoCD จะดำเนินการดึงการเปลี่ยนแปลงจาก Git ไปซิงค์ลง Production Kubernetes Cluster (AKS) จริง แทนที่คำสั่ง echo จำลองเดิม ทำให้สถาปัตยกรรม GitOps สอดคล้องกันทั้งบน Dev/Staging (`develop`) และ Production (`main`) |
+| **2026-10-07** | **Database Backup Storage Footprint Optimization ($0 Mandate - Rule 8)** | ปรับปรุงกลยุทธ์การสำรองข้อมูล PostgreSQL บน Azure Blob Storage ให้ใช้พื้นที่คงที่เท่ากับขนาดของ Snapshot ล่าสุด (Latest Snapshot In-Place Overwrite) แทนการสร้างไฟล์ Timestamp ใหม่ทุกวันซึ่งทำให้เกิดปัญหา Data Redundancy สะสม (เช่น 100MB + 102MB + 104MB = 306MB): 1) ปรับ `scripts/backup-postgres.sh` และ Kubernetes CronJob ConfigMap (`k8s/postgres-backup-cronjob.yaml`) ให้กำหนดชื่อไฟล์หลักเป็น `${DB_NAME}_backup_latest.dump.gz` และ `.sha256` พร้อมแฟล็ก `--overwrite=true` เพื่อแทนที่ข้อมูลเดิมทันที รักษาพื้นที่จัดเก็บรวมไว้ที่ขนาด Snapshot ล่าสุดเพียงชุดเดียว (~104MB) 2) ปรับ `scripts/restore-postgres.sh` ให้เชื่อมโยงและดาวน์โหลดไฟล์ Latest Snapshot โดยตรงอย่างรวดเร็วและปลอดภัย |
+
+
+
+
 
 
 

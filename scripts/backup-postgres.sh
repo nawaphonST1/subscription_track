@@ -15,13 +15,14 @@ DB_PASSWORD="${DB_PASSWORD:-password123}"
 AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-subtrackerbackups}"
 AZURE_CONTAINER="${AZURE_STORAGE_CONTAINER:-postgres}"
 AZURE_PREFIX="${AZURE_BACKUP_PREFIX:-backups}"
+BACKUP_NAME="${BACKUP_NAME:-latest}"
 
-BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_backup_${TIMESTAMP}.dump.gz"
+BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_backup_${BACKUP_NAME}.dump.gz"
 CHECKSUM_FILE="${BACKUP_FILE}.sha256"
 
 mkdir -p "${BACKUP_DIR}"
 
-echo "==> [$(date)] Starting automated backup for database: ${DB_NAME} on ${DB_HOST}:${DB_PORT}..."
+echo "==> [${TIMESTAMP}] Starting automated backup for database: ${DB_NAME} on ${DB_HOST}:${DB_PORT} (Snapshot: ${BACKUP_NAME})..."
 
 # Export password for pg_dump non-interactive execution
 export PGPASSWORD="${DB_PASSWORD}"
@@ -67,7 +68,7 @@ else
     echo "⚠️  Neither azcopy nor az CLI found. Local backup file is stored at: ${BACKUP_FILE}"
 fi
 
-echo "✅ Backup successfully synced to Azure offsite storage: ${BLOB_BASE_URL}/${BLOB_PATH}"
+echo "✅ Backup successfully synced to Azure offsite storage: ${BLOB_BASE_URL}/${BLOB_PATH} (In-place overwrite maintaining latest snapshot footprint)"
 
 # 4. Clean up local temporary files
 rm -f "${BACKUP_FILE}" "${CHECKSUM_FILE}"

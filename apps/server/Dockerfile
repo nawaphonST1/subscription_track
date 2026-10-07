@@ -54,15 +54,9 @@ RUN pnpm test \
     && pnpm lint \
     && pnpm format:check
 
-FROM base AS prod-deps
+FROM deps AS prod-deps
 
-USER node
-
-COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY --chown=node:node prisma ./prisma
-RUN pnpm install --frozen-lockfile \
-    && pnpm prisma:generate \
-    && pnpm prune --prod
+RUN pnpm prune --prod
 
 FROM ${NODE_IMAGE} AS runtime
 
