@@ -84,7 +84,7 @@ services:
       - "traefik.http.routers.api.rule=PathPrefix(`/`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.routers.api.service=api"
-      - "traefik.http.routers.api-secure.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.api-secure.rule=Host(`${DOMAIN_NAME:-subscription-track-dev.malaysiawest.cloudapp.azure.com}`)"
       - "traefik.http.routers.api-secure.entrypoints=websecure"
       - "traefik.http.routers.api-secure.tls=true"
       - "traefik.http.routers.api-secure.tls.certresolver=letsencrypt"
@@ -167,7 +167,7 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@subtracker.local}"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@subscription-track-dev.malaysiawest.cloudapp.azure.com}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
     ports:
