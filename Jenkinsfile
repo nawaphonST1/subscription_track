@@ -405,9 +405,9 @@ pipeline {
                         DEPLOYED_REMOTE=false
                         if [ -n "${PROD_TARGET_HOST}" ]; then
                             echo "==> Testing SSH connection to Production VM (${PROD_TARGET_USER}@${PROD_TARGET_HOST})..."
-                            if ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=5 "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "echo ok" >/dev/null 2>&1; then
+                            if ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=5 "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "echo ok" >/dev/null 2>&1; then
                                 echo "==> 🚀 Dedicated CI/CD VM detected: Deploying to Remote Production VM (${PROD_TARGET_HOST}) via SSH..."
-                                ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "
+                                ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "
                                     set -e
                                     cd ${PROD_TARGET_PATH}
                                     echo '==> [Remote Production VM] Updating codebase from Git...'
