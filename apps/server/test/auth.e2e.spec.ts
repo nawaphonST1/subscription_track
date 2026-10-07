@@ -109,7 +109,7 @@ describe('Application-level HTTP authentication flow (isolated Prisma test doubl
 
   afterAll(async () => {
     try {
-      await app.close();
+      await app?.close();
     } finally {
       vi.unstubAllEnvs();
     }

@@ -7,6 +7,13 @@ pipeline {
         GHCR_REGISTRY = 'ghcr.io'
         NODE_ENV = 'test'
         PATH = "${WORKSPACE}/scripts/bin:/usr/local/bin:/usr/bin:/bin:${env.PATH}"
+        DB_HOST = 'localhost'
+        DB_PORT = '5432'
+        DB_NAME = 'subtracker_test'
+        DB_USER = 'postgres'
+        DB_PASSWORD = 'test_password'
+        DATABASE_URL = 'postgresql://postgres:test_password@localhost:5432/subtracker_test?schema=public'
+        JWT_SECRET = 'ci-test-jwt-secret-minimum-32-characters-entropy-guarantee'
     }
 
     triggers {
@@ -43,6 +50,13 @@ pipeline {
                     # Ensure SSH client is available for remote deployment
                     if ! command -v ssh >/dev/null 2>&1; then
                         apt-get update >/dev/null 2>&1 && apt-get install -y --no-install-recommends openssh-client >/dev/null 2>&1 || true
+                    fi
+
+                    if [ ! -f "apps/server/.env" ]; then
+                        if [ -f "apps/server/.env.example" ]; then
+                            echo "==> Configuring apps/server/.env from .env.example..."
+                            cp apps/server/.env.example apps/server/.env
+                        fi
                     fi
 
                     if [ ! -f "apps/server/.env.production" ]; then
