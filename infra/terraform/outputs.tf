@@ -2,10 +2,10 @@
 # Outputs สำหรับ DP-200 (Cloud Network) & DP-201 (Compute / Kubernetes)
 # ==============================================================================
 
-# --- DP-200: Cloud Network Outputs ---
+# --- DP-200: Cloud Network Outputs (เฉพาะกรณีเปิดใช้ enable_standalone_vm) ---
 output "public_ip_address" {
   description = "Static Public IP address of the Production Web Server"
-  value       = azurerm_public_ip.public_ip.ip_address
+  value       = var.enable_standalone_vm ? azurerm_public_ip.public_ip[0].ip_address : "Standalone VM disabled (enable_standalone_vm = false)"
 }
 
 output "resource_group_name" {
@@ -15,13 +15,13 @@ output "resource_group_name" {
 
 output "vnet_name" {
   description = "Name of the Virtual Network"
-  value       = azurerm_virtual_network.vnet.name
+  value       = var.enable_standalone_vm ? azurerm_virtual_network.vnet[0].name : "Standalone VM disabled (enable_standalone_vm = false)"
 }
 
 # --- DP-201: Compute VM (Self-managed Node) Outputs ---
 output "ssh_command" {
   description = "Command to SSH into the Production VM"
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.public_ip.ip_address}"
+  value       = var.enable_standalone_vm ? "ssh ${var.admin_username}@${azurerm_public_ip.public_ip[0].ip_address}" : "Standalone VM disabled (enable_standalone_vm = false)"
 }
 
 # --- DP-201: Managed Kubernetes (AKS) Option Outputs ---

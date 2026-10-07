@@ -7,10 +7,11 @@
 # ==============================================================================
 
 resource "azurerm_linux_virtual_machine" "prod_vm" {
+  count                 = var.enable_standalone_vm ? 1 : 0
   name                  = "vm-subtracker-prod"
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
-  network_interface_ids = [azurerm_network_interface.nic.id]
+  network_interface_ids = [azurerm_network_interface.nic[0].id]
   size                  = var.vm_size
   admin_username        = var.admin_username
 
