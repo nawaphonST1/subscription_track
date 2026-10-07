@@ -9,6 +9,7 @@ import 'package:subscription_track/core/widgets/connectivity_status_banner.dart'
 import 'package:subscription_track/core/widgets/pin/pin.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
+import 'package:subscription_track/features/profile/application/personal_info_controller.dart';
 
 enum RegisterStep { credentials, pinSetup }
 
@@ -24,6 +25,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _pinFormKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
+  final _incomeController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -54,6 +57,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _incomeController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -92,10 +97,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
 
+      final incomeText = _incomeController.text.replaceAll(',', '').trim();
+      final monthlyIncome = double.tryParse(incomeText);
+
       ref.read(authProvider.notifier).registerWithEmail(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             name: _nameController.text.trim(),
+            monthlyIncome: monthlyIncome,
             securityPin: _pinController.text.trim(),
           );
     }
@@ -130,6 +139,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         );
       } else if (next is AsyncData && next.value != null) {
+        final registeredUser = next.value!;
+        final fullName = registeredUser.name;
+        String fName = fullName;
+        String lName = '';
+        if (fullName.contains(' ')) {
+          final parts = fullName.split(' ');
+          fName = parts.first;
+          lName = parts.sublist(1).join(' ');
+        }
+        final phone = _phoneController.text.trim();
+        ref.read(personalInfoProvider.notifier).updateInfo(
+              firstName: fName.isNotEmpty ? fName : 'ผู้ใช้งาน',
+              lastName: lName,
+              phoneNumber: phone.isNotEmpty ? phone : '0812345678',
+              nationalId: '1234567890123',
+              birthDate: DateTime(1998, 8, 7),
+            );
         context.go(RouteConstants.dashboard);
       }
     });
@@ -219,11 +245,55 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             key: const Key('register_name_field'),
             controller: _nameController,
             label: 'ชื่อ-นามสกุล',
-            hint: 'กรอกชื่อของคุณ',
+            hint: 'กรอกชื่อ-นามสกุลของคุณ',
             icon: Icons.person_outline_rounded,
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
                 return 'กรุณากรอกชื่อของคุณ';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // --- Monthly Income Field ---
+          _buildInputField(
+            key: const Key('register_income_field'),
+            controller: _incomeController,
+            label: 'รายได้ต่อเดือน (บาท)',
+            hint: 'เช่น 25,000',
+            icon: Icons.account_balance_wallet_outlined,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
+            ],
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return 'กรุณากรอกรายได้ต่อเดือน';
+              }
+              final clean = val.replaceAll(',', '').trim();
+              final amount = double.tryParse(clean);
+              if (amount == null || amount < 0) {
+                return 'กรุณาระบุจำนวนเงินที่ถูกต้อง';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // --- Phone Field ---
+          _buildInputField(
+            key: const Key('register_phone_field'),
+            controller: _phoneController,
+            label: 'เบอร์โทรศัพท์ (ถ้ามี)',
+            hint: 'เช่น 0812345678',
+            icon: Icons.phone_android_rounded,
+            keyboardType: TextInputType.phone,
+            maxLength: 10,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            validator: (val) {
+              if (val != null && val.trim().isNotEmpty && val.trim().length != 10) {
+                return 'เบอร์โทรศัพท์ต้องมี 10 หลัก';
               }
               return null;
             },

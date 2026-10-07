@@ -128,6 +128,14 @@ tfplan
 **/test-results/
 **/reports/
 
+# Security & Scan Artifacts
+*-report*.json
+*-dryrun.json
+*.sarif
+*-report.html
+*.cdx.json
+*.spdx.json
+
 # Cache directories & scanner databases
 .cache/
 **/.cache/

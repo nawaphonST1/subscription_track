@@ -121,8 +121,9 @@ export class PackagesService {
         brand_color: dto.brand_color,
         icon_url: dto.icon_url,
         description: dto.description,
-        ...((dto.available_plans !== undefined || dto.availablePlans !== undefined) && {
-          available_plans: (dto.available_plans ?? dto.availablePlans) as any,
+        ...((dto.available_plans !== undefined ||
+          dto.availablePlans !== undefined) && {
+          available_plans: dto.available_plans ?? dto.availablePlans,
         }),
       },
     });
@@ -173,7 +174,7 @@ export class PackagesService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...((dto.available_plans !== undefined ||
           dto.availablePlans !== undefined) && {
-          available_plans: (dto.available_plans ?? dto.availablePlans) as any,
+          available_plans: dto.available_plans ?? dto.availablePlans,
         }),
       },
     });

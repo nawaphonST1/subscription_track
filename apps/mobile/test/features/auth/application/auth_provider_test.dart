@@ -143,6 +143,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async {
     registerCalls++;
