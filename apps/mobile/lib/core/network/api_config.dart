@@ -1,7 +1,8 @@
 class ApiConfig {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://85.211.231.93',
+    defaultValue:
+        'https://subscription-track-dev.malaysiawest.cloudapp.azure.com',
   );
 
   static const String googleClientId = String.fromEnvironment(
