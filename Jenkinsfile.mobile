@@ -101,9 +101,17 @@ pipeline {
         }
 
         // ----------------------------------------------------------------------
-        // DP-603 & DP-605: Fastlane Release APK Build & Keystore Signing
+        // DP-603 & DP-605: Fastlane Release APK Build & Keystore Signing (main branch only)
         // ----------------------------------------------------------------------
         stage('DP-605: Build & Sign Release APK') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                    }
+                }
+            }
             steps {
                 echo "==> [${env.APP_NAME}] Building signed Release APK via Flutter (arm64 targeted for speed)..."
                 sh '''
@@ -130,9 +138,17 @@ pipeline {
         }
 
         // ----------------------------------------------------------------------
-        // DP-602: MobSF Mobile Binary Static Security Analysis
+        // DP-602: MobSF Mobile Binary Static Security Analysis (main branch only)
         // ----------------------------------------------------------------------
         stage('DP-602: MobSF Static Security Analysis') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                    }
+                }
+            }
             steps {
                 echo "==> [${env.APP_NAME}] Performing MobSF static security scan on Release APK..."
                 sh '''
@@ -143,9 +159,17 @@ pipeline {
         }
 
         // ----------------------------------------------------------------------
-        // DP-605: Direct APK Distribution & In-App Update Manifest (Azure Blob)
+        // DP-605: Direct APK Distribution & In-App Update Manifest (main branch only)
         // ----------------------------------------------------------------------
         stage('DP-605: Azure Blob Release & In-App Update Manifest') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                    }
+                }
+            }
             steps {
                 echo "==> [${env.APP_NAME}] Preparing In-App Update version manifest and Azure Blob release..."
                 sh '''

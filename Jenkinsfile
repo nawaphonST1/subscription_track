@@ -361,9 +361,8 @@ pipeline {
             when {
                 anyOf {
                     branch 'develop'
-                    branch 'feat/system-integration-test-and-fix'
                     expression {
-                        return env.GIT_BRANCH?.contains('system-integration-test-and-fix') || env.BRANCH_NAME?.contains('system-integration-test-and-fix') || env.GIT_BRANCH?.contains('develop')
+                        return env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'origin/develop' || env.BRANCH_NAME == 'develop'
                     }
                 }
             }
@@ -389,9 +388,8 @@ pipeline {
                 beforeInput true
                 anyOf {
                     branch 'main'
-                    branch 'feat/system-integration-test-and-fix'
                     expression {
-                        return env.GIT_BRANCH?.contains('system-integration-test-and-fix') || env.BRANCH_NAME?.contains('system-integration-test-and-fix') || env.GIT_BRANCH == 'main'
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
                     }
                 }
             }
@@ -447,7 +445,7 @@ pipeline {
                                     set -e
                                     cd ${PROD_TARGET_PATH}
                                     echo '==> [Remote Production VM] Updating codebase from Git...'
-                                    TARGET_BRANCH=\$(echo '${GIT_BRANCH:-feat/system-integration-test-and-fix}' | sed 's|^origin/||')
+                                    TARGET_BRANCH=\$(echo '${GIT_BRANCH:-main}' | sed 's|^origin/||')
                                     git fetch origin \${TARGET_BRANCH}
                                     git checkout -B \${TARGET_BRANCH} origin/\${TARGET_BRANCH}
                                     git reset --hard origin/\${TARGET_BRANCH}
