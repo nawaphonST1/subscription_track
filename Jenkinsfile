@@ -67,6 +67,16 @@ pipeline {
                             fi
                             cp pnpm-lock.yaml node_modules/.lock-hash 2>/dev/null || true
                         fi
+
+                        # Ensure Prisma Client is generated for linting, testing, and building
+                        if [ -f "prisma/schema.prisma" ]; then
+                            echo "==> Generating Prisma Client..."
+                            if command -v pnpm >/dev/null 2>&1; then
+                                pnpm prisma:generate || npx prisma generate
+                            else
+                                npx prisma generate
+                            fi
+                        fi
                     '''
                 }
             }
