@@ -47,11 +47,11 @@ pipeline {
 
         stage('Parallel Quality & Static Security Gates') {
             parallel {
-                // DP-401: Static Code Analysis (Semgrep SAST & Gitleaks Secret Scan)
+                // DP-401: Static Code Analysis (Separation of Concerns: Gitleaks for Secrets, Semgrep for Code Logic)
                 stage('DP-401: Secret Scan (Gitleaks)') {
                     steps {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
-                        echo "==> [${env.APP_NAME}] Scanning repository for leaked secrets (Gitleaks)..."
+                        echo "==> [${env.APP_NAME}] Scanning repository for leaked secrets (Gitleaks - Dedicated Secret Detector)..."
                         sh '''
                             if command -v gitleaks >/dev/null 2>&1; then
                                 gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json || true
@@ -67,12 +67,14 @@ pipeline {
                 stage('DP-401: SAST Analysis (Semgrep)') {
                     steps {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
-                        echo "==> [${env.APP_NAME}] Running Semgrep OWASP Top-10 static code security analysis..."
+                        echo "==> [${env.APP_NAME}] Running Semgrep OWASP Top-10 static code security analysis (Dedicated Code Logic SAST)..."
                         sh '''
+                            # Separation of concerns: Exclude generic secret rules to eliminate false-positive overlap with Gitleaks
+                            SEMGREP_RULES="--config=p/owasp-top-ten --exclude-rule='*secret*' --exclude-rule='*credential*' --exclude-rule='*token*'"
                             if command -v semgrep >/dev/null 2>&1; then
-                                semgrep scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             elif [ -x "${WORKSPACE}/scripts/bin/semgrep" ]; then
-                                "${WORKSPACE}/scripts/bin/semgrep" scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                "${WORKSPACE}/scripts/bin/semgrep" scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             else
                                 echo '{"runs":[]}' > "${WORKSPACE}/semgrep.sarif"
                             fi
@@ -80,11 +82,11 @@ pipeline {
                     }
                 }
 
-                // DP-402: Automated Dependency Check (pnpm audit gate)
+                // DP-402: Automated Dependency Check (pnpm audit - Dedicated JS/Node.js Dependency Gate)
                 stage('DP-402: Dependency Audit (pnpm audit)') {
                     steps {
                         script { env.CURRENT_STAGE = env.STAGE_NAME }
-                        echo "==> [${env.APP_NAME}] Running dependency vulnerability audit (pnpm audit gate)..."
+                        echo "==> [${env.APP_NAME}] Running dependency vulnerability audit (pnpm audit - Shift-Left SCA)..."
                         dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                             sh '''
                                 if command -v pnpm >/dev/null 2>&1; then
@@ -193,47 +195,51 @@ pipeline {
             }
         }
 
-        // DP-405: Container Image Vulnerability Scanning using Trivy
+        // DP-405: Container Image Vulnerability Scanning using Trivy (OS-level Scoped)
         stage('DP-405: Container Scan (Trivy)') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL CVEs..."
+                    echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL OS CVEs..."
                     sh """
+                        # Optimization: Scope Trivy to OS/container packages only (--pkg-types os / --vuln-type os)
+                        # JS/node_modules dependencies are already handled by pnpm audit in DP-402 (eliminates redundancy)
+                        TRIVY_OS_FLAGS="--severity HIGH,CRITICAL --pkg-types os --vuln-type os"
                         if command -v trivy >/dev/null 2>&1; then
-                            trivy image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
-                            trivy image --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image \${TRIVY_OS_FLAGS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image \${TRIVY_OS_FLAGS} --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
-                            "${WORKSPACE}/scripts/bin/trivy" image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
-                            "${WORKSPACE}/scripts/bin/trivy" image --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image \${TRIVY_OS_FLAGS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image \${TRIVY_OS_FLAGS} --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         else
                             echo '{"runs":[]}' > trivy-results.sarif
                             echo '{"Results":[]}' > trivy-report.json
                         fi
-                        echo "✅ Trivy container vulnerability scan evaluation completed."
+                        echo "✅ Trivy container OS vulnerability scan evaluation completed."
                     """
                 }
             }
         }
 
-        // DP-406: Software Bill of Materials (SBOM) generation using Syft
-        stage('DP-406: Generate SBOM (Syft)') {
+        // DP-406: Software Bill of Materials (SBOM) generation (Unified under Trivy, Syft eliminated)
+        stage('DP-406: Generate SBOM (Trivy)') {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Generating CycloneDX and SPDX Software Bill of Materials (SBOM)..."
+                    echo "==> [${env.APP_NAME}] Generating CycloneDX and SPDX Software Bill of Materials using Trivy..."
                     sh """
-                        if command -v syft >/dev/null 2>&1; then
-                            syft dir:apps/server -o cyclonedx-json=subtracker-api.cdx.json 2>/dev/null || true
-                            syft dir:apps/server -o spdx-json=subtracker-api.spdx.json 2>/dev/null || true
-                        elif [ -x "${WORKSPACE}/scripts/bin/syft" ]; then
-                            "${WORKSPACE}/scripts/bin/syft" dir:apps/server -o cyclonedx-json=subtracker-api.cdx.json 2>/dev/null || true
-                            "${WORKSPACE}/scripts/bin/syft" dir:apps/server -o spdx-json=subtracker-api.spdx.json 2>/dev/null || true
+                        # Optimization: Unified SBOM generation under Trivy natively, eliminating redundant Syft tool dependency
+                        if command -v trivy >/dev/null 2>&1; then
+                            trivy image --format cyclonedx --output subtracker-api.cdx.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image --format spdx-json --output subtracker-api.spdx.json ${env.IMAGE_TAG} 2>/dev/null || true
+                        elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
+                            "${WORKSPACE}/scripts/bin/trivy" image --format cyclonedx --output subtracker-api.cdx.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image --format spdx-json --output subtracker-api.spdx.json ${env.IMAGE_TAG} 2>/dev/null || true
                         else
                             echo '{"bomFormat":"CycloneDX","specVersion":"1.4"}' > subtracker-api.cdx.json
                             echo '{"spdxVersion":"SPDX-2.3"}' > subtracker-api.spdx.json
                         fi
-                        echo "✅ Software Bill of Materials (SBOM) archived."
+                        echo "✅ Software Bill of Materials (SBOM) archived via Trivy."
                     """
                 }
             }
