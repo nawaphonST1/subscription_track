@@ -179,7 +179,7 @@ pipeline {
                     env.GHCR_IMAGE = "${env.GHCR_REGISTRY}/${env.REPO_OWNER}/${env.APP_NAME}:${shortCommit}"
                     env.GHCR_LATEST = "${env.GHCR_REGISTRY}/${env.REPO_OWNER}/${env.APP_NAME}:latest"
 
-                    def isDeployBranch = (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/develop')
+                    def isDeployBranch = (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/develop' || env.GIT_BRANCH?.contains('system-integration-test-and-fix'))
 
                     echo "==> [${env.APP_NAME}] Building container image for primary architecture (linux/amd64)..."
                     try {
@@ -319,7 +319,10 @@ pipeline {
         // DP-408: GitOps Continuous Delivery using ArgoCD (Dev / Staging)
         stage('DP-408: GitOps Sync (ArgoCD - Dev)') {
             when {
-                branch 'develop'
+                anyOf {
+                    branch 'develop'
+                    branch 'feat/system-integration-test-and-fix'
+                }
             }
             steps {
                 script {

@@ -346,6 +346,8 @@ fvm flutter run -d web-server --web-port 8080
 | **2026-10-07** | **Traefik Modern Docker Engine API Compatibility Fix** | แก้ไขปัญหา Traefik Docker Provider คืนค่า 404 เนื่องจาก `client version 1.24 is too old` โดยไม่ต้องพึ่งพา `sudo` บน VM: อัปเกรดอิมเมจ Traefik สู่ `traefik:latest` (v3.7+) ซึ่งมีระบบ Auto-Negotiation ของ Docker API ในตัว แก้ไขข้อผิดพลาด GitHub Issue #12253 ให้ Traefik สื่อสารกับ Docker Engine v29+ ได้อัตโนมัติ |
 | **2026-10-07** | **Worker Environment Validation Fix** | แก้ไขข้อผิดพลาด Worker Process ล้มเหลวและ Restart ต่อเนื่องจาก `FCM_SERVICE_ACCOUNT_JSON: Too small: expected string to have >=1 characters`: เพิ่ม Preprocessor แปลงค่า Empty String (`""`) จาก `.env.production` ให้เป็น `undefined` อย่างถูกต้องเมื่อกำหนด `PUSH_PROVIDER=stub` |
 | **2026-10-07** | **Backup & Restore Scripts Host Fallback Resilience** | ปรับปรุง `scripts/backup-postgres.sh` และ `scripts/restore-postgres.sh` ให้รองรับการทำงานอัตโนมัติบน Host ที่ไม่ได้ติดตั้ง `postgresql-client` (`pg_dump` / `pg_restore`) โดยสลับไปเรียกใช้คำสั่งผ่าน `docker exec` บนคอนเทนเนอร์ PostgreSQL ที่กำลังทำงานอยู่ทันที |
+| **2026-10-07** | **Jenkinsfile Feature Branch Deployment Enablement** | ปรับปรุง `Jenkinsfile`: กำหนดให้ Branch `feat/system-integration-test-and-fix` สามารถรันผ่าน Quality Gates ครบถ้วน พร้อมเปิดใช้งานการ Push อิมเมจขึ้น GHCR และทริกเกอร์ GitOps Sync (ArgoCD) สำหรับการส่งมอบระบบตรงจาก Feature Branch ตามความต้องการของผู้ใช้ |
+
 
 
 
