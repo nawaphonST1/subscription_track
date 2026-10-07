@@ -188,7 +188,7 @@ EOF
         always {
             // Restore workspace file ownership to host user
             sh 'chown -R "$(stat -c \'%u:%g\' .)" . || true'
-            archiveArtifacts artifacts: 'apps/mobile/build/app/outputs/**/*.apk,apps/mobile/build/version.json,apps/mobile/build/apk-signer.txt,apps/mobile/build/reports/*.json,apps/mobile/coverage/lcov.info', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'apps/mobile/build/app/outputs/flutter-apk/*.apk,apps/mobile/build/version.json,apps/mobile/build/apk-signer.txt,apps/mobile/build/reports/*.json,apps/mobile/coverage/lcov.info', allowEmptyArchive: true
         }
         success {
             echo "🎉 Mobile CI/CD Pipeline (EPICDP 6: DP-600 to DP-605) completed successfully!"
