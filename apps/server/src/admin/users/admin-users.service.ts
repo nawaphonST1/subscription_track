@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { BillingCycle, SubscriptionStatus, UsageStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminUserResponseDto } from './dto/admin-user-response.dto';
 import { AdminStatsResponseDto } from './dto/admin-stats-response.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
+import { AdminCreateSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { UpdateSubscriptionDto } from '../../subscriptions/dto/update-subscription.dto';
 
 @Injectable()
@@ -142,10 +144,7 @@ export class AdminUsersService {
   /**
    * แก้ไขข้อมูลผู้ใช้ (Admin action)
    */
-  async updateUser(
-    id: string,
-    dto: UpdateAdminUserDto,
-  ) {
+  async updateUser(id: string, dto: UpdateAdminUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`User with ID '${id}' not found`);
@@ -242,7 +241,7 @@ export class AdminUsersService {
   /**
    * สร้าง Subscription ให้ผู้ใช้ (Admin action)
    */
-  async createSubscription(userId: string, dto: any) {
+  async createSubscription(userId: string, dto: AdminCreateSubscriptionDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { payment_cards: true },
@@ -271,24 +270,19 @@ export class AdminUsersService {
       }
     }
 
-    const startDate = dto.start_date || dto.startDate
-      ? new Date(dto.start_date || dto.startDate)
-      : new Date();
+    const rawStartDate = dto.start_date ?? dto.startDate;
+    const startDate = rawStartDate ? new Date(rawStartDate) : new Date();
 
-    const billingCycle = (
-      dto.billing_cycle ||
-      dto.billingCycle ||
-      'MONTHLY'
-    ).toUpperCase();
+    const billingCycle: BillingCycle =
+      dto.billing_cycle ?? dto.billingCycle ?? BillingCycle.MONTHLY;
 
-    let nextRenewal = dto.next_renewal_date || dto.nextRenewalDate
-      ? new Date(dto.next_renewal_date || dto.nextRenewalDate)
-      : new Date(startDate);
+    const rawRenewal = dto.next_renewal_date ?? dto.nextRenewalDate;
+    const nextRenewal = rawRenewal ? new Date(rawRenewal) : new Date(startDate);
 
-    if (!dto.next_renewal_date && !dto.nextRenewalDate) {
-      if (billingCycle === 'YEARLY') {
+    if (!rawRenewal) {
+      if (billingCycle === BillingCycle.YEARLY) {
         nextRenewal.setFullYear(nextRenewal.getFullYear() + 1);
-      } else if (billingCycle === 'WEEKLY') {
+      } else if (billingCycle === BillingCycle.WEEKLY) {
         nextRenewal.setDate(nextRenewal.getDate() + 7);
       } else {
         nextRenewal.setMonth(nextRenewal.getMonth() + 1);
@@ -297,6 +291,10 @@ export class AdminUsersService {
 
     const planTier = dto.plan_tier !== undefined ? dto.plan_tier : dto.planTier;
     const presetId = dto.preset_id !== undefined ? dto.preset_id : dto.presetId;
+
+    const status: SubscriptionStatus = dto.status ?? SubscriptionStatus.ACTIVE;
+    const usageStatus: UsageStatus =
+      dto.usage_status ?? dto.usageStatus ?? UsageStatus.FREQUENT;
 
     const created = await this.prisma.userSubscription.create({
       data: {
@@ -310,12 +308,8 @@ export class AdminUsersService {
         billing_cycle: billingCycle,
         start_date: startDate,
         next_renewal_date: nextRenewal,
-        status: (dto.status || 'ACTIVE').toUpperCase(),
-        usage_status: (
-          dto.usage_status ||
-          dto.usageStatus ||
-          'FREQUENT'
-        ).toUpperCase(),
+        status,
+        usage_status: usageStatus,
         brand_color: dto.brand_color || dto.brandColor || '#3B82F6',
         notes: dto.notes || null,
       },

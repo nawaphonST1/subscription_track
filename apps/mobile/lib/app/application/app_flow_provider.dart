@@ -48,7 +48,7 @@ final appFlowProvider = Provider<AppFlowState>((ref) {
 
   return AppFlowState(
     isInitializing: !bypassAuth && authState.isLoading,
-    isOnboardingCompleted: onboardingCompleted,
+    isOnboardingCompleted: onboardingCompleted || user != null,
     isAuthenticated: bypassAuth || user != null,
     isPinSetupCompleted: isPinSetupCompleted,
   );

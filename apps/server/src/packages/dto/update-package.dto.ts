@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { BillingCycle } from '@prisma/client';
+import { BillingCycle, Prisma } from '@prisma/client';
 import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdatePackageDto {
@@ -77,8 +77,8 @@ export class UpdatePackageDto {
     description: 'Updated list of recommended plan tiers',
   })
   @IsOptional()
-  available_plans?: any[];
+  available_plans?: Prisma.InputJsonValue;
 
   @IsOptional()
-  availablePlans?: any[];
+  availablePlans?: Prisma.InputJsonValue;
 }

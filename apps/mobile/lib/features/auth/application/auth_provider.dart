@@ -186,6 +186,7 @@ class AuthNotifier extends _$AuthNotifier {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async {
     state = const AsyncValue.loading();
@@ -193,6 +194,7 @@ class AuthNotifier extends _$AuthNotifier {
       email: email,
       password: password,
       name: name,
+      monthlyIncome: monthlyIncome,
       securityPin: securityPin,
     );
     if (!ref.mounted) return;

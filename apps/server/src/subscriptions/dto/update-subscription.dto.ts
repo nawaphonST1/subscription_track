@@ -109,7 +109,10 @@ export class UpdateSubscriptionDto {
   @IsString()
   preset_id?: string;
 
-  @ApiPropertyOptional({ example: 'preset-uuid', description: 'Preset ID alias' })
+  @ApiPropertyOptional({
+    example: 'preset-uuid',
+    description: 'Preset ID alias',
+  })
   @IsOptional()
   @IsString()
   presetId?: string;

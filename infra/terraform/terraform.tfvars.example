@@ -22,7 +22,7 @@ admin_username = "azureuser"
 # เช่น: ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC..."
 # หากปล่อยว่างไว้ จะใช้รหัสผ่าน admin_password แทน
 ssh_public_key = ""
-admin_password = "SubTrackerProd2026!#"
+admin_password = "CHANGE_ME_STRONG_PASSWORD"
 
 # --- DP-201: Optional Managed Kubernetes Cluster (AKS) ---
 # ตั้งเป็น true หากต้องการสร้าง Azure Kubernetes Service (AKS) สำหรับตรวจงาน Managed K8s
@@ -30,3 +30,8 @@ admin_password = "SubTrackerProd2026!#"
 enable_aks_cluster = false
 aks_node_count     = 1
 aks_vm_size        = "Standard_B2s"
+
+# --- Optional Standalone Production VM + Network (VNet/Subnet/NSG/Public IP/NIC) ---
+# ตั้งเป็น true เฉพาะกรณีต้องการ VM แยกต่างหากสำหรับรัน Docker Compose / K3s จริงเท่านั้น
+# (ตั้งเป็น false เป็นค่าเริ่มต้น เพื่อป้องกันการสร้างทรัพยากรซ้ำซ้อนโดยไม่ตั้งใจเมื่อเปิดใช้ AKS)
+enable_standalone_vm = false

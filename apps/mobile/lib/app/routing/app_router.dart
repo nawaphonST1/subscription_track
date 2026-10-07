@@ -62,38 +62,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isOnSplash ? null : RouteConstants.splash;
       }
 
-      // 2. หากยังไม่ได้ทำ Onboarding ให้ไปที่หน้า Onboarding
+      // 2. หากล็อกอินแล้ว (Authenticated) ห้ามไปหน้า Onboarding เด็ดขาด ให้ไปหน้าแรก/Dashboard
+      if (appFlow.isAuthenticated) {
+        // หากยังไม่ได้ตั้ง PIN ให้บังคับไปที่หน้า /setup-pin เท่านั้น
+        final isOnSetupPin = location == RouteConstants.setupPin;
+        if (!appFlow.isPinSetupCompleted) {
+          return isOnSetupPin ? null : RouteConstants.setupPin;
+        }
+
+        // หากตั้ง PIN เสร็จแล้วแต่อยู่ในหน้า Splash, Onboarding, Login, Register, SetupPin หรือ Root (/)
+        // ให้ส่งไปที่ Dashboard ทันที
+        if (isOnSplash ||
+            isOnboarding ||
+            isLoggingIn ||
+            isOnRegister ||
+            isOnSetupPin ||
+            location == '/') {
+          return RouteConstants.dashboard;
+        }
+
+        return null;
+      }
+
+      // 3. สำหรับผู้ใช้ที่ยังไม่ได้ล็อกอิน: หากยังไม่ได้ทำ Onboarding ให้ไปที่หน้า Onboarding
       if (!appFlow.isOnboardingCompleted) {
         return isOnboarding ? null : RouteConstants.onboarding;
       }
 
-      // 3. หากยังไม่ได้ล็อกอิน ให้ไปที่หน้า Login หรือ Register (สมัครสมาชิกได้โดยไม่ต้อง
-      // ล็อกอินก่อน — ไม่งั้นลิงก์ "สมัครสมาชิก" จากหน้า Login จะเด้งกลับมาเองทันที)
-      if (!appFlow.isAuthenticated) {
-        return (isLoggingIn || isOnRegister) ? null : RouteConstants.login;
+      // 4. หากทำ Onboarding แล้วแต่ยังไม่ได้ล็อกอิน ให้ไปที่หน้า Login หรือ Register
+      if (isOnSplash || isOnboarding || location == '/') {
+        return RouteConstants.login;
       }
 
-      // 4. หากล็อกอินแล้วแต่ยังไม่ได้ตั้ง PIN ให้บังคับไปที่หน้า /setup-pin เท่านั้น
-      final isOnSetupPin = location == RouteConstants.setupPin;
-      if (!appFlow.isPinSetupCompleted) {
-        return isOnSetupPin ? null : RouteConstants.setupPin;
-      }
-
-      // หากตั้ง PIN เสร็จแล้วแต่อยู่ในหน้า /setup-pin ให้ไปที่หน้า Dashboard
-      if (isOnSetupPin) {
-        return RouteConstants.dashboard;
-      }
-
-      // 5. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding, Login หรือ Register
-      // ให้เปลี่ยนไปหน้า Dashboard
-      if (isOnSplash || isOnboarding || isLoggingIn || isOnRegister) {
-        return RouteConstants.dashboard;
-      }
-
-      // หากเข้าหน้า Root (/) ให้ส่งไป Dashboard
-      if (location == '/') {
-        return RouteConstants.dashboard;
-      }
+      return (isLoggingIn || isOnRegister) ? null : RouteConstants.login;
 
       return null;
     },

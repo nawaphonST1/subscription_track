@@ -7,6 +7,7 @@ abstract interface class AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   });
 

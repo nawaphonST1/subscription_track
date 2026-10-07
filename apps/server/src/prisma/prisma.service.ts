@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -19,7 +24,9 @@ export class PrismaService
         return;
       } catch (error) {
         if (attempt === maxRetries) {
-          this.logger.error(`Database connection failed after ${maxRetries} attempts`);
+          this.logger.error(
+            `Database connection failed after ${maxRetries} attempts`,
+          );
           throw error;
         }
         this.logger.warn(

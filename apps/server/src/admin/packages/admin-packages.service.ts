@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PackagesService } from '../../packages/packages.service';
 import { CreatePackageDto } from '../../packages/dto/create-package.dto';
@@ -46,7 +47,7 @@ export class AdminPackagesService {
       brandColor: created.brand_color,
       iconUrl: created.icon_url,
       description: created.description,
-      availablePlans: (created as any).available_plans ?? (created as any).availablePlans,
+      availablePlans: created.available_plans,
       isActive: true,
       deletedAt: null,
       createdAt: created.created_at,
@@ -72,7 +73,7 @@ export class AdminPackagesService {
       brandColor: updated.brand_color,
       iconUrl: updated.icon_url,
       description: updated.description,
-      availablePlans: (updated as any).available_plans ?? (updated as any).availablePlans,
+      availablePlans: updated.available_plans,
       isActive,
       deletedAt: isActive ? null : new Date(),
       createdAt: updated.created_at,
@@ -174,7 +175,7 @@ export class AdminPackagesService {
       brand_color: string;
       icon_url: string | null;
       description: string | null;
-      available_plans?: any;
+      available_plans?: Prisma.JsonValue | null;
       created_at: Date;
       updated_at: Date;
     },

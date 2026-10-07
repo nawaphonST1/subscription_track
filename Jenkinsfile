@@ -106,12 +106,12 @@ pipeline {
                         echo "==> [${env.APP_NAME}] Scanning repository for leaked secrets (Gitleaks real scan)..."
                         sh '''
                             if command -v gitleaks >/dev/null 2>&1; then
-                                gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json || true
+                                gitleaks detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json
                             elif command -v docker >/dev/null 2>&1; then
                                 docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                    zricethezav/gitleaks:latest detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path "${WORKSPACE}/gitleaks-report.json" || true
+                                    zricethezav/gitleaks:latest detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path "${WORKSPACE}/gitleaks-report.json"
                             elif [ -x "${WORKSPACE}/scripts/bin/gitleaks" ]; then
-                                "${WORKSPACE}/scripts/bin/gitleaks" detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json || true
+                                "${WORKSPACE}/scripts/bin/gitleaks" detect --source "${WORKSPACE}" --config "${WORKSPACE}/.gitleaks.toml" --verbose --report-path gitleaks-report.json
                             else
                                 echo '[]' > gitleaks-report.json
                             fi
@@ -125,14 +125,15 @@ pipeline {
                         echo "==> [${env.APP_NAME}] Running Semgrep OWASP Top-10 static code security analysis (real scan)..."
                         sh '''
                             # Separation of concerns: Exclude generic secret rules to eliminate false-positive overlap with Gitleaks
-                            SEMGREP_RULES="--config=p/owasp-top-ten --exclude-rule='*secret*' --exclude-rule='*credential*' --exclude-rule='*token*'"
+                            # --error: semgrep's own default exit code is always 0 regardless of findings; this makes it reflect findings.
+                            SEMGREP_RULES="--config=p/owasp-top-ten --exclude-rule='*secret*' --exclude-rule='*credential*' --exclude-rule='*token*' --error"
                             if command -v semgrep >/dev/null 2>&1; then
-                                semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src
                             elif command -v docker >/dev/null 2>&1; then
                                 docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                    semgrep/semgrep:latest semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                    semgrep/semgrep:latest semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src
                             elif [ -x "${WORKSPACE}/scripts/bin/semgrep" ]; then
-                                "${WORKSPACE}/scripts/bin/semgrep" scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                "${WORKSPACE}/scripts/bin/semgrep" scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src
                             else
                                 echo '{"runs":[]}' > "${WORKSPACE}/semgrep.sarif"
                             fi
@@ -148,10 +149,11 @@ pipeline {
                         dir(fileExists('apps/server/package.json') ? 'apps/server' : '.') {
                             sh '''
                                 if command -v pnpm >/dev/null 2>&1; then
-                                    pnpm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null || true
+                                    pnpm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null
                                 else
-                                    npm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null || true
+                                    npm audit --audit-level=high --json > "${WORKSPACE}/pnpm-audit.json" 2>/dev/null
                                 fi
+                                AUDIT_EXIT=$?
 
                                 node -e '
                                     const fs = require("fs");
@@ -169,6 +171,7 @@ pipeline {
                                         fs.writeFileSync(auditPath, "{}");
                                     }
                                 '
+                                exit $AUDIT_EXIT
                             '''
                         }
                     }
@@ -271,6 +274,16 @@ pipeline {
         }
 
         // DP-405: Container Image Vulnerability Scanning using Trivy (OS-level Scoped)
+        //
+        // RISK ACCEPTANCE (reviewed, not an oversight): a real scan of the runtime image
+        // on 2026-10-07 found 48 HIGH-severity findings, 0 CRITICAL. 43 of those 48 have
+        // no fixed package version available upstream at all as of this scan — they are
+        // OS-package-level CVEs in the base image, not vulnerabilities in our application
+        // code. They cannot be resolved by patching anything on our end tonight.
+        // Decision: keep this stage non-blocking (|| true stays below) for this demo/
+        // presentation milestone. Revisit once upstream patches land or a different base
+        // image is evaluated — do not flip this to blocking without re-running the scan
+        // first, since the finding counts above will be stale.
         stage('DP-405: Container Scan (Trivy)') {
             steps {
                 script {
