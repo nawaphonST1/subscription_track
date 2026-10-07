@@ -58,10 +58,14 @@ services:
       PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     env_file:
       - apps/server/.env.production # must define DB_NAME, DB_USER, DB_PASSWORD, DATABASE_URL, JWT_SECRET
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
