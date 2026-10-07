@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $false)]
-    [ValidateSet('combined', 'realistic', 'ceiling', 'spike')]
+    [ValidateSet('combined', 'realistic', 'ceiling', 'spike', 'smoke')]
     [string]$Profile = 'combined',
 
     [Parameter(Mandatory = $false)]
@@ -19,10 +19,10 @@ if ([string]::IsNullOrWhiteSpace($TargetUrl)) {
         if ($tcpCheck) {
             $TargetUrl = "http://localhost:8080"
         } else {
-            $TargetUrl = "http://localhost:3000"
+            $TargetUrl = "https://subscription-track-dev.malaysiawest.cloudapp.azure.com"
         }
     } catch {
-        $TargetUrl = "http://localhost:8080"
+        $TargetUrl = "https://subscription-track-dev.malaysiawest.cloudapp.azure.com"
     }
 }
 
@@ -30,6 +30,9 @@ Write-Host "Target URL : $TargetUrl" -ForegroundColor Yellow
 Write-Host "Profile    : $Profile" -ForegroundColor Yellow
 
 switch ($Profile) {
+    'smoke' {
+        Write-Host "Mode: Quick Smoke Verification (2 VUs for 10s)" -ForegroundColor Green
+    }
     'realistic' {
         Write-Host "Mode: Realistic Traffic (15 -> 50 VUs, normal user think time)" -ForegroundColor Green
     }
