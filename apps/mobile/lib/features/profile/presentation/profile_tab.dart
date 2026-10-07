@@ -74,9 +74,8 @@ class ProfileTab extends ConsumerWidget {
   }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
-    ref.read(onboardingProvider.notifier).setCompleted(false);
     await ref.read(authProvider.notifier).logout();
-    if (context.mounted) context.go(RouteConstants.onboarding);
+    if (context.mounted) context.go(RouteConstants.login);
   }
 }
 

@@ -45,6 +45,7 @@ class _RestoreRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async =>
       right(User(id: 'new-user', email: email));

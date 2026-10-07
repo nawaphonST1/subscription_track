@@ -54,6 +54,7 @@ class InMemoryAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    double? monthlyIncome,
     String? securityPin,
   }) async {
     logger.i('Mock Register with Email: $email');
@@ -65,7 +66,7 @@ class InMemoryAuthRepository implements AuthRepository {
       email: email,
       name: name ?? 'New User',
       authProvider: 'email',
-      //income: 0, // เริ่มต้นด้วย 0
+      income: monthlyIncome ?? 0.0,
       currency: 'THB',
       pinConfigured: securityPin != null && securityPin.isNotEmpty,
       creditCards: [], // เริ่มต้นไม่มีบัตร
