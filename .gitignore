@@ -117,6 +117,10 @@ k8s/postgres-secret.yaml
 *.tfstate.*
 *.tfplan
 
+# Terraform variable files may contain sensitive values; only the .example is tracked
+*.tfvars
+!*.tfvars.example
+
 # Test Artifacts & Coverage Reports
 **/playwright-report/
 **/test-results/
