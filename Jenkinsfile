@@ -459,6 +459,25 @@ pipeline {
                                 DEPLOYED_REMOTE=true
                                 echo "✅ Remote production deployment on ${PROD_TARGET_HOST} succeeded!"
 
+                                # Verify Remote Git Commit SHA matches Jenkins build commit
+                                LOCAL_COMMIT=\$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+                                REMOTE_COMMIT=\$(ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "cd ${PROD_TARGET_PATH} && git rev-parse --short HEAD" 2>/dev/null || echo "unknown")
+                                REMOTE_COMMIT_MSG=\$(ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "cd ${PROD_TARGET_PATH} && git log -1 --pretty=format:'%s'" 2>/dev/null || echo "unknown")
+                                REMOTE_BRANCH=\$(ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "cd ${PROD_TARGET_PATH} && git branch --show-current 2>/dev/null || echo 'HEAD'")
+
+                                echo "=========================================================="
+                                echo "🔍 [AUDIT] Remote VM 1 Synchronization Verification:"
+                                echo "    Target Host          : ${PROD_TARGET_HOST}"
+                                echo "    Pipeline Head Commit : \${LOCAL_COMMIT}"
+                                echo "    VM 1 Active Commit   : \${REMOTE_COMMIT} (\${REMOTE_COMMIT_MSG})"
+                                echo "    VM 1 Active Branch   : \${REMOTE_BRANCH}"
+                                if [ "\${LOCAL_COMMIT}" = "\${REMOTE_COMMIT}" ]; then
+                                    echo "    Sync Result          : 100% IN-SYNC & UP-TO-DATE ✅"
+                                else
+                                    echo "    Sync Result          : COMMIT DIVERGENCE DETECTED ⚠️"
+                                fi
+                                echo "=========================================================="
+
                                 echo "==> [Remote Production VM] Verifying production API health check..."
                                 curl -s -f -k https://subscription-track-dev.malaysiawest.cloudapp.azure.com/health || \
                                 curl -s -f http://${PROD_TARGET_HOST}/health || true
