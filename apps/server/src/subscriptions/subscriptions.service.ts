@@ -74,9 +74,7 @@ export class SubscriptionsService {
         await this.cacheService.delByPattern(
           `cache:user:${userId}:subscriptions:*`,
         );
-        await this.cacheService.delByPattern(
-          `cache:user:${userId}:upcoming:*`,
-        );
+        await this.cacheService.delByPattern(`cache:user:${userId}:upcoming:*`);
       }
       await this.cacheService.del(`cache:user:${userId}:creep-score`);
       await this.cacheService.del(`cache:user:${userId}:profile`);
