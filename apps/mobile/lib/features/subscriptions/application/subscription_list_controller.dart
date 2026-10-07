@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
 import 'package:subscription_track/features/subscriptions/data/remote_subscription_repository.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription.dart';
 import 'package:subscription_track/features/subscriptions/domain/subscription_repository.dart';
@@ -39,6 +40,7 @@ final class SubscriptionListController
     try {
       await _repository.addSubscription(subscription);
       state = AsyncData<List<Subscription>>([...previous, subscription]);
+      ref.invalidate(linkedPaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
       Error.throwWithStackTrace(error, stackTrace);
@@ -53,6 +55,7 @@ final class SubscriptionListController
         for (final item in previous)
           if (item.id == subscription.id) subscription else item,
       ]);
+      ref.invalidate(linkedPaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
       Error.throwWithStackTrace(error, stackTrace);
@@ -68,6 +71,7 @@ final class SubscriptionListController
 
     try {
       await _repository.deleteSubscription(id, pin: pin);
+      ref.invalidate(linkedPaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
       Error.throwWithStackTrace(error, stackTrace);

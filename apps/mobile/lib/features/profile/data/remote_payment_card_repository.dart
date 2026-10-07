@@ -120,6 +120,14 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
   /// render ที่ไหนในแอปตอนนี้ (ยืนยันแล้วก่อนแก้) จึงปล่อยเป็น 0 ไปตรง ๆ ส่วน
   /// colorHex derive จาก card_brand ผ่าน [_colorHexForBrand]
   PaymentCard _mapJsonToCard(Map<String, dynamic> json) {
+    final rawSubscriptions = json['subscriptions'];
+    final detected = rawSubscriptions is List
+        ? rawSubscriptions
+            .whereType<Map<String, dynamic>>()
+            .map(_mapJsonToDetectedSubscription)
+            .toList(growable: false)
+        : const <DetectedSubscription>[];
+
     return PaymentCard(
       id: json['id'] as String? ?? '',
       bankName: json['bank_name'] as String? ?? '',
@@ -127,7 +135,7 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
       creditLimit: 0,
       currentBalance: (json['balance'] as num?)?.toDouble() ?? 0,
       colorHex: _colorHexForBrand(json['card_brand'] as String?),
-      detectedSubscriptions: const [],
+      detectedSubscriptions: detected,
     );
   }
 
@@ -153,21 +161,30 @@ class RemotePaymentCardRepository implements PaymentCardRepository {
     );
   }
 
-  /// `MockBankCardSubscription` ที่แนบมากับ `GET /cards/mock` เพื่อพรีวิว
-  /// ก่อนเชื่อมบัตร — คนละ shape กับ `UserSubscription` ที่ backend
-  /// auto-import จริงตอน `POST /cards/link` (ดูหมายเหตุใน
-  /// `payment_card_linking_controller.dart`)
+  /// `MockBankCardSubscription` ที่แนบมากับ `GET /cards/mock` หรือ
+  /// `subscriptions` ที่แนบมากับ `GET /cards`
   DetectedSubscription _mapJsonToDetectedSubscription(
     Map<String, dynamic> json,
   ) {
+    int daysUntilNextBilling = 0;
+    final renewalDateRaw = json['next_renewal_date'];
+    if (renewalDateRaw is String) {
+      final renewalDate = DateTime.tryParse(renewalDateRaw);
+      if (renewalDate != null) {
+        final diff = renewalDate.difference(DateTime.now()).inDays;
+        daysUntilNextBilling = diff < 0 ? 0 : diff;
+      }
+    }
+
     return DetectedSubscription(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0,
       category: json['category'] as String? ?? '',
-      usageStatus: 'frequent',
-      confidence: 0,
-      daysUntilNextBilling: 0,
+      usageStatus:
+          (json['usage_status'] as String? ?? 'frequent').toLowerCase(),
+      confidence: (json['confidence'] as num?)?.toInt() ?? 100,
+      daysUntilNextBilling: daysUntilNextBilling,
     );
   }
 }

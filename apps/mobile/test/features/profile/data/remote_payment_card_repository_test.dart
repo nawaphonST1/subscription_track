@@ -343,5 +343,53 @@ void main() {
       final cards = await repository.getLinkedCards();
       expect(cards[0].colorHex, ''); // extension falls back to default blue
     });
+
+    test('maps card subscriptions to detectedSubscriptions correctly',
+        () async {
+      final mockInner = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'statusCode': 200,
+            'data': [
+              {
+                'id': 'card-1',
+                'card_brand': 'Visa',
+                'last_4_digits': '4321',
+                'bank_name': 'SCB',
+                'balance': 25000,
+                'subscriptions': [
+                  {
+                    'id': 'sub-1',
+                    'name': 'Netflix Test',
+                    'category': 'Entertainment',
+                    'price': 399,
+                    'billing_cycle': 'MONTHLY',
+                    'next_renewal_date': '2026-11-01T00:00:00.000Z',
+                    'usage_status': 'FREQUENT',
+                  },
+                ],
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final repository = RemotePaymentCardRepository(
+        client: mockInner,
+        baseUrl: testBaseUrl,
+      );
+
+      final cards = await repository.getLinkedCards();
+      expect(cards, hasLength(1));
+      expect(cards[0].detectedSubscriptions, hasLength(1));
+      expect(cards[0].detectedSubscriptions[0].id, 'sub-1');
+      expect(cards[0].detectedSubscriptions[0].name, 'Netflix Test');
+      expect(cards[0].detectedSubscriptions[0].price, 399);
+      expect(cards[0].detectedSubscriptions[0].category, 'Entertainment');
+      expect(cards[0].detectedSubscriptions[0].usageStatus, 'frequent');
+    });
   });
 }

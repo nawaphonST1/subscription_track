@@ -43,6 +43,72 @@ describe('PaymentCardsService', () => {
     service = new PaymentCardsService(prismaMock);
   });
 
+  describe('findAll', () => {
+    it('should return active cards with their active subscriptions and count', async () => {
+      const mockCard = {
+        id: 'card-1',
+        card_nickname: 'Ne SCB Platinum',
+        card_brand: 'Visa',
+        card_type: CardType.CREDIT,
+        last_4_digits: '4321',
+        bank_name: 'Siam Commercial Bank',
+        balance: 25000,
+        currency: 'THB',
+        is_default: true,
+        subscriptions: [
+          {
+            id: 'sub-1',
+            name: 'Netflix Test',
+            category: 'Entertainment',
+            price: 399,
+            billing_cycle: BillingCycle.MONTHLY,
+            next_renewal_date: new Date('2026-11-01T00:00:00.000Z'),
+            usage_status: 'FREQUENT',
+          },
+        ],
+        _count: {
+          subscriptions: 1,
+        },
+        created_at: new Date('2026-09-01T00:00:00.000Z'),
+        updated_at: new Date('2026-09-01T00:00:00.000Z'),
+      };
+
+      prismaMock.paymentCard.findMany.mockResolvedValue([mockCard]);
+
+      const result = await service.findAll('user-1');
+
+      expect(prismaMock.paymentCard.findMany).toHaveBeenCalledWith({
+        where: { user_id: 'user-1', is_active: true },
+        orderBy: [{ is_default: 'desc' }, { created_at: 'desc' }],
+        include: {
+          subscriptions: {
+            where: { status: 'ACTIVE' },
+            orderBy: { next_renewal_date: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              price: true,
+              billing_cycle: true,
+              next_renewal_date: true,
+              usage_status: true,
+            },
+          },
+          _count: {
+            select: { subscriptions: { where: { status: 'ACTIVE' } } },
+          },
+        },
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('card-1');
+      expect(result[0].active_subscriptions_count).toBe(1);
+      expect(result[0].subscriptions).toHaveLength(1);
+      expect(result[0].subscriptions[0].name).toBe('Netflix Test');
+      expect(result[0].subscriptions[0].price).toBe(399);
+    });
+  });
+
   describe('getTotalBalance', () => {
     it('should sum balance across active cards', async () => {
       const userId = 'user-1';

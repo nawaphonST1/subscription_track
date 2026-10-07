@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BillingCycle, UsageStatus } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -11,13 +12,21 @@ import {
 } from 'class-validator';
 
 export class CreateSubscriptionDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     description: 'Associated payment card ID',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  payment_card_id!: string;
+  payment_card_id?: string;
+
+  @ApiPropertyOptional({
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    description: 'Associated payment card ID (alias for payment_card_id)',
+  })
+  @IsOptional()
+  @IsString()
+  card_id?: string;
 
   @ApiPropertyOptional({
     example: 'preset-uuid',
@@ -50,6 +59,9 @@ export class CreateSubscriptionDto {
     example: BillingCycle.MONTHLY,
     description: 'Billing frequency',
   })
+  @Transform(({ value }: { value: unknown }): unknown =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
   @IsEnum(BillingCycle)
   billing_cycle!: BillingCycle;
 
@@ -60,6 +72,14 @@ export class CreateSubscriptionDto {
   @IsOptional()
   @IsDateString()
   start_date?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-10-01',
+    description: 'First bill date (alias for start_date)',
+  })
+  @IsOptional()
+  @IsDateString()
+  first_bill_date?: string;
 
   @ApiPropertyOptional({
     example: '2026-10-01T00:00:00.000Z',

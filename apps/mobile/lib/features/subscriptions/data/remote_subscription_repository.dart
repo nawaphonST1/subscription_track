@@ -125,6 +125,7 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
     }
     return {
       'payment_card_id': subscription.paymentCardId,
+      'card_id': subscription.paymentCardId,
       'name': subscription.name,
       'category': subscription.category,
       'price': subscription.price,
@@ -140,8 +141,10 @@ class RemoteSubscriptionRepository implements SubscriptionRepository {
   /// ไม่ได้ตั้งใจเปลี่ยนบัตร
   Map<String, dynamic> _buildUpdatePayload(Subscription subscription) {
     return {
-      if (subscription.paymentCardId != null)
+      if (subscription.paymentCardId != null) ...{
         'payment_card_id': subscription.paymentCardId,
+        'card_id': subscription.paymentCardId,
+      },
       'name': subscription.name,
       'category': subscription.category,
       'price': subscription.price,

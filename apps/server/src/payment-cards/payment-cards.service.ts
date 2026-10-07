@@ -23,6 +23,19 @@ export class PaymentCardsService {
       where: { user_id: userId, is_active: true },
       orderBy: [{ is_default: 'desc' }, { created_at: 'desc' }],
       include: {
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { next_renewal_date: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            price: true,
+            billing_cycle: true,
+            next_renewal_date: true,
+            usage_status: true,
+          },
+        },
         _count: {
           select: { subscriptions: { where: { status: 'ACTIVE' } } },
         },
@@ -40,6 +53,15 @@ export class PaymentCardsService {
       currency: card.currency,
       is_default: card.is_default,
       active_subscriptions_count: card._count.subscriptions,
+      subscriptions: card.subscriptions.map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        price: Number(s.price),
+        billing_cycle: s.billing_cycle,
+        next_renewal_date: s.next_renewal_date,
+        usage_status: s.usage_status,
+      })),
       created_at: card.created_at,
       updated_at: card.updated_at,
     }));
@@ -269,6 +291,7 @@ export class PaymentCardsService {
             balance: Number(existingPaymentCard.balance),
             currency: existingPaymentCard.currency,
             is_default: existingPaymentCard.is_default,
+            subscriptions: [],
           },
           imported_subscriptions_count: 0,
           imported_subscriptions: [],
@@ -389,6 +412,7 @@ export class PaymentCardsService {
           balance: Number(userCard.balance),
           currency: userCard.currency,
           is_default: userCard.is_default,
+          subscriptions: importedSubscriptions,
         },
         imported_subscriptions_count: importedSubscriptions.length,
         imported_subscriptions: importedSubscriptions,
