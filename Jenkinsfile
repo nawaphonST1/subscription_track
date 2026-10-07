@@ -31,7 +31,7 @@ pipeline {
                     # Ensure Node.js 22 LTS runtime is available
                     if ! command -v node >/dev/null 2>&1; then
                         echo "==> Downloading and configuring Node.js 22 LTS runtime..."
-                        curl -fsSL https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
+                        curl -fsSL https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.gz | tar -xz -C /usr/local --strip-components=1
                     fi
 
                     # Ensure pnpm package manager is available
