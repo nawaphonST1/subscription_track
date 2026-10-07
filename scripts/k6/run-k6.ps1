@@ -2,10 +2,13 @@
 param (
     [Parameter(Mandatory = $false)]
     [ValidateSet('combined', 'realistic', 'ceiling', 'spike', 'smoke')]
-    [string]$Profile = 'combined',
+    [string]$Profile = $(if ($env:TEST_PROFILE) { $env:TEST_PROFILE } else { 'combined' }),
 
     [Parameter(Mandatory = $false)]
-    [string]$TargetUrl = ''
+    [string]$TargetUrl = $(if ($env:TARGET_URL) { $env:TARGET_URL } else { '' }),
+
+    [Parameter(Mandatory = $false)]
+    [int]$UserPoolSize = $(if ($env:USER_POOL_SIZE) { [int]$env:USER_POOL_SIZE } else { 20 })
 )
 
 Write-Host "==========================================================" -ForegroundColor Cyan
@@ -56,4 +59,4 @@ if (-not (Get-Command k6 -ErrorAction SilentlyContinue)) {
 $ScriptPath = Join-Path $PSScriptRoot "load-test.js"
 
 Write-Host "Executing k6 test suite..." -ForegroundColor Cyan
-& k6 run -e "TARGET_URL=$TargetUrl" -e "TEST_PROFILE=$Profile" "$ScriptPath"
+& k6 run -e "TARGET_URL=$TargetUrl" -e "TEST_PROFILE=$Profile" -e "USER_POOL_SIZE=$UserPoolSize" "$ScriptPath"
