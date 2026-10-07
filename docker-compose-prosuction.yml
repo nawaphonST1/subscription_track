@@ -44,7 +44,17 @@
 # to this change, and the DP-5 monitoring plan lists this stack's deployment
 # as still TODO), so there is no existing data under the old implicit name to
 # preserve. They will simply be created as subscription-track-prod_*.
-name: subscription-track-prod
+#
+# Overridable via COMPOSE_PROJECT_NAME: a hardcoded literal here is identical
+# across every clone of this repo, so two independent checkouts run on the
+# same host (e.g. two engineers each testing this file against their own
+# checkout) would still silently share image tags, container names, and
+# volumes despite this being "explicit" — confirmed the hard way when a
+# `docker compose build` from one checkout overwrote the image tags backing
+# a second checkout's running containers on this VM. Set
+# COMPOSE_PROJECT_NAME in your shell/`.env` to a unique value if you're not
+# the only one running this file on this host.
+name: ${COMPOSE_PROJECT_NAME:-subscription-track-prod}
 
 services:
   api:

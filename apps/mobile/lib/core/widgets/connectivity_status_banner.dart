@@ -127,3 +127,68 @@ class ConnectivityStatusBanner extends ConsumerWidget {
     );
   }
 }
+
+bool _isNoInternetDialogShowing = false;
+
+/// แสดงหน้าต่างเด้งเตือน (Dialog) ให้ผู้ใช้เชื่อมต่ออินเทอร์เน็ตก่อนเข้าใช้งาน
+Future<void> showNoInternetDialog(BuildContext context, WidgetRef ref) {
+  if (_isNoInternetDialogShowing) return Future.value();
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (!context.mounted || _isNoInternetDialogShowing) return;
+    _isNoInternetDialogShowing = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.wifi_off_rounded, color: Color(0xFFEF4444), size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'ไม่มีการเชื่อมต่ออินเทอร์เน็ต',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              'กรุณาเชื่อมต่อ Wi-Fi หรือ Cellular ก่อนเข้าใช้งาน เพื่อให้สามารถใช้งานระบบและซิงค์ข้อมูลได้อย่างต่อเนื่อง',
+              style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('ปิด', style: TextStyle(color: Colors.grey)),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  ref.read(networkStatusProvider.notifier).checkStatus();
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('ลองใหม่อีกครั้ง'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      _isNoInternetDialogShowing = false;
+    }
+  });
+
+  return Future.value();
+}

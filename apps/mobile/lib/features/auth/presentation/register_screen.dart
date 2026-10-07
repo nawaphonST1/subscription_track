@@ -42,6 +42,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscureConfirmPin = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!isRunningInFlutterTest) {
+        ref.read(networkStatusProvider.notifier).checkStatus();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
@@ -68,8 +78,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
-  void _onRegister() {
+  Future<void> _onRegister() async {
     if (_pinFormKey.currentState?.validate() ?? false) {
+      final internetChecker = ref.read(internetCheckerProvider);
+      final hasInternet = await internetChecker.hasInternet();
+      if (!hasInternet) {
+        ref
+            .read(networkStatusProvider.notifier)
+            .reportFailure(const Failure.networkError());
+        if (mounted) {
+          showNoInternetDialog(context, ref);
+        }
+        return;
+      }
+
       ref.read(authProvider.notifier).registerWithEmail(
             email: _emailController.text.trim(),
             password: _passwordController.text,
@@ -82,6 +104,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    // ตรวจจับสถานะการเชื่อมต่อเน็ต: เด้งเตือนทันทีเมื่อไม่มีเน็ต
+    ref.listen<ConnectivityState>(networkStatusProvider, (previous, next) {
+      if (next.isNoInternet && (previous == null || !previous.isNoInternet)) {
+        showNoInternetDialog(context, ref);
+      }
+    });
 
     // ดักจับเมื่อสมัครสำเร็จหรือเกิดข้อผิดพลาด
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {

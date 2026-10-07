@@ -6,6 +6,7 @@ import 'package:subscription_track/app/presentation/widgets/main_app_header.dart
 import 'package:subscription_track/app/presentation/widgets/main_app_navigation.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
+import 'package:subscription_track/core/network/network_status.dart';
 import 'package:subscription_track/core/widgets/connectivity_status_banner.dart';
 import 'package:subscription_track/features/dashboard/presentation/dashboard_tab.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
@@ -38,6 +39,13 @@ class MainNavigationShell extends ConsumerWidget {
     ref.listen<int>(currentTabProvider, (_, next) {
       if (navigationShell != null && navigationShell!.currentIndex != next) {
         navigationShell!.goBranch(next, initialLocation: false);
+      }
+    });
+
+    // ตรวจจับสถานะการเชื่อมต่อเน็ต: เด้งเตือนทันทีเมื่อไม่มีเน็ต
+    ref.listen<ConnectivityState>(networkStatusProvider, (previous, next) {
+      if (next.isNoInternet && (previous == null || !previous.isNoInternet)) {
+        showNoInternetDialog(context, ref);
       }
     });
 
