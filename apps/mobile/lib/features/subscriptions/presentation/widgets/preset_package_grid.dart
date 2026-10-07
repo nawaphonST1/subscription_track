@@ -25,7 +25,7 @@ class PresetPackageGrid extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final package = packages[index];
-        return _PresetPackageCard(
+        return PresetPackageCard(
           package: package,
           onTap: () => onSelected(package),
         );
@@ -43,8 +43,8 @@ Color? _parseBrandColor(String? hexString) {
   return val != null ? Color(val) : null;
 }
 
-class _PresetPackageCard extends StatelessWidget {
-  const _PresetPackageCard({required this.package, required this.onTap});
+class PresetPackageCard extends StatelessWidget {
+  const PresetPackageCard({super.key, required this.package, required this.onTap});
 
   final PresetPackage package;
   final VoidCallback onTap;
@@ -66,7 +66,12 @@ class _PresetPackageCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor, width: 1.5),
+          border: Border.all(
+            color: package.plans.isNotEmpty
+                ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+                : theme.dividerColor,
+            width: package.plans.isNotEmpty ? 1.5 : 1.2,
+          ),
           boxShadow: theme.brightness == Brightness.dark
               ? null
               : [
@@ -80,19 +85,50 @@ class _PresetPackageCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: ServiceIcon(
-                  serviceName: package.name,
-                  category: package.category,
-                  size: 24,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: ServiceIcon(
+                      serviceName: package.name,
+                      category: package.category,
+                      size: 24,
+                    ),
+                  ),
                 ),
-              ),
+                if (package.plans.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star_rounded, size: 12, color: Color(0xFFF59E0B)),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${package.plans.length} แพ็กเกจ',
+                          style: const TextStyle(
+                            color: Color(0xFFF59E0B),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
             const Spacer(),
             Text(

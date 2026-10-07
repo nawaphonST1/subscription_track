@@ -6,17 +6,35 @@ class SubscriptionFilterBar extends StatelessWidget {
   const SubscriptionFilterBar({
     required this.filter,
     required this.onQueryChanged,
-    required this.onCategorySelected,
+    this.onCategorySelected,
+    this.onCategoryKeySelected,
+    this.categories,
     super.key,
   });
 
   final SubscriptionFilterState filter;
   final ValueChanged<String> onQueryChanged;
-  final ValueChanged<SubscriptionCategoryFilter> onCategorySelected;
+  final ValueChanged<SubscriptionCategoryFilter>? onCategorySelected;
+  final ValueChanged<String>? onCategoryKeySelected;
+  final List<CategoryFilterItem>? categories;
+
+  static const defaultCategories = [
+    CategoryFilterItem(key: 'all', label: 'ทั้งหมด'),
+    CategoryFilterItem(key: 'streaming', label: 'สตรีมมิ่ง'),
+    CategoryFilterItem(key: 'music', label: 'เพลง'),
+    CategoryFilterItem(key: 'productivity', label: 'การทำงาน'),
+    CategoryFilterItem(key: 'entertainment', label: 'ความบันเทิง'),
+    CategoryFilterItem(key: 'cloud', label: 'คลาวด์'),
+    CategoryFilterItem(key: 'development', label: 'นักพัฒนา'),
+    CategoryFilterItem(key: 'ai', label: 'AI'),
+    CategoryFilterItem(key: 'creative', label: 'สร้างสรรค์'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final items = categories ?? defaultCategories;
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(
@@ -40,18 +58,28 @@ class SubscriptionFilterBar extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    for (final category in SubscriptionCategoryFilter.values)
+                    for (final item in items)
                       Padding(
                         padding: const EdgeInsets.only(right: 7),
                         child: ChoiceChip(
-                          key: Key('category-${category.name}'),
-                          label: Text(category.label),
-                          selected: filter.category == category,
-                          onSelected: (_) => onCategorySelected(category),
+                          key: Key('category-${item.key.toLowerCase()}'),
+                          label: Text(item.label),
+                          selected: filter.selectedCategory.toLowerCase() ==
+                              item.key.toLowerCase(),
+                          onSelected: (_) {
+                            if (onCategoryKeySelected != null) {
+                              onCategoryKeySelected!(item.key);
+                            } else if (onCategorySelected != null) {
+                              onCategorySelected!(
+                                SubscriptionCategoryFilter.fromKey(item.key),
+                              );
+                            }
+                          },
                           selectedColor: theme.colorScheme.primary,
                           backgroundColor: theme.cardColor,
                           side: BorderSide(
-                            color: filter.category == category
+                            color: filter.selectedCategory.toLowerCase() ==
+                                    item.key.toLowerCase()
                                 ? theme.colorScheme.primary
                                 : theme.dividerColor,
                             width: 1.2,

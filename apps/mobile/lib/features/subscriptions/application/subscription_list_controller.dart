@@ -38,8 +38,9 @@ final class SubscriptionListController
   Future<void> addSubscription(Subscription subscription) async {
     final previous = await future;
     try {
-      await _repository.addSubscription(subscription);
       state = AsyncData<List<Subscription>>([...previous, subscription]);
+      await _repository.addSubscription(subscription);
+      state = await AsyncValue.guard(_repository.getSubscriptions);
       ref.invalidate(linkedPaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
@@ -50,11 +51,12 @@ final class SubscriptionListController
   Future<void> updateSubscription(Subscription subscription) async {
     final previous = await future;
     try {
-      await _repository.updateSubscription(subscription);
       state = AsyncData<List<Subscription>>([
         for (final item in previous)
           if (item.id == subscription.id) subscription else item,
       ]);
+      await _repository.updateSubscription(subscription);
+      state = await AsyncValue.guard(_repository.getSubscriptions);
       ref.invalidate(linkedPaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);
@@ -71,6 +73,7 @@ final class SubscriptionListController
 
     try {
       await _repository.deleteSubscription(id, pin: pin);
+      state = await AsyncValue.guard(_repository.getSubscriptions);
       ref.invalidate(linkedPaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<Subscription>>(previous);

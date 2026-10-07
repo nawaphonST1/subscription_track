@@ -84,16 +84,6 @@ class _SelectPackageScreenState extends ConsumerState<SelectPackageScreen> {
                   setState(() => _searchQuery = '');
                 },
               ),
-              const SizedBox(height: 24),
-              Text(
-                'แพ็กเกจยอดนิยม',
-                style: TextStyle(
-                  color: theme.textTheme.titleMedium?.color,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
               Expanded(
                 child: packagesAsync.when(
                   loading: () => const Center(
@@ -126,15 +116,121 @@ class _SelectPackageScreenState extends ConsumerState<SelectPackageScreen> {
                   ),
                   data: (packages) {
                     final query = _searchQuery.trim().toLowerCase();
-                    final visiblePackages = query.isEmpty
-                        ? packages
-                        : packages
-                            .where((p) => p.name.toLowerCase().contains(query))
-                            .toList(growable: false);
+                    if (query.isNotEmpty) {
+                      final visiblePackages = packages
+                          .where((p) => p.name.toLowerCase().contains(query))
+                          .toList(growable: false);
+                      return PresetPackageGrid(
+                        packages: visiblePackages,
+                        onSelected: (package) =>
+                            _handleSelected(context, package),
+                      );
+                    }
 
-                    return PresetPackageGrid(
-                      packages: visiblePackages,
-                      onSelected: (package) => _handleSelected(context, package),
+                    final recommendedPackages =
+                        packages.where((p) => p.plans.isNotEmpty).toList();
+                    final centralPackages =
+                        packages.where((p) => p.plans.isEmpty).toList();
+
+                    return ListView(
+                      children: [
+                        if (recommendedPackages.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome,
+                                color: Color(0xFFF59E0B),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'แพ็กเกจแนะนำใหม่ (${recommendedPackages.length})',
+                                style: TextStyle(
+                                  color: theme.textTheme.titleMedium?.color,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'บริการที่มีหลายแพ็กเกจย่อยและระดับสมาชิกให้เลือกใช้งาน',
+                            style: TextStyle(
+                              color: theme.textTheme.bodySmall?.color,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: recommendedPackages.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 1.1,
+                            ),
+                            itemBuilder: (context, index) {
+                              final pkg = recommendedPackages[index];
+                              return PresetPackageCard(
+                                package: pkg,
+                                onTap: () => _handleSelected(context, pkg),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.hub_rounded,
+                              color: Color(0xFF3B82F6),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'บริการกลางทั้งหมด (${centralPackages.length})',
+                              style: TextStyle(
+                                color: theme.textTheme.titleMedium?.color,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'บริการมาตรฐานกลางที่พร้อมเพิ่มในรายการของคุณ',
+                          style: TextStyle(
+                            color: theme.textTheme.bodySmall?.color,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: centralPackages.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.1,
+                          ),
+                          itemBuilder: (context, index) {
+                            final pkg = centralPackages[index];
+                            return PresetPackageCard(
+                              package: pkg,
+                              onTap: () => _handleSelected(context, pkg),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                     );
                   },
                 ),

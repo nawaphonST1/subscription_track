@@ -12,6 +12,7 @@ import 'package:subscription_track/features/admin/domain/admin_user.dart';
 import 'package:subscription_track/features/auth/data/remote_auth_repository.dart';
 
 import 'package:subscription_track/features/admin/domain/admin_user_detail.dart';
+import 'package:subscription_track/features/subscriptions/domain/preset_plan.dart';
 
 abstract class AdminRepository {
   Future<Either<Failure, AdminStats>> getStats();
@@ -23,6 +24,20 @@ abstract class AdminRepository {
     String? role,
     double? monthlyIncome,
   });
+  Future<Either<Failure, void>> createSubscription(
+    String userId, {
+    required String name,
+    required String category,
+    required double price,
+    String billingCycle = 'MONTHLY',
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
+    DateTime? nextRenewalDate,
+    String? status,
+    String? notes,
+    String? brandColor,
+  });
   Future<Either<Failure, void>> updateSubscription(
     String subId, {
     String? name,
@@ -33,6 +48,9 @@ abstract class AdminRepository {
     DateTime? nextRenewalDate,
     String? notes,
     String? brandColor,
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
   });
   Future<Either<Failure, void>> deleteSubscription(String subId);
   Future<Either<Failure, void>> deleteUser(String id);
@@ -45,6 +63,7 @@ abstract class AdminRepository {
     String brandColor = '#3B82F6',
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   });
   Future<Either<Failure, AdminPackage>> updatePackage(
     String id, {
@@ -55,6 +74,7 @@ abstract class AdminRepository {
     String? brandColor,
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   });
   Future<Either<Failure, AdminPackage>> togglePackageActive(
     String id,
@@ -180,6 +200,55 @@ class RemoteAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<Either<Failure, void>> createSubscription(
+    String userId, {
+    required String name,
+    required String category,
+    required double price,
+    String billingCycle = 'MONTHLY',
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
+    DateTime? nextRenewalDate,
+    String? status,
+    String? notes,
+    String? brandColor,
+  }) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/admin/users/$userId/subscriptions'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'category': category,
+          'price': price,
+          'billing_cycle': billingCycle,
+          if (planTier != null && planTier.isNotEmpty) 'plan_tier': planTier,
+          if (presetId != null && presetId.isNotEmpty) 'preset_id': presetId,
+          if (paymentCardId != null && paymentCardId.isNotEmpty)
+            'payment_card_id': paymentCardId,
+          if (nextRenewalDate != null)
+            'next_renewal_date': nextRenewalDate.toIso8601String(),
+          if (status != null) 'status': status,
+          if (notes != null) 'notes': notes,
+          if (brandColor != null) 'brand_color': brandColor,
+        }),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return right(null);
+      }
+      final decoded = jsonDecode(response.body);
+      return left(failureFromErrorBody(
+        decoded is Map<String, dynamic> ? decoded : {},
+        response.statusCode,
+      ));
+    } catch (_) {
+      return left(const Failure.networkError());
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateSubscription(
     String subId, {
     String? name,
@@ -190,6 +259,9 @@ class RemoteAdminRepository implements AdminRepository {
     DateTime? nextRenewalDate,
     String? notes,
     String? brandColor,
+    String? planTier,
+    String? presetId,
+    String? paymentCardId,
   }) async {
     try {
       final response = await _client.patch(
@@ -205,6 +277,9 @@ class RemoteAdminRepository implements AdminRepository {
             'next_renewal_date': nextRenewalDate.toIso8601String(),
           if (notes != null) 'notes': notes,
           if (brandColor != null) 'brand_color': brandColor,
+          if (planTier != null) 'plan_tier': planTier,
+          if (presetId != null) 'preset_id': presetId,
+          if (paymentCardId != null) 'payment_card_id': paymentCardId,
         }),
       );
 
@@ -299,6 +374,7 @@ class RemoteAdminRepository implements AdminRepository {
     String brandColor = '#3B82F6',
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   }) async {
     try {
       final response = await _client.post(
@@ -312,6 +388,8 @@ class RemoteAdminRepository implements AdminRepository {
           'brand_color': brandColor,
           if (iconUrl != null) 'icon_url': iconUrl,
           if (description != null) 'description': description,
+          if (plans != null)
+            'available_plans': plans.map((p) => p.toJson()).toList(),
         }),
       );
 
@@ -334,6 +412,7 @@ class RemoteAdminRepository implements AdminRepository {
     String? brandColor,
     String? iconUrl,
     String? description,
+    List<PresetPlan>? plans,
   }) async {
     try {
       final response = await _client.patch(
@@ -347,6 +426,8 @@ class RemoteAdminRepository implements AdminRepository {
           if (brandColor != null) 'brand_color': brandColor,
           if (iconUrl != null) 'icon_url': iconUrl,
           if (description != null) 'description': description,
+          if (plans != null)
+            'available_plans': plans.map((p) => p.toJson()).toList(),
         }),
       );
 

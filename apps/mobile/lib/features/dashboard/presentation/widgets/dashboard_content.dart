@@ -46,6 +46,7 @@ class DashboardContent extends ConsumerWidget {
                                   DashboardHeroCard(
                                     monthlyTotal: summary.monthlyTotal,
                                     creepScore: summary.creepScore,
+                                    totalCardFunds: summary.totalCardFunds ?? 0,
                                   ),
                                   const SizedBox(height: 22),
                                   unusedAlert,
@@ -67,6 +68,7 @@ class DashboardContent extends ConsumerWidget {
                             DashboardHeroCard(
                               monthlyTotal: summary.monthlyTotal,
                               creepScore: summary.creepScore,
+                              totalCardFunds: summary.totalCardFunds ?? 0,
                             ),
                             const SizedBox(height: 22),
                             DashboardRenewalsSection(

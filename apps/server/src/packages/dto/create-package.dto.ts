@@ -66,4 +66,13 @@ export class CreatePackageDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'List of recommended plan tiers (e.g. Pro, Plus, Family)',
+  })
+  @IsOptional()
+  available_plans?: any[];
+
+  @IsOptional()
+  availablePlans?: any[];
 }

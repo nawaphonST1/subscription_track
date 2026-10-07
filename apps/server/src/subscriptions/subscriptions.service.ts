@@ -100,11 +100,9 @@ export class SubscriptionsService {
 
     const where: Prisma.UserSubscriptionWhereInput = {
       user_id: userId,
+      status: query.status ? query.status : SubscriptionStatus.ACTIVE,
+      payment_card: { is_active: true },
     };
-
-    if (query.status) {
-      where.status = query.status;
-    }
 
     if (query.category) {
       where.category = { equals: query.category, mode: 'insensitive' };

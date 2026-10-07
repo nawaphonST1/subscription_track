@@ -45,6 +45,8 @@ class AdminUserSubscriptionDetail {
   final String usageStatus;
   final String? brandColor;
   final String? notes;
+  final String? planTier;
+  final String? presetId;
   final Map<String, dynamic>? paymentCard;
 
   const AdminUserSubscriptionDetail({
@@ -59,6 +61,8 @@ class AdminUserSubscriptionDetail {
     this.usageStatus = 'FREQUENT',
     this.brandColor,
     this.notes,
+    this.planTier,
+    this.presetId,
     this.paymentCard,
   });
 
@@ -68,7 +72,7 @@ class AdminUserSubscriptionDetail {
       name: json['name'] as String? ?? '',
       category: json['category'] as String? ?? 'Other',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      billingCycle: json['billingCycle'] as String? ?? 'MONTHLY',
+      billingCycle: json['billingCycle'] as String? ?? json['billing_cycle'] as String? ?? 'MONTHLY',
       startDate: json['startDate'] != null
           ? DateTime.tryParse(json['startDate'].toString())
           : null,
@@ -79,6 +83,8 @@ class AdminUserSubscriptionDetail {
       usageStatus: json['usageStatus'] as String? ?? 'FREQUENT',
       brandColor: json['brandColor'] as String?,
       notes: json['notes'] as String?,
+      planTier: json['planTier'] as String? ?? json['plan_tier'] as String?,
+      presetId: json['presetId'] as String? ?? json['preset_id'] as String?,
       paymentCard: json['paymentCard'] as Map<String, dynamic>?,
     );
   }

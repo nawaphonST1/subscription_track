@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/credit_card.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
 import 'package:subscription_track/features/profile/application/user_income_controller.dart';
+import 'package:subscription_track/features/profile/domain/payment_card.dart';
 
 Future<void> showIncomeEditorSheet({
   required BuildContext context,
@@ -21,9 +23,11 @@ class _IncomeEditorSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final income = ref.watch(userIncomeProvider);
+    final displayIncome = ref.watch(effectiveIncomeProvider);
     final user = ref.watch(authProvider).value;
-    final creditCards = user?.creditCards ?? const <CreditCard>[];
+    final linkedCardsAsync = ref.watch(linkedPaymentCardsProvider);
+    final linkedCards = linkedCardsAsync.value ?? const <PaymentCard>[];
+    final legacyCards = user?.creditCards ?? const <CreditCard>[];
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -45,7 +49,7 @@ class _IncomeEditorSheet extends ConsumerWidget {
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'สรุปรายได้จากบัตรเครดิต',
+                  'สรุปรายได้จากบัตรชำระเงิน',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -53,8 +57,8 @@ class _IncomeEditorSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'คำนวณอัตโนมัติจากผลรวมยอดเงินคงเหลือในบัตรเครดิต (CreditCard Domain) '
-            'เพื่อใช้ประเมิน Creep Risk',
+            'คำนวณอัตโนมัติจากผลรวมยอดเงินคงเหลือในบัตรชำระเงินที่ผูกไว้ '
+            'เพื่อใช้ประเมินความเสี่ยง Creep Risk และภาพรวมการเงิน',
             style: TextStyle(
               color: theme.textTheme.bodySmall?.color,
               fontSize: 12,
@@ -65,27 +69,45 @@ class _IncomeEditorSheet extends ConsumerWidget {
             key: const Key('income-field'),
             readOnly: true,
             controller: TextEditingController(
-              text: income.toStringAsFixed(0),
+              text: displayIncome.toStringAsFixed(0),
             ),
             decoration: const InputDecoration(
               prefixText: '฿ ',
-              labelText: 'รายได้รวมต่อเดือน (คำนวณจากบัตรเครดิต)',
+              labelText: 'รายได้รวมต่อเดือน (คำนวณจากบัตรที่ผูกไว้)',
               suffixIcon: Icon(Icons.lock_outline_rounded, size: 20),
-              helperText: 'ดึงข้อมูลจาก CreditCard ในระบบ ไม่อนุญาตให้แก้ไขโดยตรง',
+              helperText: 'ดึงข้อมูลจากบัตรที่ผูกไว้ในระบบ ไม่อนุญาตให้แก้ไขโดยตรง',
             ),
           ),
           const SizedBox(height: 20),
           const Text(
-            'รายการบัตรเครดิตที่ผูกไว้ (CreditCard Model):',
+            'รายการบัตรที่ผูกไว้ในระบบ:',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
           const SizedBox(height: 8),
-          if (creditCards.isEmpty)
+          if (linkedCardsAsync.isLoading && linkedCards.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20.0),
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (linkedCards.isEmpty && legacyCards.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12.0),
-              child: Text(
-                'ไม่พบบัตรเครดิตในระบบ',
-                style: TextStyle(color: theme.textTheme.bodySmall?.color),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'ไม่พบบัตรชำระเงินในระบบ',
+                      style: TextStyle(color: theme.textTheme.bodySmall?.color),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => ref.refresh(linkedPaymentCardsProvider),
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text('โหลดใหม่'),
+                  ),
+                ],
               ),
             )
           else
@@ -94,10 +116,16 @@ class _IncomeEditorSheet extends ConsumerWidget {
               margin: EdgeInsets.zero,
               child: Column(
                 children: [
-                  for (var i = 0; i < creditCards.length; i++) ...[
-                    if (i > 0) Divider(height: 1, color: theme.dividerColor),
-                    _CreditCardRowTile(card: creditCards[i]),
-                  ],
+                  if (linkedCards.isNotEmpty)
+                    for (var i = 0; i < linkedCards.length; i++) ...[
+                      if (i > 0) Divider(height: 1, color: theme.dividerColor),
+                      _PaymentCardRowTile(card: linkedCards[i]),
+                    ]
+                  else
+                    for (var i = 0; i < legacyCards.length; i++) ...[
+                      if (i > 0) Divider(height: 1, color: theme.dividerColor),
+                      _CreditCardRowTile(card: legacyCards[i]),
+                    ],
                 ],
               ),
             ),
@@ -108,6 +136,33 @@ class _IncomeEditorSheet extends ConsumerWidget {
             child: const Text('เข้าใจแล้ว'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PaymentCardRowTile extends StatelessWidget {
+  const _PaymentCardRowTile({required this.card});
+
+  final PaymentCard card;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.credit_card_rounded, color: Color(0xFF10B981)),
+      title: Text(
+        '${card.bankName} (**** ${card.last4Digits})',
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        card.creditLimit > 0
+            ? 'วงเงินคงเหลือ ฿${card.currentBalance.toStringAsFixed(0)} / ฿${card.creditLimit.toStringAsFixed(0)}'
+            : 'ยอดเงินในบัตร ฿${card.currentBalance.toStringAsFixed(0)}',
+      ),
+      trailing: Text(
+        '฿${card.currentBalance.toStringAsFixed(0)}',
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
       ),
     );
   }

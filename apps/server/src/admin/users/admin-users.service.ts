@@ -115,6 +115,8 @@ export class AdminUsersService {
         status: s.status,
         brandColor: s.brand_color,
         notes: s.notes,
+        planTier: s.plan_tier,
+        presetId: s.preset_id,
         paymentCard: s.payment_card
           ? {
               id: s.payment_card.id,
@@ -189,25 +191,33 @@ export class AdminUsersService {
       throw new NotFoundException(`Subscription with ID '${subId}' not found`);
     }
 
-    const cardId = dto.payment_card_id || dto.card_id;
+    const planTier = dto.plan_tier !== undefined ? dto.plan_tier : dto.planTier;
+    const presetId = dto.preset_id !== undefined ? dto.preset_id : dto.presetId;
+    const cardId = dto.payment_card_id || dto.card_id || dto.paymentCardId;
+    const billingCycle = dto.billing_cycle ?? dto.billingCycle;
+    const nextRenewalDate = dto.next_renewal_date ?? dto.nextRenewalDate;
+    const brandColor = dto.brand_color ?? dto.brandColor;
+
     const updated = await this.prisma.userSubscription.update({
       where: { id: subId },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.category !== undefined && { category: dto.category }),
         ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.billing_cycle !== undefined && {
-          billing_cycle: dto.billing_cycle,
+        ...(billingCycle !== undefined && {
+          billing_cycle: billingCycle,
         }),
         ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.next_renewal_date !== undefined && {
-          next_renewal_date: new Date(dto.next_renewal_date),
+        ...(nextRenewalDate !== undefined && {
+          next_renewal_date: new Date(nextRenewalDate),
         }),
         ...(dto.usage_status !== undefined && {
           usage_status: dto.usage_status,
         }),
-        ...(dto.brand_color !== undefined && { brand_color: dto.brand_color }),
+        ...(brandColor !== undefined && { brand_color: brandColor }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(planTier !== undefined && { plan_tier: planTier }),
+        ...(presetId !== undefined && { preset_id: presetId }),
         ...(cardId !== undefined && {
           payment_card_id: cardId,
         }),
@@ -219,11 +229,130 @@ export class AdminUsersService {
       name: updated.name,
       category: updated.category,
       price: Number(updated.price),
+      planTier: updated.plan_tier,
+      presetId: updated.preset_id,
       billingCycle: updated.billing_cycle,
       status: updated.status,
       nextRenewalDate: updated.next_renewal_date,
       brandColor: updated.brand_color,
       notes: updated.notes,
+    };
+  }
+
+  /**
+   * สร้าง Subscription ให้ผู้ใช้ (Admin action)
+   */
+  async createSubscription(userId: string, dto: any) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { payment_cards: true },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID '${userId}' not found`);
+    }
+
+    let cardId = dto.payment_card_id || dto.paymentCardId || dto.card_id;
+    if (!cardId) {
+      const activeCard = user.payment_cards.find((c) => c.is_active);
+      if (activeCard) {
+        cardId = activeCard.id;
+      } else {
+        const newCard = await this.prisma.paymentCard.create({
+          data: {
+            user_id: userId,
+            card_nickname: 'Admin Virtual Card',
+            card_brand: 'Visa',
+            last_4_digits: '0000',
+            bank_name: 'Admin System',
+            is_active: true,
+          },
+        });
+        cardId = newCard.id;
+      }
+    }
+
+    const startDate = dto.start_date || dto.startDate
+      ? new Date(dto.start_date || dto.startDate)
+      : new Date();
+
+    const billingCycle = (
+      dto.billing_cycle ||
+      dto.billingCycle ||
+      'MONTHLY'
+    ).toUpperCase();
+
+    let nextRenewal = dto.next_renewal_date || dto.nextRenewalDate
+      ? new Date(dto.next_renewal_date || dto.nextRenewalDate)
+      : new Date(startDate);
+
+    if (!dto.next_renewal_date && !dto.nextRenewalDate) {
+      if (billingCycle === 'YEARLY') {
+        nextRenewal.setFullYear(nextRenewal.getFullYear() + 1);
+      } else if (billingCycle === 'WEEKLY') {
+        nextRenewal.setDate(nextRenewal.getDate() + 7);
+      } else {
+        nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+      }
+    }
+
+    const planTier = dto.plan_tier !== undefined ? dto.plan_tier : dto.planTier;
+    const presetId = dto.preset_id !== undefined ? dto.preset_id : dto.presetId;
+
+    const created = await this.prisma.userSubscription.create({
+      data: {
+        user_id: userId,
+        payment_card_id: cardId,
+        preset_id: presetId || null,
+        plan_tier: planTier || null,
+        name: dto.name,
+        category: dto.category || 'Other',
+        price: dto.price !== undefined ? Number(dto.price) : 0,
+        billing_cycle: billingCycle,
+        start_date: startDate,
+        next_renewal_date: nextRenewal,
+        status: (dto.status || 'ACTIVE').toUpperCase(),
+        usage_status: (
+          dto.usage_status ||
+          dto.usageStatus ||
+          'FREQUENT'
+        ).toUpperCase(),
+        brand_color: dto.brand_color || dto.brandColor || '#3B82F6',
+        notes: dto.notes || null,
+      },
+      include: {
+        payment_card: {
+          select: {
+            id: true,
+            card_nickname: true,
+            card_brand: true,
+            last_4_digits: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: created.id,
+      name: created.name,
+      category: created.category,
+      price: Number(created.price),
+      planTier: created.plan_tier,
+      presetId: created.preset_id,
+      billingCycle: created.billing_cycle,
+      startDate: created.start_date,
+      nextRenewalDate: created.next_renewal_date,
+      status: created.status,
+      usageStatus: created.usage_status,
+      brandColor: created.brand_color,
+      notes: created.notes,
+      paymentCard: created.payment_card
+        ? {
+            id: created.payment_card.id,
+            nickname: created.payment_card.card_nickname,
+            brand: created.payment_card.card_brand,
+            last4: created.payment_card.last_4_digits,
+          }
+        : null,
     };
   }
 

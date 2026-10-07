@@ -7,6 +7,8 @@ import 'package:subscription_track/features/profile/domain/payment_card.dart';
 import 'package:subscription_track/features/profile/domain/payment_card_repository.dart';
 import 'package:subscription_track/features/profile/presentation/widgets/linked_accounts_card.dart';
 
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
 import '../../../support/in_memory_pin_repository.dart';
 
 class _CapturingPaymentCardRepository implements PaymentCardRepository {
@@ -61,6 +63,9 @@ void main() {
         overrides: [
           pinRepositoryProvider.overrideWithValue(pinRepo),
           paymentCardRepositoryProvider.overrideWithValue(cardRepo),
+          subscriptionRepositoryProvider.overrideWithValue(
+            InMemorySubscriptionRepository(ioDelay: Duration.zero),
+          ),
         ],
         child: const MaterialApp(
           home: Scaffold(

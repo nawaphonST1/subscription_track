@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:subscription_track/features/dashboard/application/dashboard_summary_provider.dart';
 import 'package:subscription_track/features/profile/data/remote_payment_card_repository.dart';
 import 'package:subscription_track/features/profile/domain/payment_card.dart';
 import 'package:subscription_track/features/profile/domain/payment_card_repository.dart';
+import 'package:subscription_track/features/savings/application/savings_provider.dart';
 import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
 
 final paymentCardRepositoryProvider = Provider<PaymentCardRepository>(
@@ -52,9 +54,11 @@ final class PaymentCardLinkingController
 
     try {
       await ref.read(subscriptionListProvider.notifier).refresh();
+      ref.invalidate(savingsNotifierProvider);
+      ref.invalidate(creepScoreFutureProvider);
       final subscriptionsAfter =
           (await ref.read(subscriptionListProvider.future)).length;
-      state = AsyncData([...previous, card]);
+      state = AsyncData([...previous.where((c) => c.id != card.id), card]);
       return PaymentCardLinkResult(
         card: card,
         importedSubscriptionCount:
@@ -68,12 +72,22 @@ final class PaymentCardLinkingController
 
   Future<void> deleteCard(String id, {String? pin}) async {
     final previous = await future;
-    state = AsyncData<List<PaymentCard>>(
-      previous.where((item) => item.id != id).toList(growable: false),
-    );
+    final updated =
+        previous.where((item) => item.id != id).toList(growable: false);
+    state = AsyncData<List<PaymentCard>>(updated);
 
     try {
       await _repository.deleteCard(id, pin: pin);
+      state = AsyncData<List<PaymentCard>>(updated);
+
+      try {
+        await ref.read(subscriptionListProvider.notifier).refresh();
+      } catch (_) {
+        // Non-critical if offline or in widget test
+      }
+      ref.invalidate(savingsNotifierProvider);
+      ref.invalidate(creepScoreFutureProvider);
+      ref.invalidate(availablePaymentCardsProvider);
     } catch (error, stackTrace) {
       state = AsyncData<List<PaymentCard>>(previous);
       Error.throwWithStackTrace(error, stackTrace);
