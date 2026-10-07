@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   Optional,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -125,35 +126,68 @@ export class AuthService {
 
     // Verify Google ID Token if provider is google (OAuth2Client)
     if (dto.provider === 'google') {
-      const googleClientId = process.env.GOOGLE_CLIENT_ID;
-      if (googleClientId && dto.token && dto.token !== 'mock-google-token') {
+      const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
+      if (!googleClientId) {
+        throw new InternalServerErrorException(
+          'GOOGLE_CLIENT_ID is not configured on the server',
+        );
+      }
+
+      if (!dto.token) {
+        throw new UnauthorizedException('Google token is required');
+      }
+
+      const client = new OAuth2Client(googleClientId);
+      let verifiedEmail: string | undefined;
+      let verifiedName: string | undefined;
+
+      try {
+        const ticket = await client.verifyIdToken({
+          idToken: dto.token,
+          audience: googleClientId,
+        });
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
+          throw new UnauthorizedException('Invalid Google ID Token payload');
+        }
+        if (!payload.email_verified) {
+          throw new UnauthorizedException(
+            'Google account email is not verified',
+          );
+        }
+        verifiedEmail = payload.email.toLowerCase();
+        verifiedName = payload.name ?? name;
+      } catch (idTokenErr) {
+        if (idTokenErr instanceof UnauthorizedException) {
+          throw idTokenErr;
+        }
+
         try {
-          const client = new OAuth2Client(googleClientId);
-          try {
-            const ticket = await client.verifyIdToken({
-              idToken: dto.token,
-              audience: googleClientId,
-            });
-            const payload = ticket.getPayload();
-            if (payload && payload.email) {
-              email = payload.email.toLowerCase();
-              name = payload.name ?? name;
-            }
-          } catch {
-            const tokenInfo = await client.getTokenInfo(dto.token);
-            if (tokenInfo.email) {
-              email = tokenInfo.email.toLowerCase();
-              name = dto.name || name;
-            } else {
-              throw new UnauthorizedException('Invalid Google Token');
-            }
+          const tokenInfo = await client.getTokenInfo(dto.token);
+          if (tokenInfo.aud !== googleClientId) {
+            throw new UnauthorizedException(
+              'Google Access Token audience does not match client ID',
+            );
           }
-        } catch {
+          if (!tokenInfo.email) {
+            throw new UnauthorizedException(
+              'Invalid Google Access Token: missing email',
+            );
+          }
+          verifiedEmail = tokenInfo.email.toLowerCase();
+          verifiedName = dto.name || name;
+        } catch (accessTokenErr) {
+          if (accessTokenErr instanceof UnauthorizedException) {
+            throw accessTokenErr;
+          }
           throw new UnauthorizedException(
             'Invalid Google ID Token or Access Token',
           );
         }
       }
+
+      email = verifiedEmail;
+      name = verifiedName;
     }
 
     let user = await this.prisma.user.findUnique({
