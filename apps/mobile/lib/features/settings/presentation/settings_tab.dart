@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/application/theme_mode_controller.dart';
+import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/layout/app_breakpoints.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
+import 'package:subscription_track/features/admin/application/admin_controller.dart';
 import 'package:subscription_track/features/app_update/application/app_update_controller.dart';
 import 'package:subscription_track/features/app_update/presentation/app_update_dialog.dart';
 import 'package:subscription_track/features/settings/application/notification_reminder_controller.dart';
@@ -15,6 +18,7 @@ class SettingsTab extends ConsumerWidget {
     final reminderEnabled = ref.watch(notificationReminderProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    final isAdmin = ref.watch(isAdminUserProvider).value ?? false;
 
     return Align(
       alignment: Alignment.topCenter,
@@ -109,6 +113,19 @@ class SettingsTab extends ConsumerWidget {
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => _handleCheckForUpdate(context, ref),
                   ),
+                  if (isAdmin) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.admin_panel_settings_rounded,
+                        color: Color(0xFF6366F1),
+                      ),
+                      title: const Text('ระบบจัดการผู้ดูแล (Admin Portal)'),
+                      subtitle: const Text('จัดการบริการ, แพ็กเกจ และบัญชีผู้ใช้'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => context.push(RouteConstants.admin),
+                    ),
+                  ],
                 ],
               ),
             ),

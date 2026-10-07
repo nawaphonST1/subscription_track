@@ -58,10 +58,14 @@ services:
       PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     env_file:
       - apps/server/.env.production # must define DB_NAME, DB_USER, DB_PASSWORD, DATABASE_URL, JWT_SECRET
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -75,8 +79,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    # No `ports:` — only Nginx is host-facing; reach the API via the
-    # `api:8080` Compose DNS name, or through Nginx on the host.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.routers.api.service=api"
+      - "traefik.http.routers.api-secure.rule=Host(`${DOMAIN_NAME:-subscription-track-dev.malaysiawest.cloudapp.azure.com}`)"
+      - "traefik.http.routers.api-secure.entrypoints=websecure"
+      - "traefik.http.routers.api-secure.tls=true"
+      - "traefik.http.routers.api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.api-secure.service=api"
+      - "traefik.http.services.api.loadbalancer.server.port=8080"
+    # No `ports:` — Traefik is host-facing; routes traffic to `api:8080` internally.
 
   postgres:
     image: postgres:16-alpine
@@ -142,42 +156,34 @@ services:
     profiles:
       - migrate
 
-  # DP-507. nginx:1.27-alpine is EOL (Docker Hub stopped rebuilding that tag
-  # in April 2025) and carries dozens of known CVEs in its Alpine base
-  # packages; 1.30-alpine is the actively-maintained stable branch. Bumped
-  # here because this is the exact service a TLS hardening ticket touches —
-  # shipping new TLS config on a known-EOL image would undercut the point.
-  nginx:
-    image: nginx:1.30-alpine
+  # DP-300 / DP-301: Modern Cloud-Native Reverse Proxy & Ingress Controller
+  traefik:
+    image: traefik:latest
     restart: unless-stopped
+    command:
+      - "--api.insecure=false"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@subscription-track-dev.malaysiawest.cloudapp.azure.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
     ports:
-      - "80:8080"
-      - "443:8443"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - certbot-webroot:/var/www/certbot:ro
-      - certbot-certs:/etc/letsencrypt:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_data:/data
     depends_on:
       api:
         condition: service_healthy
 
-  # DP-507. Renews the certificate nginx serves on 8443. NOT started by a
-  # plain `up` (profile-gated): the first certificate has to be issued by
-  # hand first — see the "First deploy" steps at the top of
-  # infra/nginx/nginx.prod.conf. Once that's done:
-  #   docker compose -f docker-compose-prosuction.yml --profile tls up -d certbot
-  certbot:
-    image: certbot/certbot:v5.8.0
-    volumes:
-      - certbot-webroot:/var/www/certbot
-      - certbot-certs:/etc/letsencrypt
-    entrypoint: >
-      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h; done"
-    profiles:
-      - tls
-
 volumes:
   postgres_data:
   redis_data:
-  certbot-webroot:
-  certbot-certs:
+  traefik_data:

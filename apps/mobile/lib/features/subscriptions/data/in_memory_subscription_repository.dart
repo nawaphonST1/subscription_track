@@ -42,7 +42,7 @@ final class InMemorySubscriptionRepository implements SubscriptionRepository {
   }
 
   @override
-  Future<void> deleteSubscription(String id) async {
+  Future<void> deleteSubscription(String id, {String? pin}) async {
     await _simulateIo();
     final index = _indexOf(id);
     _subscriptions.removeAt(index);

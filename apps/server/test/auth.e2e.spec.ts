@@ -109,7 +109,7 @@ describe('Application-level HTTP authentication flow (isolated Prisma test doubl
 
   afterAll(async () => {
     try {
-      await app.close();
+      await app?.close();
     } finally {
       vi.unstubAllEnvs();
     }
@@ -196,5 +196,19 @@ describe('Application-level HTTP authentication flow (isolated Prisma test doubl
     expect(profileResponse.body.data.name).toBe(seededUser.name);
     expect(profileResponse.body.data.active_cards_count).toBe(1);
     expect(profileResponse.body.data.active_subscriptions_count).toBe(2);
+  });
+
+  it('6. POST /auth/register omitting security_pin -> returns 400 Bad Request', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: 'newuser@example.com',
+        password: 'Password123!',
+        name: 'New User',
+      })
+      .expect(400);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.statusCode).toBe(400);
   });
 });

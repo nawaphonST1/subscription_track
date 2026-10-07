@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/errors/failures.dart';
+import 'package:subscription_track/core/network/network_status.dart';
+import 'package:subscription_track/core/widgets/connectivity_status_banner.dart';
+import 'package:subscription_track/core/widgets/pin/pin.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
+
+enum RegisterStep { credentials, pinSetup }
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -14,14 +20,26 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _credentialsFormKey = GlobalKey<FormState>();
+  final _pinFormKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  final _pinController = TextEditingController();
+  final _confirmPinController = TextEditingController();
+
+  final _pinFocusNode = FocusNode();
+  final _confirmPinFocusNode = FocusNode();
+
+  RegisterStep _step = RegisterStep.credentials;
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _obscurePin = true;
+  bool _obscureConfirmPin = true;
 
   @override
   void dispose() {
@@ -29,15 +47,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _pinController.dispose();
+    _confirmPinController.dispose();
+    _pinFocusNode.dispose();
+    _confirmPinFocusNode.dispose();
     super.dispose();
   }
 
+  void _onNextStep() {
+    if (_credentialsFormKey.currentState?.validate() ?? false) {
+      setState(() {
+        _step = RegisterStep.pinSetup;
+      });
+    }
+  }
+
+  void _onPreviousStep() {
+    setState(() {
+      _step = RegisterStep.credentials;
+    });
+  }
+
   void _onRegister() {
-    if (_formKey.currentState?.validate() ?? false) {
+    if (_pinFormKey.currentState?.validate() ?? false) {
       ref.read(authProvider.notifier).registerWithEmail(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             name: _nameController.text.trim(),
+            securityPin: _pinController.text.trim(),
           );
     }
   }
@@ -50,6 +87,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       if (next is AsyncError) {
         final error = next.error;
+        if (error is Failure) {
+          ref.read(networkStatusProvider.notifier).reportFailure(error);
+        }
         final errorText = error is Failure
             ? error.displayMessage
             : (error?.toString() ?? 'การสมัครสมาชิกล้มเหลว');
@@ -70,280 +110,423 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0F1D),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 32.0,
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // --- Header Icon ---
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF131C2E),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.person_add_alt_1_rounded,
-                        size: 48,
-                        color: Color(0xFF3B82F6),
-                      ),
-                    ),
+        child: Column(
+          children: [
+            const ConnectivityStatusBanner(),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 32.0,
                   ),
-                  const SizedBox(height: 24),
-
-                  // --- Title & Subtitle ---
-                  const Text(
-                    'สร้างบัญชีใหม่',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'เริ่มต้นจัดการค่าใช้จ่ายและการติดตาม Subscription',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // --- Name Field ---
-                  _buildInputField(
-                    controller: _nameController,
-                    label: 'ชื่อ-นามสกุล',
-                    hint: 'กรอกชื่อของคุณ',
-                    icon: Icons.person_outline_rounded,
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'กรุณากรอกชื่อของคุณ';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- Email Field ---
-                  _buildInputField(
-                    controller: _emailController,
-                    label: 'อีเมล',
-                    hint: 'example@email.com',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'กรุณากรอกอีเมล';
-                      }
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                      if (!emailRegex.hasMatch(val.trim())) {
-                        return 'รูปแบบอีเมลไม่ถูกต้อง';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- Password Field ---
-                  _buildInputField(
-                    controller: _passwordController,
-                    label: 'รหัสผ่าน',
-                    hint: 'อย่างน้อย 6 ตัวอักษร',
-                    icon: Icons.lock_outline_rounded,
-                    obscureText: _obscurePassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    validator: (val) {
-                      if (val == null || val.isEmpty) {
-                        return 'กรุณากรอกรหัสผ่าน';
-                      }
-                      if (val.length < 6) {
-                        return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- Confirm Password Field ---
-                  _buildInputField(
-                    controller: _confirmPasswordController,
-                    label: 'ยืนยันรหัสผ่าน',
-                    hint: 'กรอกรหัสผ่านอีกครั้ง',
-                    icon: Icons.lock_reset_rounded,
-                    obscureText: _obscureConfirmPassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                    ),
-                    validator: (val) {
-                      if (val != _passwordController.text) {
-                        return 'รหัสผ่านไม่ตรงกัน';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 28),
-
-                  // --- Register Button ---
-                  if (isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
-                    )
-                  else
-                    ElevatedButton(
-                      onPressed: _onRegister,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(52),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'สมัครสมาชิก',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  // --- Divider ---
-                  Row(
-                    children: [
-                      const Expanded(child: Divider(color: Color(0xFF243049))),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'หรือสมัครด้วย',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: Divider(color: Color(0xFF243049))),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // --- Social Sign Up (Google & Apple - FE-002) ---
-                  Row(
-                    children: [
-                      // Google Button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => ref.read(authProvider.notifier).loginWithGoogle(),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black87,
-                            side: BorderSide.none,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.blue),
-                              SizedBox(width: 4),
-                              Text('Google', style: TextStyle(fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Apple Button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => ref.read(authProvider.notifier).loginWithApple(),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFF131C2E),
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFF243049)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.apple_rounded, size: 22),
-                              SizedBox(width: 6),
-                              Text('Apple', style: TextStyle(fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // --- Switch to Login Link ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'มีบัญชีอยู่แล้วใช่ไหม? ',
-                        style: TextStyle(color: Color(0xFF94A3B8)),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.go(RouteConstants.login),
-                        child: const Text(
-                          'เข้าสู่ระบบ',
-                          style: TextStyle(
-                            color: Color(0xFF3B82F6),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  child: _step == RegisterStep.credentials
+                      ? _buildCredentialsStep(isLoading)
+                      : _buildPinSetupStep(isLoading),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
+  Widget _buildCredentialsStep(bool isLoading) {
+    return Form(
+      key: _credentialsFormKey,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // --- Header Icon ---
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF131C2E),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.person_add_alt_1_rounded,
+                size: 48,
+                color: Color(0xFF3B82F6),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // --- Title & Step Indicator ---
+          const Text(
+            'สร้างบัญชีใหม่',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'ขั้นตอนที่ 1 จาก 2: ข้อมูลส่วนตัวและรหัสผ่าน',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 32),
+
+          // --- Name Field ---
+          _buildInputField(
+            key: const Key('register_name_field'),
+            controller: _nameController,
+            label: 'ชื่อ-นามสกุล',
+            hint: 'กรอกชื่อของคุณ',
+            icon: Icons.person_outline_rounded,
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return 'กรุณากรอกชื่อของคุณ';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // --- Email Field ---
+          _buildInputField(
+            key: const Key('register_email_field'),
+            controller: _emailController,
+            label: 'อีเมล',
+            hint: 'example@email.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return 'กรุณากรอกอีเมล';
+              }
+              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+              if (!emailRegex.hasMatch(val.trim())) {
+                return 'รูปแบบอีเมลไม่ถูกต้อง';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // --- Password Field ---
+          _buildInputField(
+            key: const Key('register_password_field'),
+            controller: _passwordController,
+            label: 'รหัสผ่าน',
+            hint: 'อย่างน้อย 6 ตัวอักษร',
+            icon: Icons.lock_outline_rounded,
+            obscureText: _obscurePassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                color: const Color(0xFF94A3B8),
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return 'กรุณากรอกรหัสผ่าน';
+              }
+              if (val.length < 6) {
+                return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // --- Confirm Password Field ---
+          _buildInputField(
+            key: const Key('register_confirm_password_field'),
+            controller: _confirmPasswordController,
+            label: 'ยืนยันรหัสผ่าน',
+            hint: 'กรอกรหัสผ่านอีกครั้ง',
+            icon: Icons.lock_reset_rounded,
+            obscureText: _obscureConfirmPassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                color: const Color(0xFF94A3B8),
+              ),
+              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+            ),
+            validator: (val) {
+              if (val != _passwordController.text) {
+                return 'รหัสผ่านไม่ตรงกัน';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 28),
+
+          // --- Next Button ---
+          ElevatedButton(
+            key: const Key('register_next_button'),
+            onPressed: _onNextStep,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'ถัดไป',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.arrow_forward_rounded, size: 20),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // --- Divider ---
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Color(0xFF243049))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'หรือสมัครด้วย',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: Color(0xFF243049))),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // --- Social Sign Up (Google) ---
+          OutlinedButton(
+            onPressed: isLoading
+                ? null
+                : () => ref.read(authProvider.notifier).loginWithGoogle(),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black87,
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.blue),
+                SizedBox(width: 4),
+                Text('Google', style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // --- Switch to Login Link ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'มีบัญชีอยู่แล้วใช่ไหม? ',
+                style: TextStyle(color: Color(0xFF94A3B8)),
+              ),
+              GestureDetector(
+                onTap: () => context.go(RouteConstants.login),
+                child: const Text(
+                  'เข้าสู่ระบบ',
+                  style: TextStyle(
+                    color: Color(0xFF3B82F6),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPinSetupStep(bool isLoading) {
+    return Form(
+      key: _pinFormKey,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // --- Header Icon ---
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF131C2E),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.security_rounded,
+                size: 48,
+                color: Color(0xFF3B82F6),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // --- Title & Step Indicator ---
+          const Text(
+            'ตั้งรหัส PIN ความปลอดภัย',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'ขั้นตอนที่ 2 จาก 2: รหัส PIN 6 หลักสำหรับยืนยันการทำรายการสำคัญ',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 32),
+
+          // --- Security PIN Field ---
+          _buildPinField(
+            key: const Key('register_pin_field'),
+            controller: _pinController,
+            focusNode: _pinFocusNode,
+            label: 'รหัส PIN ความปลอดภัย (6 หลัก)',
+            icon: Icons.pin_outlined,
+            obscureText: _obscurePin,
+            onToggleObscure: () => setState(() => _obscurePin = !_obscurePin),
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return 'กรุณากรอกรหัส PIN';
+              }
+              if (val.length != 6 || !RegExp(r'^\d{6}$').hasMatch(val)) {
+                return 'รหัส PIN ต้องเป็นตัวเลข 6 หลัก';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // --- Confirm PIN Field ---
+          _buildPinField(
+            key: const Key('register_confirm_pin_field'),
+            controller: _confirmPinController,
+            focusNode: _confirmPinFocusNode,
+            label: 'ยืนยันรหัส PIN ความปลอดภัย',
+            icon: Icons.lock_reset_rounded,
+            obscureText: _obscureConfirmPin,
+            onToggleObscure: () =>
+                setState(() => _obscureConfirmPin = !_obscureConfirmPin),
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return 'กรุณายืนยันรหัส PIN';
+              }
+              if (val != _pinController.text) {
+                return 'รหัส PIN ยืนยันไม่ตรงกัน';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 28),
+
+          // --- Submit / Register Button ---
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+            )
+          else
+            ElevatedButton(
+              key: const Key('register_submit_button'),
+              onPressed: _onRegister,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'สมัครสมาชิก',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
+          // --- Back Button ---
+          OutlinedButton(
+            key: const Key('register_back_button'),
+            onPressed: isLoading ? null : _onPreviousStep,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF94A3B8),
+              side: const BorderSide(color: Color(0xFF243049)),
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.arrow_back_rounded, size: 18),
+                SizedBox(width: 8),
+                Text('ย้อนกลับไปแก้ไขข้อมูล'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputField({
+    Key? key,
     required TextEditingController controller,
     required String label,
     required String hint,
@@ -351,6 +534,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
     Widget? suffixIcon,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -366,12 +551,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
         const SizedBox(height: 6),
         TextFormField(
+          key: key,
           controller: controller,
           keyboardType: keyboardType,
           obscureText: obscureText,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
           style: const TextStyle(color: Colors.white, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
+            counterText: '',
             hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
             prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
             suffixIcon: suffixIcon,
@@ -398,6 +587,79 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           validator: validator,
         ),
       ],
+    );
+  }
+
+  Widget _buildPinField({
+    required Key key,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required IconData icon,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
+    required String? Function(String?) validator,
+  }) {
+    return FormField<String>(
+      validator: (_) => validator(controller.text),
+      builder: (fieldState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFF94A3B8), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFFE2E8F0),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    obscureText
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: const Color(0xFF94A3B8),
+                    size: 20,
+                  ),
+                  onPressed: onToggleObscure,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: PinCodeInput(
+                textFieldKey: key,
+                controller: controller,
+                focusNode: focusNode,
+                obscureText: obscureText,
+                hasError: fieldState.hasError,
+                autoFocus: false,
+                onChanged: (_) {
+                  if (fieldState.hasError) {
+                    fieldState.validate();
+                  }
+                },
+              ),
+            ),
+            if (fieldState.hasError) ...[
+              const SizedBox(height: 6),
+              Text(
+                fieldState.errorText!,
+                style: const TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

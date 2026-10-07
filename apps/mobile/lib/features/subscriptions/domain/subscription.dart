@@ -31,9 +31,22 @@ abstract class Subscription with _$Subscription {
     DateTime? nextBillingDate,
     @Default('moderate') String usageStatus,
     @Default(50) int confidence,
+    // backend requires a linked payment card to create a subscription
+    // (CreateSubscriptionDto.payment_card_id); nullable here only because a
+    // Subscription instance briefly exists before the user picks one in
+    // AddSubscriptionScreen — the add flow itself blocks submission without it
+    String? paymentCardId,
     @Default(false) bool isSelected,
     @Default([]) List<Map<String, String>> customFields,
     @Default(true) bool reminderEnabled,
+    // set when this subscription was created from a catalog preset's tiered
+    // plan (see SelectPackageController.toSubscriptionDraft); required by the
+    // backend to validate planTier/sharedMembers against the preset's
+    // available_plans
+    String? presetId,
+    String? planTier,
+    @Default(1) int sharedMembers,
+    double? pricePerSlot,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) = _Subscription;

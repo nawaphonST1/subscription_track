@@ -13,7 +13,7 @@ abstract interface class SubscriptionRepository {
 
   Future<void> updateSubscription(Subscription subscription);
 
-  Future<void> deleteSubscription(String id);
+  Future<void> deleteSubscription(String id, {String? pin});
 
   Future<void> toggleSelection(String id);
 }

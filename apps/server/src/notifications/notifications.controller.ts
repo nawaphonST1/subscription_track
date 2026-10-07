@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -37,5 +37,20 @@ export class NotificationsController {
   @ApiResponse({ status: 404, description: 'Notification not found' })
   async markAsRead(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.notificationsService.markAsRead(userId, id);
+  }
+
+  @Delete()
+  @ApiOperation({ summary: 'Delete all notifications for current user' })
+  @ApiResponse({ status: 200, description: 'All notifications deleted' })
+  async removeAll(@CurrentUser('id') userId: string) {
+    return this.notificationsService.removeAll(userId);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a specific notification' })
+  @ApiResponse({ status: 200, description: 'Notification deleted' })
+  @ApiResponse({ status: 404, description: 'Notification not found' })
+  async removeOne(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.notificationsService.removeOne(userId, id);
   }
 }

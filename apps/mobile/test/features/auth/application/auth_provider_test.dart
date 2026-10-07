@@ -14,7 +14,16 @@ void main() {
       overrides: [authRepositoryProvider.overrideWithValue(repository)],
     );
     addTearDown(container.dispose);
+    final sub = container.listen(authProvider, (_, __) {});
+    addTearDown(sub.close);
     final controller = container.read(authProvider.notifier);
+
+    // build() กู้ session เองแบบ async — รอให้จบก่อน ไม่งั้นผลของมัน
+    // (fake ตอบ unauthorized ⇒ เรียก logout เพื่อล้าง token) จะมาแทรกกลางเทสต์
+    for (var i = 0; i < 100 && container.read(authProvider).isLoading; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final logoutsAfterRestore = repository.logoutCalls;
 
     await controller.loginWithGoogle();
     expect(container.read(authProvider).value?.id, 'test-user');
@@ -22,7 +31,7 @@ void main() {
 
     await controller.logout();
     expect(container.read(authProvider).value, isNull);
-    expect(repository.logoutCalls, 1);
+    expect(repository.logoutCalls, logoutsAfterRestore + 1);
 
     await controller.loginWithEmail(
       email: 'existing@example.com',
@@ -110,29 +119,6 @@ void main() {
     // ignore: avoid_print
     print('======================================================\n');
 
-    // 3. ทดสอบสมัคร/เชื่อมต่อด้วย Apple (Social Auth Mockup)
-    await notifier.loginWithApple();
-    final appleUser = container.read(authProvider).value;
-    expect(appleUser?.authProvider, 'apple');
-
-    // ignore: avoid_print
-    print('======================================================');
-    // ignore: avoid_print
-    print('🎉 [ผลลัพธ์การเชื่อมต่อด้วย Apple ID สำเร็จ]');
-    // ignore: avoid_print
-    print('  - User ID       : ${appleUser?.id}');
-    // ignore: avoid_print
-    print('  - Email         : ${appleUser?.email}');
-    // ignore: avoid_print
-    print('  - Name          : ${appleUser?.name}');
-    // ignore: avoid_print
-    print('  - Auth Provider : ${appleUser?.authProvider}');
-    // ignore: avoid_print
-    print('  - Avatar        : ${appleUser?.avatar}');
-    // ignore: avoid_print
-    print('  - Cards Loaded  : ${appleUser?.creditCards.length} ใบ');
-    // ignore: avoid_print
-    print('======================================================\n');
   });
 }
 
@@ -141,6 +127,7 @@ class _FakeAuthRepository implements AuthRepository {
   int logoutCalls = 0;
   int registerCalls = 0;
   int emailLoginCalls = 0;
+  int getCurrentUserCalls = 0;
 
   @override
   Future<Either<Failure, User>> loginWithEmail({
@@ -156,6 +143,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String? name,
+    String? securityPin,
   }) async {
     registerCalls++;
     return right(User(id: 'new-user', email: email, name: name ?? ''));
@@ -168,8 +156,9 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, User>> loginWithApple() async {
-    return right(const User(id: 'apple-user', email: 'apple@example.com'));
+  Future<Either<Failure, User>> getCurrentUser() async {
+    getCurrentUserCalls++;
+    return left(const Failure.unauthorized());
   }
 
   @override

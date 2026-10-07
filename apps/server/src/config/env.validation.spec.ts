@@ -36,6 +36,7 @@ describe('validateEnvironment', () => {
       JWT_SECRET: TEST_JWT_SECRET,
       METRICS_PORT: 9464,
       ACTIVE_USERS_WINDOW_SECONDS: 900,
+      MAINTENANCE_MODE: false,
     });
   });
 

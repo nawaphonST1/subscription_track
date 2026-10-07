@@ -54,7 +54,9 @@ class _SavingsChecklistTile extends StatelessWidget {
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          '฿${item.monthlyPrice.toStringAsFixed(0)}/เดือน',
+          item.paymentCard != null
+              ? '฿${item.monthlyPrice.toStringAsFixed(0)}/เดือน • ${item.paymentCard!.displayName}'
+              : '฿${item.monthlyPrice.toStringAsFixed(0)}/เดือน',
           style: TextStyle(
             color: theme.textTheme.bodySmall?.color,
             fontSize: 11,

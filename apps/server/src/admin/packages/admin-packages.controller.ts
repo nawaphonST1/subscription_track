@@ -2,12 +2,14 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -17,17 +19,35 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { AdminGuard } from '../../common/guards/admin.guard';
 import { AdminPackagesService } from './admin-packages.service';
 import { CreatePackageDto } from '../../packages/dto/create-package.dto';
+import { UpdatePackageDto } from '../../packages/dto/update-package.dto';
 import { UpdatePackageStatusDto } from './dto/update-package-status.dto';
 import { DeletePackageQueryDto } from './dto/delete-package-query.dto';
 import { AdminPackageResponseDto } from './dto/package-response.dto';
 
 @ApiTags('admin-packages')
 @ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller('admin/packages')
 export class AdminPackagesController {
   constructor(private readonly adminPackagesService: AdminPackagesService) {}
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get all preset packages for admin catalog management',
+    description: 'Returns all packages with their active/disabled status.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all preset packages',
+    type: [AdminPackageResponseDto],
+  })
+  async findAll(): Promise<AdminPackageResponseDto[]> {
+    return this.adminPackagesService.getAllPackages();
+  }
 
   // =========================================================================
   // BE-303: Admin Create Package (Connected with BE-303)
@@ -48,6 +68,32 @@ export class AdminPackagesController {
     @Body() dto: CreatePackageDto,
   ): Promise<AdminPackageResponseDto> {
     return this.adminPackagesService.createPackage(dto);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update preset package details (Admin action)',
+    description:
+      'Allows admin to edit package preset name, category, default price, billing cycle, brand color, etc.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Unique UUID of the package to update',
+    example: 'f10e2dbc-7668-4b6c-ad02-1b83314bb2ac',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Package successfully updated',
+    type: AdminPackageResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Package not found' })
+  @ApiResponse({ status: 409, description: 'Package name already exists' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePackageDto,
+  ): Promise<AdminPackageResponseDto> {
+    return this.adminPackagesService.updatePackage(id, dto);
   }
 
   // =========================================================================

@@ -13,6 +13,7 @@ import { SocialLoginDto } from './dto/social-login.dto';
 import { NotificationType } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import { BusinessMetrics } from '../metrics/business.metrics';
+import { isPinConfigured } from '../common/security/pin.util';
 
 @Injectable()
 export class AuthService {
@@ -35,7 +36,7 @@ export class AuthService {
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(dto.password, saltRounds);
-    const pin = dto.security_pin ?? '111111';
+    const pin = dto.security_pin;
     const securityPinHash = await bcrypt.hash(pin, saltRounds);
 
     const user = await this.prisma.user.create({
@@ -49,7 +50,7 @@ export class AuthService {
           create: {
             title: 'Welcome to SubTracker',
             message:
-              'Your account has been created. Default security PIN is set to 111111. You can update your income and PIN anytime in Settings.',
+              'Your account has been created. You can update your income and PIN anytime in Settings.',
             type: NotificationType.SECURITY_ALERT,
           },
         },
@@ -58,6 +59,7 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        role: true,
         monthly_income: true,
         created_at: true,
       },
@@ -66,6 +68,7 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     return {
@@ -73,6 +76,7 @@ export class AuthService {
       user: {
         ...user,
         monthly_income: Number(user.monthly_income),
+        pin_configured: await isPinConfigured(securityPinHash),
       },
     };
   }
@@ -96,6 +100,7 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     this.metrics?.recordLogin('success', 'password');
@@ -106,7 +111,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
         monthly_income: Number(user.monthly_income),
+        pin_configured: await isPinConfigured(user.security_pin_hash),
         created_at: user.created_at,
       },
     };
@@ -155,7 +162,9 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        role: true,
         monthly_income: true,
+        security_pin_hash: true,
         created_at: true,
       },
     });
@@ -186,7 +195,9 @@ export class AuthService {
           id: true,
           email: true,
           name: true,
+          role: true,
           monthly_income: true,
+          security_pin_hash: true,
           created_at: true,
         },
       });
@@ -195,15 +206,22 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
 
     this.metrics?.recordLogin('success', 'password');
 
+    const pinConfigured = await isPinConfigured(user.security_pin_hash);
+
     return {
       token,
       user: {
-        ...user,
+        id: user.id,
+        email: user.email,
+        name: user.name,
         monthly_income: Number(user.monthly_income),
+        pin_configured: pinConfigured,
+        created_at: user.created_at,
       },
     };
   }

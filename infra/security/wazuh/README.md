@@ -41,22 +41,54 @@ echo 'vm.max_map_count=262144' | sudo tee /etc/sysctl.d/99-wazuh.conf
 > (`[boot] command = sysctl -w vm.max_map_count=262144`) หรือ `%UserProfile%\.wslconfig`
 > แล้ว `wsl --shutdown` ก่อน ถ้า indexer ขึ้นแล้วตายเงียบ ให้ดูค่านี้เป็นอย่างแรก
 
-## 2. สร้าง cert และดึง config ของ upstream (ครั้งเดียว)
+## 2. เตรียม cert + config (ครั้งเดียวต่อเครื่อง)
 
 cert และไฟล์ config (`config/wazuh_cluster/`, `config/wazuh_indexer/`, `config/wazuh_dashboard/`)
-**ไม่ได้อยู่ใน repo นี้** (เป็น generated + มี secret) ดึงจาก upstream tag เดียวกันแล้วสร้าง cert:
+**ไม่ได้อยู่ใน repo นี้** — เป็นของ generated และมี bcrypt hash กับรหัส API จริงอยู่ข้างใน
+ทั้ง `config/` และ `upstream/` อยู่ใน `.gitignore` แล้ว **ห้าม commit**
+
+### วิธีที่แนะนำ — ใช้สคริปต์
+
+```bash
+cd infra/security/wazuh
+cp .env.example .env            # แล้วใส่ค่าจริง (ดู §3 เรื่องการสุ่มรหัส)
+git clone --depth 1 -b v4.14.8 https://github.com/wazuh/wazuh-docker.git upstream
+
+cd "$(git rev-parse --show-toplevel)"
+./scripts/wazuh-server-bootstrap.sh --dry-run    # ดูก่อนว่าจะทำอะไร
+./scripts/wazuh-server-bootstrap.sh
+```
+
+สคริปต์ idempotent รันซ้ำได้ ไม่แตะของที่ถูกต้องอยู่แล้ว และทำให้ครบทั้ง 4 อย่างที่เคยพลาด
+ตอนทำมือ: generate cert ลงที่ถูก, ตรวจว่าได้ 12 ไฟล์จริง, หมุน bcrypt hash ของ `admin` +
+`kibanaserver` ให้ตรง `.env`, แทนรหัส API default ของ upstream ใน `wazuh_dashboard/wazuh.yml`
+และตั้ง Vulnerability Detection (ดู §7)
+
+### ถ้าอยากทำมือ
 
 ```bash
 cd infra/security/wazuh
 git clone --depth 1 -b v4.14.8 https://github.com/wazuh/wazuh-docker.git upstream
 cp -r upstream/single-node/config ./config          # config ที่ compose mount เข้าไป
-docker compose -f upstream/single-node/generate-indexer-certs.yml run --rm generator
+# --project-directory . สำคัญ: ถ้าไม่ใส่ compose จะคิด path ./config/ เทียบกับโฟลเดอร์ของ
+# ไฟล์ -f (upstream/single-node/) แล้ว cert จะไปตกที่ upstream/single-node/config/ แทน
+# พอ up ขึ้นมา docker จะสร้าง ./config/wazuh_indexer_ssl_certs/*.pem เป็น "โฟลเดอร์เปล่า" ให้แทน
+docker compose -f upstream/single-node/generate-indexer-certs.yml --project-directory . run --rm generator
 # cert จะไปอยู่ ./config/wazuh_indexer_ssl_certs/ (git-ignored แล้ว)
+ls -l config/wazuh_indexer_ssl_certs/   # ต้องเห็น 12 ไฟล์ .pem/.key ไม่ใช่โฟลเดอร์
 ```
 
-> `config/` ของ upstream มี default password ฝังอยู่ (`internal_users.yml` ฯลฯ)
-> เปลี่ยนให้ตรงกับ `.env` ของเราก่อนขึ้นจริง — สำหรับ demo ภายในที่ bind 127.0.0.1/Tailscale
-> ความเสี่ยงต่ำ แต่ **อย่า commit โฟลเดอร์ `config/` และ `upstream/`** (อยู่ใน `.gitignore` แล้ว)
+แล้วต้องทำต่อเองอีก 3 อย่าง ไม่งั้น stack จะขึ้นแต่ auth ไม่ผ่าน (401 ทุกทาง):
+
+1. `config/wazuh_indexer/internal_users.yml` — หมุน `hash:` ของ `admin` และ `kibanaserver`
+   ให้เป็น bcrypt ของรหัสใน `.env` (ใช้ `hash.sh` ใน image ของ indexer)
+2. `config/wazuh_dashboard/wazuh.yml` — แทน `password:` ที่ยังเป็น default ของ upstream
+   ด้วย `WAZUH_API_PASSWORD`
+3. `config/wazuh_cluster/wazuh_manager.conf` — ตั้ง `<vulnerability-detection>` ตามดิสก์ที่มี (§7)
+
+> ถ้า indexer เคย `up` ไปแล้วด้วยรหัสเก่า การแก้ `internal_users.yml` เฉย ๆ จะไม่มีผล เพราะ
+> indexer อ่านไฟล์นี้แค่ตอนสร้าง `.opendistro_security` ครั้งแรก ต้องดันเข้าไปด้วย
+> `./scripts/wazuh-server-bootstrap.sh --rotate --apply-security`
 
 ## 3. เปิด stack
 
@@ -78,12 +110,24 @@ ports ที่เปิด (ยืนยันด้วย `docker compose port
 
 ## 4. ตั้งรหัส enrollment (authd) บน manager
 
-agent enroll ด้วยรหัส ตั้งให้ตรงกับ `WAZUH_REGISTRATION_PASSWORD` ใน `.env`:
+agent enroll ด้วยรหัส ตั้งให้ตรงกับ `WAZUH_REGISTRATION_PASSWORD` ใน `.env`
+
+**ต้อง source `.env` เข้า shell ก่อน** — `docker compose` อ่าน `.env` ให้เฉพาะตัวมันเอง ไม่ได้ใส่
+ตัวแปรเข้า shell ของเรา ถ้าข้ามขั้นนี้ `$WAZUH_REGISTRATION_PASSWORD` จะเป็นค่าว่าง แล้วคำสั่ง
+ข้างล่างจะเขียน `authd.pass` เป็น **ไฟล์เปล่า** — enroll ไม่ผ่าน แต่คำสั่งดูเหมือนสำเร็จ
 
 ```bash
-docker compose exec wazuh.manager bash -c '
-  echo "'"$WAZUH_REGISTRATION_PASSWORD"'" > /var/ossec/etc/authd.pass &&
+cd infra/security/wazuh
+set -a; . ./.env; set +a
+: "${WAZUH_REGISTRATION_PASSWORD:?ยังไม่ได้ source .env — หยุดก่อน อย่ารันต่อ}"
+
+docker compose exec -T -e PW="$WAZUH_REGISTRATION_PASSWORD" wazuh.manager bash -c '
+  printf "%s\n" "$PW" > /var/ossec/etc/authd.pass &&
+  chmod 640 /var/ossec/etc/authd.pass &&
   /var/ossec/bin/wazuh-control restart'
+
+# ยืนยันว่าไม่ใช่ไฟล์เปล่า (ขนาดต้อง > 1)
+docker compose exec -T wazuh.manager stat -c '%s %n' /var/ossec/etc/authd.pass
 ```
 
 ## 5. ติดตั้ง agent บน Azure
@@ -126,10 +170,83 @@ link-local และ **ช่วง Tailscale/CGNAT 100.64/10** (กันยิ
 
 ## 7. ข้อจำกัดที่รู้อยู่
 
-- Wazuh server กินทรัพยากรมาก (ประมาณ 4 GiB ตาม mem_limit) **รันบนเครื่อง dev เท่านั้น**
-  ไม่ใช่บน Azure 4 GiB และไม่ใช่ VM อาจารย์
-- manager เห็น agent เฉพาะตอนเครื่อง dev เปิดและ Tailscale ขึ้น — agent จะ buffer event
+- **Vulnerability Detection ปิดไว้ตั้งใจ** (`<vulnerability-detection><enabled>no</enabled>` ใน
+  `config/wazuh_cluster/wazuh_manager.conf`) image ของ manager แถมไฟล์ CVE มาเป็น `.tar.xz`
+  ~410 MB และทุกครั้งที่ **สร้าง container ใหม่** มันจะแตกไฟล์นั้นเป็น `.tar` ขนาด ~4 GB ลง
+  `/var/ossec/tmp` ซึ่งไม่ใช่ volume จึงกิน writable layer ~4.4 GB ต่อการ `up` หนึ่งครั้ง
+  (วัดจริง: manager โตถึง 5.7 GB ใน ~50 วินาที จนดิสก์เครื่อง dev เต็ม 100%) demo ใช้
+  FIM + SSH `auth.log` + nginx 404 ไม่ได้ใช้ CVE feed — ถ้าดิสก์ ≥ 64 GB เปิดกลับได้ด้วย
+  `./scripts/wazuh-server-bootstrap.sh --vd on`
+- ทรัพยากรที่ต้องใช้ (วัดจาก stack ที่รันจริง): RAM ~2.2 GiB ตอนทำงาน เพดาน 4 GiB ตาม
+  `mem_limit` และ indexer ตรึง heap ไว้ที่ `-Xms1g -Xmx1g` → **2 vCPU / 8 GiB พอ** ส่วนดิสก์
+  ควรมี ≥ 64 GB ถ้าจะเปิด VD **อย่ารันบน VM production ตัวเดียวกับแอป** (4 GiB จะ OOM)
+- manager เห็น agent เฉพาะตอนที่ host ของ Wazuh เปิดอยู่ — agent จะ buffer event
   (`client_buffer` ใน ossec-agent.conf) แล้วส่งตามเมื่อกลับมาเชื่อมได้
 - active response ปิดไว้ตั้งใจ: ไม่อยากให้ auto-block ตัดเว็บตอน demo (ดูคอมเมนต์ใน
   `ossec-agent.conf.example`)
 - ถ้าเวลาไม่พอ: ทำแค่ agent + log ส่งเข้า Loki ก็ได้ แล้วอธิบายว่า server เต็มรูปเป็นงานต่อยอด
+
+## 8. สถานะงาน (อัปเดต 2026-10-06 ตอน merge เข้า develop)
+
+**merge เข้า develop แล้ว** — ส่วนที่เป็นโค้ด/สคริปต์/เอกสารถือว่าจบ แต่ **ไม่ได้แปลว่า Wazuh
+กำลังทำงานอยู่ที่ไหน** อ่าน §8.2 ก่อนคิดว่าใช้งานได้เลย
+
+### 8.1 ที่เสร็จแล้ว
+
+| ชิ้น | สถานะ |
+|---|---|
+| `docker-compose.yml` (ตัด default password, จำกัด port, ใส่ `mem_limit`) | เข้า develop ตั้งแต่รอบก่อน |
+| `.env.example`, `ossec-agent.conf.example` | เข้า develop ตั้งแต่รอบก่อน |
+| `scripts/wazuh-agent-bootstrap.sh`, `scripts/wazuh-demo-attack.sh`, `scripts/install-wazuh-agent.sh` | เข้า develop ตั้งแต่รอบก่อน |
+| `scripts/dp5/check-wazuh-compose-config.sh`, `check-wazuh-demo-attack-guard.sh` | เข้า develop ตั้งแต่รอบก่อน |
+| **`scripts/wazuh-server-bootstrap.sh`** | **ชิ้นเดียวที่เพิ่งเข้ามารอบนี้** — ทำ 4 ขั้นที่เคยพลาดตอนทำมือให้อัตโนมัติ (§2) |
+| `.gitignore` ขยายเป็น `config/` ทั้งก้อน | รอบนี้ |
+
+flag ที่ `wazuh-server-bootstrap.sh` รองรับจริง: `--dry-run`, `--rotate`, `--apply-security`,
+`--vd on|off` (ค่า default คือ `off`), `-h/--help`
+
+### 8.2 ที่ยัง **ไม่** ได้ทำ — ต้องมีคนไปทำต่อ
+
+1. **ยังไม่มีใครยก stack ขึ้นจาก repo ที่ merge แล้ว** — ที่ทดสอบไว้ก่อนหน้าเป็นการรันบนเครื่อง
+   ตอนพัฒนา ไม่ใช่การรันซ้ำจากสภาพ clean checkout ⇒ ยังไม่ยืนยันว่า `git clone` ใหม่แล้วทำตาม
+   §2-§5 จะผ่านรวดเดียว
+2. **ไม่มี CI แตะ Wazuh เลย** — `scripts/dp5/check-wazuh-*.sh` มีอยู่ แต่ยังไม่ได้ผูกเข้า Jenkins
+   หรือ GitHub Actions ⇒ ถ้า `docker-compose.yml` พังในอนาคตจะไม่มีอะไรจับได้
+3. **Vulnerability Detection ยังปิดอยู่** (§7) — ไม่ใช่ bug แต่เป็นข้อจำกัดด้านดิสก์ที่ยังไม่ถูกแก้
+4. **ยังไม่ได้ตัดสินใจว่าจะรันถาวรที่ไหน** — ตอนนี้ออกแบบเป็น "เปิดเฉพาะช่วง demo บนเครื่อง dev"
+   ถ้าจะให้เก็บ log ต่อเนื่องต้องหา host ที่มี 2 vCPU / 8 GiB / ดิสก์ ≥ 64 GB แยกจาก VM production
+5. **agent บน Azure buffer event ตอน manager ปิด** (§7) — ถ้า manager ปิดนานกว่า buffer จะหาย
+   ยังไม่ได้วัดว่า buffer อยู่ได้นานแค่ไหนจริง
+
+### 8.3 เช็กลิสต์ก่อนรันครั้งถัดไป
+
+```bash
+df -h /                       # ต้องเหลือ >= 6 GB (image + indexer) · ถ้าจะเปิด VD ต้อง >= 64 GB
+free -h                       # indexer ตรึง heap 1g, stack กิน ~2.2 GiB ตอนทำงาน
+sysctl vm.max_map_count       # ต้อง >= 262144 ไม่งั้น indexer ตายเงียบ (§1)
+tailscale status              # agent บน Azure คุยกลับมาได้ทาง Tailscale เท่านั้น
+```
+
+### 8.4 ⚠️ เรื่อง `config/` — อ่านก่อนเผลอ `git add .`
+
+`config/` ถูก generate ขึ้นมาแล้ว**ใส่ค่าจริงลงไป** (bcrypt hash ของ `admin`/`kibanaserver`
+ใน `wazuh_indexer/internal_users.yml` และรหัส API ใน `wazuh_dashboard/wazuh.yml`)
+**ห้ามขึ้น git เด็ดขาด**
+
+ก่อนหน้านี้ `.gitignore` ครอบแค่ `config/wazuh_indexer_ssl_certs/` ⇒ ไฟล์ config อีก 6 ตัว
+โผล่เป็น untracked และอยู่ห่างจากการถูก commit แค่ `git add .` ครั้งเดียว ตอนนี้ขยายเป็น
+`config/` ทั้งก้อนแล้ว
+
+ถ้าต้องการ config ใหม่ **ไม่ต้องไปหาใน git** — generate เองได้ทั้งหมด:
+
+```bash
+./scripts/wazuh-server-bootstrap.sh --dry-run   # ดูก่อน
+./scripts/wazuh-server-bootstrap.sh
+```
+
+ตรวจว่า ignore ทำงานจริงได้ด้วย:
+
+```bash
+git check-ignore -v infra/security/wazuh/config/wazuh_indexer/internal_users.yml
+# ต้องคืน: infra/security/wazuh/.gitignore:5:config/	...
+```

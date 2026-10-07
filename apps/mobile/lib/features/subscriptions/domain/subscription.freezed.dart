@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Subscription {
 
- String get id; String get name; double get price; String get billingPeriod; String get category; DateTime? get nextBillingDate; String get usageStatus; int get confidence; bool get isSelected; List<Map<String, String>> get customFields; bool get reminderEnabled; DateTime? get createdAt; DateTime? get updatedAt;
+ String get id; String get name; double get price; String get billingPeriod; String get category; DateTime? get nextBillingDate; String get usageStatus; int get confidence; String? get paymentCardId; bool get isSelected; List<Map<String, String>> get customFields; bool get reminderEnabled; String? get presetId; String? get planTier; int get sharedMembers; double? get pricePerSlot; DateTime? get createdAt; DateTime? get updatedAt;
 /// Create a copy of Subscription
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $SubscriptionCopyWith<Subscription> get copyWith => _$SubscriptionCopyWithImpl<S
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Subscription&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.price, price) || other.price == price)&&(identical(other.billingPeriod, billingPeriod) || other.billingPeriod == billingPeriod)&&(identical(other.category, category) || other.category == category)&&(identical(other.nextBillingDate, nextBillingDate) || other.nextBillingDate == nextBillingDate)&&(identical(other.usageStatus, usageStatus) || other.usageStatus == usageStatus)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.isSelected, isSelected) || other.isSelected == isSelected)&&const DeepCollectionEquality().equals(other.customFields, customFields)&&(identical(other.reminderEnabled, reminderEnabled) || other.reminderEnabled == reminderEnabled)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Subscription&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.price, price) || other.price == price)&&(identical(other.billingPeriod, billingPeriod) || other.billingPeriod == billingPeriod)&&(identical(other.category, category) || other.category == category)&&(identical(other.nextBillingDate, nextBillingDate) || other.nextBillingDate == nextBillingDate)&&(identical(other.usageStatus, usageStatus) || other.usageStatus == usageStatus)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.paymentCardId, paymentCardId) || other.paymentCardId == paymentCardId)&&(identical(other.isSelected, isSelected) || other.isSelected == isSelected)&&const DeepCollectionEquality().equals(other.customFields, customFields)&&(identical(other.reminderEnabled, reminderEnabled) || other.reminderEnabled == reminderEnabled)&&(identical(other.presetId, presetId) || other.presetId == presetId)&&(identical(other.planTier, planTier) || other.planTier == planTier)&&(identical(other.sharedMembers, sharedMembers) || other.sharedMembers == sharedMembers)&&(identical(other.pricePerSlot, pricePerSlot) || other.pricePerSlot == pricePerSlot)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,price,billingPeriod,category,nextBillingDate,usageStatus,confidence,isSelected,const DeepCollectionEquality().hash(customFields),reminderEnabled,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,name,price,billingPeriod,category,nextBillingDate,usageStatus,confidence,paymentCardId,isSelected,const DeepCollectionEquality().hash(customFields),reminderEnabled,presetId,planTier,sharedMembers,pricePerSlot,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Subscription(id: $id, name: $name, price: $price, billingPeriod: $billingPeriod, category: $category, nextBillingDate: $nextBillingDate, usageStatus: $usageStatus, confidence: $confidence, isSelected: $isSelected, customFields: $customFields, reminderEnabled: $reminderEnabled, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Subscription(id: $id, name: $name, price: $price, billingPeriod: $billingPeriod, category: $category, nextBillingDate: $nextBillingDate, usageStatus: $usageStatus, confidence: $confidence, paymentCardId: $paymentCardId, isSelected: $isSelected, customFields: $customFields, reminderEnabled: $reminderEnabled, presetId: $presetId, planTier: $planTier, sharedMembers: $sharedMembers, pricePerSlot: $pricePerSlot, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $SubscriptionCopyWith<$Res>  {
   factory $SubscriptionCopyWith(Subscription value, $Res Function(Subscription) _then) = _$SubscriptionCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, double price, String billingPeriod, String category, DateTime? nextBillingDate, String usageStatus, int confidence, bool isSelected, List<Map<String, String>> customFields, bool reminderEnabled, DateTime? createdAt, DateTime? updatedAt
+ String id, String name, double price, String billingPeriod, String category, DateTime? nextBillingDate, String usageStatus, int confidence, String? paymentCardId, bool isSelected, List<Map<String, String>> customFields, bool reminderEnabled, String? presetId, String? planTier, int sharedMembers, double? pricePerSlot, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -65,7 +65,7 @@ class _$SubscriptionCopyWithImpl<$Res>
 
 /// Create a copy of Subscription
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? price = null,Object? billingPeriod = null,Object? category = null,Object? nextBillingDate = freezed,Object? usageStatus = null,Object? confidence = null,Object? isSelected = null,Object? customFields = null,Object? reminderEnabled = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? price = null,Object? billingPeriod = null,Object? category = null,Object? nextBillingDate = freezed,Object? usageStatus = null,Object? confidence = null,Object? paymentCardId = freezed,Object? isSelected = null,Object? customFields = null,Object? reminderEnabled = null,Object? presetId = freezed,Object? planTier = freezed,Object? sharedMembers = null,Object? pricePerSlot = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -75,10 +75,15 @@ as String,category: null == category ? _self.category : category // ignore: cast
 as String,nextBillingDate: freezed == nextBillingDate ? _self.nextBillingDate : nextBillingDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,usageStatus: null == usageStatus ? _self.usageStatus : usageStatus // ignore: cast_nullable_to_non_nullable
 as String,confidence: null == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
-as int,isSelected: null == isSelected ? _self.isSelected : isSelected // ignore: cast_nullable_to_non_nullable
+as int,paymentCardId: freezed == paymentCardId ? _self.paymentCardId : paymentCardId // ignore: cast_nullable_to_non_nullable
+as String?,isSelected: null == isSelected ? _self.isSelected : isSelected // ignore: cast_nullable_to_non_nullable
 as bool,customFields: null == customFields ? _self.customFields : customFields // ignore: cast_nullable_to_non_nullable
 as List<Map<String, String>>,reminderEnabled: null == reminderEnabled ? _self.reminderEnabled : reminderEnabled // ignore: cast_nullable_to_non_nullable
-as bool,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as bool,presetId: freezed == presetId ? _self.presetId : presetId // ignore: cast_nullable_to_non_nullable
+as String?,planTier: freezed == planTier ? _self.planTier : planTier // ignore: cast_nullable_to_non_nullable
+as String?,sharedMembers: null == sharedMembers ? _self.sharedMembers : sharedMembers // ignore: cast_nullable_to_non_nullable
+as int,pricePerSlot: freezed == pricePerSlot ? _self.pricePerSlot : pricePerSlot // ignore: cast_nullable_to_non_nullable
+as double?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -165,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  double price,  String billingPeriod,  String category,  DateTime? nextBillingDate,  String usageStatus,  int confidence,  bool isSelected,  List<Map<String, String>> customFields,  bool reminderEnabled,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  double price,  String billingPeriod,  String category,  DateTime? nextBillingDate,  String usageStatus,  int confidence,  String? paymentCardId,  bool isSelected,  List<Map<String, String>> customFields,  bool reminderEnabled,  String? presetId,  String? planTier,  int sharedMembers,  double? pricePerSlot,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Subscription() when $default != null:
-return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.category,_that.nextBillingDate,_that.usageStatus,_that.confidence,_that.isSelected,_that.customFields,_that.reminderEnabled,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.category,_that.nextBillingDate,_that.usageStatus,_that.confidence,_that.paymentCardId,_that.isSelected,_that.customFields,_that.reminderEnabled,_that.presetId,_that.planTier,_that.sharedMembers,_that.pricePerSlot,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -186,10 +191,10 @@ return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.catego
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  double price,  String billingPeriod,  String category,  DateTime? nextBillingDate,  String usageStatus,  int confidence,  bool isSelected,  List<Map<String, String>> customFields,  bool reminderEnabled,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  double price,  String billingPeriod,  String category,  DateTime? nextBillingDate,  String usageStatus,  int confidence,  String? paymentCardId,  bool isSelected,  List<Map<String, String>> customFields,  bool reminderEnabled,  String? presetId,  String? planTier,  int sharedMembers,  double? pricePerSlot,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Subscription():
-return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.category,_that.nextBillingDate,_that.usageStatus,_that.confidence,_that.isSelected,_that.customFields,_that.reminderEnabled,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.category,_that.nextBillingDate,_that.usageStatus,_that.confidence,_that.paymentCardId,_that.isSelected,_that.customFields,_that.reminderEnabled,_that.presetId,_that.planTier,_that.sharedMembers,_that.pricePerSlot,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +211,10 @@ return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.catego
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  double price,  String billingPeriod,  String category,  DateTime? nextBillingDate,  String usageStatus,  int confidence,  bool isSelected,  List<Map<String, String>> customFields,  bool reminderEnabled,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  double price,  String billingPeriod,  String category,  DateTime? nextBillingDate,  String usageStatus,  int confidence,  String? paymentCardId,  bool isSelected,  List<Map<String, String>> customFields,  bool reminderEnabled,  String? presetId,  String? planTier,  int sharedMembers,  double? pricePerSlot,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Subscription() when $default != null:
-return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.category,_that.nextBillingDate,_that.usageStatus,_that.confidence,_that.isSelected,_that.customFields,_that.reminderEnabled,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.category,_that.nextBillingDate,_that.usageStatus,_that.confidence,_that.paymentCardId,_that.isSelected,_that.customFields,_that.reminderEnabled,_that.presetId,_that.planTier,_that.sharedMembers,_that.pricePerSlot,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -221,7 +226,7 @@ return $default(_that.id,_that.name,_that.price,_that.billingPeriod,_that.catego
 @JsonSerializable()
 
 class _Subscription implements Subscription {
-  const _Subscription({required this.id, required this.name, required this.price, this.billingPeriod = 'monthly', this.category = 'other', this.nextBillingDate, this.usageStatus = 'moderate', this.confidence = 50, this.isSelected = false, final  List<Map<String, String>> customFields = const [], this.reminderEnabled = true, this.createdAt, this.updatedAt}): _customFields = customFields;
+  const _Subscription({required this.id, required this.name, required this.price, this.billingPeriod = 'monthly', this.category = 'other', this.nextBillingDate, this.usageStatus = 'moderate', this.confidence = 50, this.paymentCardId, this.isSelected = false, final  List<Map<String, String>> customFields = const [], this.reminderEnabled = true, this.presetId, this.planTier, this.sharedMembers = 1, this.pricePerSlot, this.createdAt, this.updatedAt}): _customFields = customFields;
   factory _Subscription.fromJson(Map<String, dynamic> json) => _$SubscriptionFromJson(json);
 
 @override final  String id;
@@ -232,6 +237,7 @@ class _Subscription implements Subscription {
 @override final  DateTime? nextBillingDate;
 @override@JsonKey() final  String usageStatus;
 @override@JsonKey() final  int confidence;
+@override final  String? paymentCardId;
 @override@JsonKey() final  bool isSelected;
  final  List<Map<String, String>> _customFields;
 @override@JsonKey() List<Map<String, String>> get customFields {
@@ -241,6 +247,10 @@ class _Subscription implements Subscription {
 }
 
 @override@JsonKey() final  bool reminderEnabled;
+@override final  String? presetId;
+@override final  String? planTier;
+@override@JsonKey() final  int sharedMembers;
+@override final  double? pricePerSlot;
 @override final  DateTime? createdAt;
 @override final  DateTime? updatedAt;
 
@@ -257,16 +267,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Subscription&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.price, price) || other.price == price)&&(identical(other.billingPeriod, billingPeriod) || other.billingPeriod == billingPeriod)&&(identical(other.category, category) || other.category == category)&&(identical(other.nextBillingDate, nextBillingDate) || other.nextBillingDate == nextBillingDate)&&(identical(other.usageStatus, usageStatus) || other.usageStatus == usageStatus)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.isSelected, isSelected) || other.isSelected == isSelected)&&const DeepCollectionEquality().equals(other._customFields, _customFields)&&(identical(other.reminderEnabled, reminderEnabled) || other.reminderEnabled == reminderEnabled)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Subscription&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.price, price) || other.price == price)&&(identical(other.billingPeriod, billingPeriod) || other.billingPeriod == billingPeriod)&&(identical(other.category, category) || other.category == category)&&(identical(other.nextBillingDate, nextBillingDate) || other.nextBillingDate == nextBillingDate)&&(identical(other.usageStatus, usageStatus) || other.usageStatus == usageStatus)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.paymentCardId, paymentCardId) || other.paymentCardId == paymentCardId)&&(identical(other.isSelected, isSelected) || other.isSelected == isSelected)&&const DeepCollectionEquality().equals(other._customFields, _customFields)&&(identical(other.reminderEnabled, reminderEnabled) || other.reminderEnabled == reminderEnabled)&&(identical(other.presetId, presetId) || other.presetId == presetId)&&(identical(other.planTier, planTier) || other.planTier == planTier)&&(identical(other.sharedMembers, sharedMembers) || other.sharedMembers == sharedMembers)&&(identical(other.pricePerSlot, pricePerSlot) || other.pricePerSlot == pricePerSlot)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,price,billingPeriod,category,nextBillingDate,usageStatus,confidence,isSelected,const DeepCollectionEquality().hash(_customFields),reminderEnabled,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,name,price,billingPeriod,category,nextBillingDate,usageStatus,confidence,paymentCardId,isSelected,const DeepCollectionEquality().hash(_customFields),reminderEnabled,presetId,planTier,sharedMembers,pricePerSlot,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Subscription(id: $id, name: $name, price: $price, billingPeriod: $billingPeriod, category: $category, nextBillingDate: $nextBillingDate, usageStatus: $usageStatus, confidence: $confidence, isSelected: $isSelected, customFields: $customFields, reminderEnabled: $reminderEnabled, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Subscription(id: $id, name: $name, price: $price, billingPeriod: $billingPeriod, category: $category, nextBillingDate: $nextBillingDate, usageStatus: $usageStatus, confidence: $confidence, paymentCardId: $paymentCardId, isSelected: $isSelected, customFields: $customFields, reminderEnabled: $reminderEnabled, presetId: $presetId, planTier: $planTier, sharedMembers: $sharedMembers, pricePerSlot: $pricePerSlot, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -277,7 +287,7 @@ abstract mixin class _$SubscriptionCopyWith<$Res> implements $SubscriptionCopyWi
   factory _$SubscriptionCopyWith(_Subscription value, $Res Function(_Subscription) _then) = __$SubscriptionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, double price, String billingPeriod, String category, DateTime? nextBillingDate, String usageStatus, int confidence, bool isSelected, List<Map<String, String>> customFields, bool reminderEnabled, DateTime? createdAt, DateTime? updatedAt
+ String id, String name, double price, String billingPeriod, String category, DateTime? nextBillingDate, String usageStatus, int confidence, String? paymentCardId, bool isSelected, List<Map<String, String>> customFields, bool reminderEnabled, String? presetId, String? planTier, int sharedMembers, double? pricePerSlot, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -294,7 +304,7 @@ class __$SubscriptionCopyWithImpl<$Res>
 
 /// Create a copy of Subscription
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? price = null,Object? billingPeriod = null,Object? category = null,Object? nextBillingDate = freezed,Object? usageStatus = null,Object? confidence = null,Object? isSelected = null,Object? customFields = null,Object? reminderEnabled = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? price = null,Object? billingPeriod = null,Object? category = null,Object? nextBillingDate = freezed,Object? usageStatus = null,Object? confidence = null,Object? paymentCardId = freezed,Object? isSelected = null,Object? customFields = null,Object? reminderEnabled = null,Object? presetId = freezed,Object? planTier = freezed,Object? sharedMembers = null,Object? pricePerSlot = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_Subscription(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -304,10 +314,15 @@ as String,category: null == category ? _self.category : category // ignore: cast
 as String,nextBillingDate: freezed == nextBillingDate ? _self.nextBillingDate : nextBillingDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,usageStatus: null == usageStatus ? _self.usageStatus : usageStatus // ignore: cast_nullable_to_non_nullable
 as String,confidence: null == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
-as int,isSelected: null == isSelected ? _self.isSelected : isSelected // ignore: cast_nullable_to_non_nullable
+as int,paymentCardId: freezed == paymentCardId ? _self.paymentCardId : paymentCardId // ignore: cast_nullable_to_non_nullable
+as String?,isSelected: null == isSelected ? _self.isSelected : isSelected // ignore: cast_nullable_to_non_nullable
 as bool,customFields: null == customFields ? _self._customFields : customFields // ignore: cast_nullable_to_non_nullable
 as List<Map<String, String>>,reminderEnabled: null == reminderEnabled ? _self.reminderEnabled : reminderEnabled // ignore: cast_nullable_to_non_nullable
-as bool,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as bool,presetId: freezed == presetId ? _self.presetId : presetId // ignore: cast_nullable_to_non_nullable
+as String?,planTier: freezed == planTier ? _self.planTier : planTier // ignore: cast_nullable_to_non_nullable
+as String?,sharedMembers: null == sharedMembers ? _self.sharedMembers : sharedMembers // ignore: cast_nullable_to_non_nullable
+as int,pricePerSlot: freezed == pricePerSlot ? _self.pricePerSlot : pricePerSlot // ignore: cast_nullable_to_non_nullable
+as double?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

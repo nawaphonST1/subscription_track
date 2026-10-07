@@ -22,6 +22,9 @@ const environmentSchema = z
       .min(1)
       .max(86400)
       .default(900),
+    MAINTENANCE_MODE: z
+      .preprocess((val) => val === 'true' || val === true, z.boolean())
+      .default(false),
     DB_HOST: z.string().trim().min(1, 'DB_HOST is required'),
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
     DB_NAME: z.string().trim().min(1, 'DB_NAME is required'),
@@ -50,6 +53,17 @@ export type EnvironmentVariables = z.output<typeof environmentSchema>;
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): EnvironmentVariables {
+  // Support POSTGRES_* as fallback for DB_*
+  if (!environment.DB_NAME && environment.POSTGRES_DB) {
+    environment.DB_NAME = environment.POSTGRES_DB;
+  }
+  if (!environment.DB_USER && environment.POSTGRES_USER) {
+    environment.DB_USER = environment.POSTGRES_USER;
+  }
+  if (!environment.DB_PASSWORD && environment.POSTGRES_PASSWORD) {
+    environment.DB_PASSWORD = environment.POSTGRES_PASSWORD;
+  }
+
   if (
     environment.DATABASE_URL &&
     typeof environment.DATABASE_URL === 'string'
@@ -73,7 +87,7 @@ export function validateEnvironment(
 
   if (result.success) {
     if (!process.env.DATABASE_URL) {
-      process.env.DATABASE_URL = `postgresql://${result.data.DB_USER}:${result.data.DB_PASSWORD}@${result.data.DB_HOST}:${result.data.DB_PORT}/${result.data.DB_NAME}?schema=public`;
+      process.env.DATABASE_URL = `postgresql://${result.data.DB_USER}:${encodeURIComponent(result.data.DB_PASSWORD)}@${result.data.DB_HOST}:${result.data.DB_PORT}/${result.data.DB_NAME}?schema=public`;
     }
     return result.data;
   }

@@ -51,10 +51,13 @@ ThemeData buildDarkTheme() {
     cardTheme: CardThemeData(
       color: AppColors.bgSecondary,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFF2E3D5B), width: 1.3),
+      ),
     ),
     dividerTheme: const DividerThemeData(
-      color: AppColors.divider,
+      color: Color(0xFF243048),
       thickness: 1,
     ),
     listTileTheme: const ListTileThemeData(
@@ -73,7 +76,7 @@ ThemeData buildDarkTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.border),
+        side: const BorderSide(color: Color(0xFF2E3D5B), width: 1.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
@@ -89,11 +92,11 @@ ThemeData buildDarkTheme() {
       fillColor: AppColors.bgTertiary,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0xFF2E3D5B), width: 1.3),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0xFF2E3D5B), width: 1.3),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),

@@ -6,9 +6,18 @@ final userIncomeProvider = NotifierProvider<UserIncomeController, double>(
 );
 
 final class UserIncomeController extends Notifier<double> {
+  static const double fallbackIncome = 0.0;
+
   @override
   double build() {
+    // 1. ดึงข้อมูลผู้ใช้จาก authProvider ซึ่งโหลดมาจาก GET /users/me ตอนเข้าสู่ระบบ/เปิดแอป
+    // (RemoteAuthRepository.getCurrentUser() แมป 'monthly_income' มาใส่ใน user.income)
     final user = ref.watch(authProvider).value;
+    if (user != null && user.income > 0) {
+      return user.income;
+    }
+
+    // 2. หากยังไม่มี monthly_income ให้ดูจากผลรวมวงเงิน/ยอดในบัตรเครดิต (ถ้ามี)
     if (user != null && user.creditCards.isNotEmpty) {
       final totalBalance = user.creditCards.fold<double>(
         0,
@@ -16,12 +25,23 @@ final class UserIncomeController extends Notifier<double> {
       );
       if (totalBalance > 0) return totalBalance;
     }
-    return 35000;
+
+    // 3. คืนค่าเริ่มต้น 0.0 (ไม่มีข้อมูลรายได้หรือบัตร ไม่ฮาร์ดโค้ด 35,000)
+    return fallbackIncome;
   }
 
+  /// อัปเดตรายได้ในหน่วยความจำ
+  ///
+  /// หมายเหตุการตัดสินใจ (Product Decision):
+  /// ใน `income_editor_sheet.dart` ระบุชัดเจนว่า TextField เป็น readOnly พร้อมคำอธิบาย
+  /// "ดึงข้อมูลจาก CreditCard ในระบบ ไม่อนุญาตให้แก้ไขโดยตรง" แสดงว่า intent เดิมของ Product
+  /// คือให้คำนวณจากบัตรเครดิตที่ผูกไว้ จึงยังไม่ยิง `PATCH /users/income` โดยตรงจาก UI
+  /// ในระหว่างรอข้อสรุป Product requirement ว่าจะเปิดให้พิมพ์แก้ไขหรือไม่
+  /// คงฟังก์ชัน `update(income)` สำหรับการทำงานในหน่วยความจำและทดสอบไว้ตามเดิม
   bool update(double income) {
     if (!income.isFinite || income <= 0) return false;
     state = income;
     return true;
   }
 }
+

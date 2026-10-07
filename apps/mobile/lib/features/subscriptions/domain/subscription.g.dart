@@ -18,6 +18,7 @@ _Subscription _$SubscriptionFromJson(Map<String, dynamic> json) =>
           : DateTime.parse(json['nextBillingDate'] as String),
       usageStatus: json['usageStatus'] as String? ?? 'moderate',
       confidence: (json['confidence'] as num?)?.toInt() ?? 50,
+      paymentCardId: json['paymentCardId'] as String?,
       isSelected: json['isSelected'] as bool? ?? false,
       customFields:
           (json['customFields'] as List<dynamic>?)
@@ -25,6 +26,10 @@ _Subscription _$SubscriptionFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const [],
       reminderEnabled: json['reminderEnabled'] as bool? ?? true,
+      presetId: json['presetId'] as String?,
+      planTier: json['planTier'] as String?,
+      sharedMembers: (json['sharedMembers'] as num?)?.toInt() ?? 1,
+      pricePerSlot: (json['pricePerSlot'] as num?)?.toDouble(),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -43,9 +48,14 @@ Map<String, dynamic> _$SubscriptionToJson(_Subscription instance) =>
       'nextBillingDate': instance.nextBillingDate?.toIso8601String(),
       'usageStatus': instance.usageStatus,
       'confidence': instance.confidence,
+      'paymentCardId': instance.paymentCardId,
       'isSelected': instance.isSelected,
       'customFields': instance.customFields,
       'reminderEnabled': instance.reminderEnabled,
+      'presetId': instance.presetId,
+      'planTier': instance.planTier,
+      'sharedMembers': instance.sharedMembers,
+      'pricePerSlot': instance.pricePerSlot,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };

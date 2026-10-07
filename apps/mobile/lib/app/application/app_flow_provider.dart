@@ -8,17 +8,20 @@ class AppFlowState {
     required this.isInitializing,
     required this.isOnboardingCompleted,
     required this.isAuthenticated,
+    this.isPinSetupCompleted = false,
   });
 
   static const mockDashboard = AppFlowState(
     isInitializing: false,
     isOnboardingCompleted: true,
     isAuthenticated: true,
+    isPinSetupCompleted: true,
   );
 
   final bool isInitializing;
   final bool isOnboardingCompleted;
   final bool isAuthenticated;
+  final bool isPinSetupCompleted;
 }
 
 /// ใช้เฉพาะ demo/test ที่ต้องการข้าม auth; production default เป็น false
@@ -39,9 +42,14 @@ final appFlowProvider = Provider<AppFlowState>((ref) {
   final onboardingCompleted = ref.watch(onboardingProvider);
   final authState = ref.watch(authProvider);
 
+  final user = authState.value;
+  final isPinSetupCompleted =
+      bypassAuth || (user?.pinConfigured ?? false);
+
   return AppFlowState(
     isInitializing: !bypassAuth && authState.isLoading,
     isOnboardingCompleted: onboardingCompleted,
-    isAuthenticated: bypassAuth || authState.value != null,
+    isAuthenticated: bypassAuth || user != null,
+    isPinSetupCompleted: isPinSetupCompleted,
   );
 });

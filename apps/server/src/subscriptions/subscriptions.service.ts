@@ -16,6 +16,7 @@ import {
   UsageStatus,
 } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
+import { parseAvailablePlans } from '../packages/utils/subscription-plan.util';
 
 @Injectable()
 export class SubscriptionsService {
@@ -67,6 +68,9 @@ export class SubscriptionsService {
       name: sub.name,
       category: sub.category,
       price: Number(sub.price),
+      plan_tier: sub.plan_tier,
+      shared_members: sub.shared_members,
+      price_per_slot: sub.price_per_slot ? Number(sub.price_per_slot) : null,
       billing_cycle: sub.billing_cycle,
       start_date: sub.start_date,
       next_renewal_date: sub.next_renewal_date,
@@ -141,6 +145,9 @@ export class SubscriptionsService {
       brand_color: p.brand_color,
       icon_url: p.icon_url,
       description: p.description,
+      features: p.features,
+      max_slots: p.max_slots,
+      available_plans: parseAvailablePlans(p.available_plans),
     }));
 
     if (this.cacheService) {
@@ -168,6 +175,9 @@ export class SubscriptionsService {
       name: sub.name,
       category: sub.category,
       price: Number(sub.price),
+      plan_tier: sub.plan_tier,
+      shared_members: sub.shared_members,
+      price_per_slot: sub.price_per_slot ? Number(sub.price_per_slot) : null,
       billing_cycle: sub.billing_cycle,
       start_date: sub.start_date,
       next_renewal_date: sub.next_renewal_date,
@@ -196,8 +206,13 @@ export class SubscriptionsService {
   }
 
   async create(userId: string, dto: CreateSubscriptionDto) {
+    const cardId = dto.payment_card_id || dto.card_id;
+    if (!cardId) {
+      throw new BadRequestException('payment_card_id or card_id is required');
+    }
+
     const card = await this.prisma.paymentCard.findFirst({
-      where: { id: dto.payment_card_id, user_id: userId, is_active: true },
+      where: { id: cardId, user_id: userId, is_active: true },
     });
 
     if (!card) {
@@ -206,7 +221,46 @@ export class SubscriptionsService {
       );
     }
 
-    const startDate = dto.start_date ? new Date(dto.start_date) : new Date();
+    let planMaxSlots: number | undefined;
+
+    if (dto.preset_id) {
+      const preset = await this.prisma.subscriptionPreset.findUnique({
+        where: { id: dto.preset_id },
+      });
+
+      if (!preset) {
+        throw new NotFoundException(
+          `Preset with ID ${dto.preset_id} not found`,
+        );
+      }
+
+      if (dto.plan_tier) {
+        const plan = parseAvailablePlans(preset.available_plans).find(
+          (p) => p.tier === dto.plan_tier,
+        );
+
+        if (!plan) {
+          throw new BadRequestException(
+            `Plan tier "${dto.plan_tier}" is not offered by preset "${preset.name}"`,
+          );
+        }
+
+        planMaxSlots = plan.maxSlots;
+      }
+    }
+
+    const sharedMembers = dto.shared_members ?? 1;
+
+    if (planMaxSlots !== undefined && sharedMembers > planMaxSlots) {
+      throw new BadRequestException(
+        `shared_members (${sharedMembers}) exceeds this plan's max_slots (${planMaxSlots})`,
+      );
+    }
+
+    const pricePerSlot = dto.price / sharedMembers;
+
+    const startDateStr = dto.start_date || dto.first_bill_date;
+    const startDate = startDateStr ? new Date(startDateStr) : new Date();
     const nextRenewal = dto.next_renewal_date
       ? new Date(dto.next_renewal_date)
       : new Date(startDate);
@@ -224,11 +278,14 @@ export class SubscriptionsService {
     const sub = await this.prisma.userSubscription.create({
       data: {
         user_id: userId,
-        payment_card_id: dto.payment_card_id,
+        payment_card_id: cardId,
         preset_id: dto.preset_id,
+        plan_tier: dto.plan_tier,
         name: dto.name,
         category: dto.category,
         price: dto.price,
+        shared_members: sharedMembers,
+        price_per_slot: pricePerSlot,
         billing_cycle: dto.billing_cycle,
         start_date: startDate,
         next_renewal_date: nextRenewal,
@@ -248,6 +305,7 @@ export class SubscriptionsService {
     return {
       ...sub,
       price: Number(sub.price),
+      price_per_slot: sub.price_per_slot ? Number(sub.price_per_slot) : null,
     };
   }
 
@@ -260,12 +318,10 @@ export class SubscriptionsService {
       throw new NotFoundException(`Subscription with ID ${id} not found`);
     }
 
-    if (
-      dto.payment_card_id &&
-      dto.payment_card_id !== existing.payment_card_id
-    ) {
+    const updatedCardId = dto.payment_card_id || dto.card_id;
+    if (updatedCardId && updatedCardId !== existing.payment_card_id) {
       const card = await this.prisma.paymentCard.findFirst({
-        where: { id: dto.payment_card_id, user_id: userId, is_active: true },
+        where: { id: updatedCardId, user_id: userId, is_active: true },
       });
       if (!card) {
         throw new BadRequestException('Specified payment card not found');
@@ -275,7 +331,8 @@ export class SubscriptionsService {
     const updated = await this.prisma.userSubscription.update({
       where: { id },
       data: {
-        payment_card_id: dto.payment_card_id,
+        payment_card_id:
+          updatedCardId !== undefined ? updatedCardId : undefined,
         name: dto.name,
         category: dto.category,
         price: dto.price,

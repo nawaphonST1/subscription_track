@@ -104,7 +104,7 @@ describe('Metrics server', () => {
 describe('MetricsServerService socket timeouts', () => {
   it('applies the header and request timeouts to the listening server', async () => {
     const registry = new Registry();
-    const service = new MetricsServerService(registry);
+    const service = new MetricsServerService(registry, configStub);
 
     await service.onApplicationBootstrap();
 

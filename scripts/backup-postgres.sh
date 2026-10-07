@@ -15,20 +15,30 @@ DB_PASSWORD="${DB_PASSWORD:-password123}"
 AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-subtrackerbackups}"
 AZURE_CONTAINER="${AZURE_STORAGE_CONTAINER:-postgres}"
 AZURE_PREFIX="${AZURE_BACKUP_PREFIX:-backups}"
+BACKUP_NAME="${BACKUP_NAME:-latest}"
 
-BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_backup_${TIMESTAMP}.dump.gz"
+BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_backup_${BACKUP_NAME}.dump.gz"
 CHECKSUM_FILE="${BACKUP_FILE}.sha256"
 
 mkdir -p "${BACKUP_DIR}"
 
-echo "==> [$(date)] Starting automated backup for database: ${DB_NAME} on ${DB_HOST}:${DB_PORT}..."
+echo "==> [${TIMESTAMP}] Starting automated backup for database: ${DB_NAME} on ${DB_HOST}:${DB_PORT} (Snapshot: ${BACKUP_NAME})..."
 
 # Export password for pg_dump non-interactive execution
 export PGPASSWORD="${DB_PASSWORD}"
 
 # 1. Execute pg_dump and compress on-the-fly
 echo "==> Creating compressed dump file: ${BACKUP_FILE}..."
-pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -Fc | gzip -c > "${BACKUP_FILE}"
+if command -v pg_dump >/dev/null 2>&1; then
+    pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -Fc | gzip -c > "${BACKUP_FILE}"
+elif docker ps --format '{{.Names}}' | grep -q "postgres"; then
+    CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep "postgres" | head -n 1)
+    echo "==> Using Docker container (${CONTAINER_NAME}) to run pg_dump..."
+    docker exec -e PGPASSWORD="${DB_PASSWORD}" -i "${CONTAINER_NAME}" pg_dump -U "${DB_USER}" -d "${DB_NAME}" -Fc | gzip -c > "${BACKUP_FILE}"
+else
+    echo "❌ Error: Neither pg_dump nor running postgres docker container found!"
+    exit 1
+fi
 
 FILE_SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)
 echo "✅ Database dump completed successfully. File size: ${FILE_SIZE}"
@@ -67,7 +77,7 @@ else
     echo "⚠️  Neither azcopy nor az CLI found. Local backup file is stored at: ${BACKUP_FILE}"
 fi
 
-echo "✅ Backup successfully synced to Azure offsite storage: ${BLOB_BASE_URL}/${BLOB_PATH}"
+echo "✅ Backup successfully synced to Azure offsite storage: ${BLOB_BASE_URL}/${BLOB_PATH} (In-place overwrite maintaining latest snapshot footprint)"
 
 # 4. Clean up local temporary files
 rm -f "${BACKUP_FILE}" "${CHECKSUM_FILE}"

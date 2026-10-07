@@ -192,7 +192,7 @@ class AppUpdateDialog extends ConsumerWidget {
             onPressed: state.isDownloading
                 ? null
                 : () async {
-                    await controller.simulateDownloadAndInstall();
+                    await controller.downloadAndInstallApk();
                     if (context.mounted && !isForceUpdate) {
                       Navigator.of(context).pop();
                     }

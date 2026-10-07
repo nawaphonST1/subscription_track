@@ -6,12 +6,21 @@ import 'package:subscription_track/app/application/app_flow_provider.dart';
 import 'package:subscription_track/app/presentation/main_navigation_shell.dart';
 import 'package:subscription_track/app/presentation/splash_screen.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
+import 'package:subscription_track/features/admin/presentation/admin_portal_screen.dart';
 import 'package:subscription_track/features/auth/presentation/login_screen.dart';
 import 'package:subscription_track/features/auth/presentation/register_screen.dart';
+import 'package:subscription_track/features/auth/presentation/setup_pin_screen.dart';
 import 'package:subscription_track/features/notifications/presentation/notification_center_screen.dart';
 import 'package:subscription_track/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:subscription_track/features/dashboard/presentation/dashboard_tab.dart';
+import 'package:subscription_track/features/profile/application/user_income_controller.dart';
+import 'package:subscription_track/features/profile/presentation/income_editor_sheet.dart';
+import 'package:subscription_track/features/profile/presentation/profile_tab.dart';
+import 'package:subscription_track/features/savings/presentation/savings_tab.dart';
+import 'package:subscription_track/features/settings/presentation/settings_tab.dart';
 import 'package:subscription_track/features/subscriptions/presentation/add_subscription_screen.dart';
 import 'package:subscription_track/features/subscriptions/presentation/select_package_screen.dart';
+import 'package:subscription_track/features/subscriptions/presentation/subscriptions_tab.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
@@ -30,12 +39,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      /*
-      // --- Full Production Auth & Onboarding Redirect Guards (Commented Out for Dev Flexibility) ---
+      final bypassAuth = ref.read(mockAuthBypassProvider);
+      if (bypassAuth) {
+        // สำหรับการพัฒนาและทดสอบ: เมื่อเปิด mockAuthBypassProvider
+        // เปิดให้เข้าผ่าน URL Path ได้โดยตรงอย่างอิสระทุกหน้า (Direct URL Deep-Linking)
+        // หากเข้าหน้า Root (/) หรือ Splash (/splash) จะส่งไปที่ Dashboard เป็นค่าเริ่มต้น
+        if (location == '/' || location == RouteConstants.splash) {
+          return RouteConstants.dashboard;
+        }
+        return null;
+      }
+
+      // --- Full Production Auth & Onboarding Redirect Guards ---
       final appFlow = ref.read(appFlowProvider);
       final isOnSplash = location == RouteConstants.splash;
       final isOnboarding = location == RouteConstants.onboarding;
       final isLoggingIn = location == RouteConstants.login;
+      final isOnRegister = location == RouteConstants.register;
 
       // 1. หากอยู่ในสถานะเริ่มต้น (Initializing) ให้คงอยู่ที่หน้า Splash
       if (appFlow.isInitializing) {
@@ -47,21 +67,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isOnboarding ? null : RouteConstants.onboarding;
       }
 
-      // 3. หากยังไม่ได้ล็อกอิน ให้ไปที่หน้า Login
+      // 3. หากยังไม่ได้ล็อกอิน ให้ไปที่หน้า Login หรือ Register (สมัครสมาชิกได้โดยไม่ต้อง
+      // ล็อกอินก่อน — ไม่งั้นลิงก์ "สมัครสมาชิก" จากหน้า Login จะเด้งกลับมาเองทันที)
       if (!appFlow.isAuthenticated) {
-        return isLoggingIn ? null : RouteConstants.login;
+        return (isLoggingIn || isOnRegister) ? null : RouteConstants.login;
       }
 
-      // 4. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding หรือ Login ให้เปลี่ยนไปหน้า Dashboard
-      if (isOnSplash || isOnboarding || isLoggingIn) {
+      // 4. หากล็อกอินแล้วแต่ยังไม่ได้ตั้ง PIN ให้บังคับไปที่หน้า /setup-pin เท่านั้น
+      final isOnSetupPin = location == RouteConstants.setupPin;
+      if (!appFlow.isPinSetupCompleted) {
+        return isOnSetupPin ? null : RouteConstants.setupPin;
+      }
+
+      // หากตั้ง PIN เสร็จแล้วแต่อยู่ในหน้า /setup-pin ให้ไปที่หน้า Dashboard
+      if (isOnSetupPin) {
         return RouteConstants.dashboard;
       }
-      */
 
-      // สำหรับการพัฒนาและทดสอบ: เปิดให้เข้าผ่าน URL Path ได้โดยตรงอย่างอิสระทุกหน้า (Direct URL Deep-Linking)
-      // หากเข้าหน้า Root (/) หรือ Splash (/splash) จะส่งไปที่ Dashboard เป็นค่าเริ่มต้น
-      // แต่หากระบุ URL Path อื่นๆ เช่น /login หรือ /onboarding จะเปิดหน้านั้นให้ทันทีโดยไม่สกัดกั้น
-      if (location == '/' || location == RouteConstants.splash) {
+      // 5. หากล็อกอินเรียบร้อยแล้ว แต่อยู่ในหน้า Splash, Onboarding, Login หรือ Register
+      // ให้เปลี่ยนไปหน้า Dashboard
+      if (isOnSplash || isOnboarding || isLoggingIn || isOnRegister) {
+        return RouteConstants.dashboard;
+      }
+
+      // หากเข้าหน้า Root (/) ให้ส่งไป Dashboard
+      if (location == '/') {
         return RouteConstants.dashboard;
       }
 
@@ -85,28 +115,84 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteConstants.register,
         builder: (context, state) => const RegisterScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => MainNavigationShell(
-          child: state.uri.path == RouteConstants.dashboard ? null : child,
+      GoRoute(
+        path: RouteConstants.admin,
+        builder: (context, state) => const AdminPortalScreen(),
+      ),
+      GoRoute(
+        path: RouteConstants.setupPin,
+        builder: (context, state) => const SetupPinScreen(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => MainNavigationShell(
+          navigationShell: navigationShell,
+          state: state,
         ),
-        routes: [
-          GoRoute(
-            path: RouteConstants.dashboard,
-            builder: (context, state) => const SizedBox.shrink(),
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: RouteConstants.notifications,
-                builder: (context, state) => const NotificationCenterScreen(),
-              ),
-              GoRoute(
-                path: RouteConstants.addSubscription,
-                builder: (context, state) => const AddSubscriptionScreen(),
+                path: RouteConstants.dashboard,
+                builder: (context, state) => const DashboardTab(),
                 routes: [
                   GoRoute(
-                    path: RouteConstants.selectPackage,
-                    builder: (context, state) => const SelectPackageScreen(),
+                    path: RouteConstants.notifications,
+                    builder: (context, state) =>
+                        const NotificationCenterScreen(),
+                  ),
+                  GoRoute(
+                    path: RouteConstants.addSubscription,
+                    builder: (context, state) =>
+                        const AddSubscriptionScreen(),
+                    routes: [
+                      GoRoute(
+                        path: RouteConstants.selectPackage,
+                        builder: (context, state) =>
+                            const SelectPackageScreen(),
+                      ),
+                    ],
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.subscriptions,
+                builder: (context, state) => const SubscriptionsTab(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.savings,
+                builder: (context, state) => const SavingsTab(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.settings,
+                builder: (context, state) => const SettingsTab(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteConstants.profile,
+                builder: (context, state) => ProfileTab(
+                  onEditIncome: () {
+                    final income = ref.read(userIncomeProvider);
+                    showIncomeEditorSheet(
+                      context: context,
+                      currentIncome: income,
+                    );
+                  },
+                ),
               ),
             ],
           ),

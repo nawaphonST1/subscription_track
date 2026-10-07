@@ -88,7 +88,7 @@ describe('CreepScoreService', () => {
         },
       ]);
 
-      const result = await service.getCreepScore(userId);
+      const result: any = await service.getCreepScore(userId);
 
       // Monthly expenses = 419 + 139 = 558
       // Income = 50000
@@ -117,7 +117,7 @@ describe('CreepScoreService', () => {
         },
       ]);
 
-      const result = await service.getCreepScore(userId);
+      const result: any = await service.getCreepScore(userId);
 
       // Expenses = 720
       // Total card funds = 5000
@@ -138,12 +138,12 @@ describe('CreepScoreService', () => {
       prismaMock.paymentCard.findMany.mockResolvedValue([]);
 
       // First call: Cache miss -> queries prisma
-      const firstResult = await serviceWithCache.getCreepScore(userId);
+      const firstResult: any = await serviceWithCache.getCreepScore(userId);
       expect(firstResult.creep_score).toBe(0);
       expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
 
       // Second call: Cache hit -> returns cached, prisma NOT queried again
-      const secondResult = await serviceWithCache.getCreepScore(userId);
+      const secondResult: any = await serviceWithCache.getCreepScore(userId);
       expect(secondResult.creep_score).toBe(0);
       expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
     });
