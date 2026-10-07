@@ -7,6 +7,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { CacheService } from '../cache/cache.service';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -136,6 +137,32 @@ describe('UsersService', () => {
       await expect(service.getProfile('non-existent-user')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('returns cached profile on subsequent requests without querying database', async () => {
+      const mockCache = new CacheService();
+      const serviceWithCache = new UsersService(prismaMock, undefined, mockCache);
+
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-cached',
+        email: 'cached@example.com',
+        name: 'Cache User',
+        monthly_income: 45000,
+        security_pin_hash: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+        _count: { payment_cards: 1, subscriptions: 2 },
+      });
+
+      // Call 1: Miss
+      const r1 = await serviceWithCache.getProfile('user-cached');
+      expect(r1.email).toBe('cached@example.com');
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
+
+      // Call 2: Hit
+      const r2 = await serviceWithCache.getProfile('user-cached');
+      expect(r2.email).toBe('cached@example.com');
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
     });
   });
 

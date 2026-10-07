@@ -30,6 +30,24 @@ export class UsersService {
   }
 
   async getProfile(userId: string) {
+    const cacheKey = `cache:user:${userId}:profile`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<{
+        id: string;
+        email: string;
+        name: string;
+        monthly_income: number;
+        pin_configured: boolean;
+        active_cards_count: number;
+        active_subscriptions_count: number;
+        created_at: Date;
+        updated_at: Date;
+      }>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -53,7 +71,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return {
+    const result = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -64,6 +82,12 @@ export class UsersService {
       created_at: user.created_at,
       updated_at: user.updated_at,
     };
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -97,6 +121,7 @@ export class UsersService {
       });
 
       if (this.cacheService) {
+        await this.cacheService.del(`cache:user:${userId}:profile`);
         if (dto.name !== undefined) {
           await this.cacheService.del(`auth:user:${userId}`);
         }
@@ -139,6 +164,7 @@ export class UsersService {
     });
 
     if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:profile`);
       await this.cacheService.del(`cache:user:${userId}:creep-score`);
     }
 
@@ -290,6 +316,7 @@ export class UsersService {
     ]);
 
     if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:profile`);
       await this.cacheService.del(`auth:user:${userId}`);
       await this.cacheService.del(`user:${userId}:pin-configured`);
     }

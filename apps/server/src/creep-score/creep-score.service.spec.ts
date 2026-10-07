@@ -147,5 +147,30 @@ describe('CreepScoreService', () => {
       expect(secondResult.creep_score).toBe(0);
       expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
     });
+
+    it('coalesces concurrent requests for the same user via single-flight pattern', async () => {
+      const userId = 'single-flight-user';
+      prismaMock.user.findUnique.mockImplementation(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+        return { monthly_income: 30000 };
+      });
+      prismaMock.userSubscription.findMany.mockResolvedValue([]);
+      prismaMock.paymentCard.findMany.mockResolvedValue([]);
+
+      // Fire 5 concurrent requests simultaneously before any resolves
+      const results = await Promise.all([
+        service.getCreepScore(userId),
+        service.getCreepScore(userId),
+        service.getCreepScore(userId),
+        service.getCreepScore(userId),
+        service.getCreepScore(userId),
+      ]);
+
+      expect(results).toHaveLength(5);
+      expect((results[0] as any).monthly_income).toBe(30000);
+      // Prisma findUnique should have been called only once across all 5 concurrent requests
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
+    });
   });
 });
+

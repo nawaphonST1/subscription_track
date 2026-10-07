@@ -42,6 +42,19 @@ export class SavingsService {
   }
 
   async getPotentialSavings(userId: string) {
+    const cacheKey = `cache:user:${userId}:savings-optimizer`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<{
+        unused_subscriptions_count: number;
+        total_monthly_savings: number;
+        total_yearly_savings_projection: number;
+        recommended_cancellations: any[];
+      }>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const unusedSubscriptions = await this.prisma.userSubscription.findMany({
       where: {
         user_id: userId,
@@ -86,12 +99,18 @@ export class SavingsService {
       };
     });
 
-    return {
+    const result = {
       unused_subscriptions_count: items.length,
       total_monthly_savings: Number(totalMonthlySavings.toFixed(2)),
       total_yearly_savings_projection: Number(totalYearlySavings.toFixed(2)),
       recommended_cancellations: items,
     };
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 600);
+    }
+
+    return result;
   }
 
   async batchCancel(userId: string, dto: BatchCancelDto) {
@@ -197,7 +216,17 @@ export class SavingsService {
     });
 
     if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:savings-optimizer`);
       await this.cacheService.del(`cache:user:${userId}:creep-score`);
+      await this.cacheService.del(`cache:user:${userId}:profile`);
+      if (typeof this.cacheService.delByPattern === 'function') {
+        await this.cacheService.delByPattern(
+          `cache:user:${userId}:subscriptions:*`,
+        );
+        await this.cacheService.delByPattern(
+          `cache:user:${userId}:upcoming:*`,
+        );
+      }
     }
 
     return result;

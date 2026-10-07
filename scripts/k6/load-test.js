@@ -133,105 +133,110 @@ export function setup() {
     console.warn(`[k6 Warning] /health responded with status ${healthRes.status} at ${baseUrl}.`);
   }
 
-  // 3. Setup Dedicated Test User
-  const testUser = {
-    email: `k6_tester_${Date.now()}@subscriptiontrack.dev`,
-    password: 'Password123!',
-    name: 'K6 Stress Tester',
-    monthly_income: 60000,
-    security_pin: '123456',
-  };
-
+  // 3. Setup Distributed User Pool
+  const poolSize = parseInt(__ENV.USER_POOL_SIZE || '15', 10);
+  console.log(`[k6 Setup] Initializing User Pool with ${poolSize} distinct test users...`);
   const regHeaders = { 'Content-Type': 'application/json' };
-  let token = null;
-  let userId = null;
+  const userPool = [];
 
-  // Try registration first
-  const regRes = http.post(
-    `${baseUrl}/auth/register`,
-    JSON.stringify(testUser),
-    { headers: regHeaders, timeout: '10s' },
-  );
+  for (let i = 1; i <= poolSize; i++) {
+    const testUser = {
+      email: `k6_tester_pool_${i}@subscriptiontrack.dev`,
+      password: 'Password123!',
+      name: `K6 Tester ${i}`,
+      monthly_income: 50000 + i * 1000,
+      security_pin: '123456',
+    };
 
-  if (regRes.status === 201) {
-    const authData = parseAuth(regRes);
-    token = authData.token;
-    userId = authData.userId;
-    console.log(`[k6 Setup] Successfully registered test user: ${testUser.email}`);
-  } else {
-    // If registration failed (e.g., 409 conflict), try login
-    const loginRes = http.post(
-      `${baseUrl}/auth/login`,
-      JSON.stringify({ email: testUser.email, password: testUser.password }),
+    let userToken = null;
+    let userId = null;
+    let cardId = null;
+
+    // Try register
+    const regRes = http.post(
+      `${baseUrl}/auth/register`,
+      JSON.stringify(testUser),
       { headers: regHeaders, timeout: '10s' },
     );
-    if (loginRes.status === 200) {
-      const authData = parseAuth(loginRes);
-      token = authData.token;
+
+    if (regRes.status === 201) {
+      const authData = parseAuth(regRes);
+      userToken = authData.token;
       userId = authData.userId;
-      console.log(`[k6 Setup] Successfully logged in existing test user: ${testUser.email}`);
     } else {
-      console.error(`[k6 Setup Error] Auth failed. RegStatus=${regRes.status}, LoginStatus=${loginRes.status}`);
+      // Fallback: Login
+      const loginRes = http.post(
+        `${baseUrl}/auth/login`,
+        JSON.stringify({ email: testUser.email, password: testUser.password }),
+        { headers: regHeaders, timeout: '10s' },
+      );
+      if (loginRes.status === 200) {
+        const authData = parseAuth(loginRes);
+        userToken = authData.token;
+        userId = authData.userId;
+      }
+    }
+
+    if (userToken) {
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${userToken}`,
+      };
+
+      // Check existing active cards
+      const activeCardsRes = http.get(`${baseUrl}/cards`, { headers: authHeaders });
+      if (activeCardsRes.status === 200) {
+        try {
+          const cardsBody = JSON.parse(activeCardsRes.body);
+          const cards = cardsBody.data || cardsBody;
+          if (Array.isArray(cards) && cards.length > 0) {
+            cardId = cards[0].id;
+          }
+        } catch (_) {}
+      }
+
+      // Link mock bank card if none
+      if (!cardId) {
+        const mockCardsRes = http.get(`${baseUrl}/cards/mock`, { headers: authHeaders });
+        if (mockCardsRes.status === 200) {
+          try {
+            const body = JSON.parse(mockCardsRes.body);
+            const mockCards = body.data || body;
+            if (Array.isArray(mockCards) && mockCards.length > 0) {
+              const linkRes = http.post(
+                `${baseUrl}/cards/link`,
+                JSON.stringify({ mock_card_id: mockCards[0].id }),
+                { headers: authHeaders },
+              );
+              if (linkRes.status === 201 || linkRes.status === 200) {
+                const cardData = JSON.parse(linkRes.body);
+                const cardObj = cardData.data || cardData;
+                cardId = cardObj.id || cardObj.card?.id;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      userPool.push({
+        token: userToken,
+        userId: userId,
+        cardId: cardId,
+      });
     }
   }
 
-  if (!token) {
+  if (userPool.length === 0) {
     throw new Error(
-      `[k6 Setup Failed] Could not authenticate against ${baseUrl}. RegStatus=${regRes.status}. Body: ${regRes.body}`,
+      `[k6 Setup Failed] Could not authenticate any test users in pool against ${baseUrl}.`,
     );
   }
 
-  // 4. Prepare active payment card for mutations
-  let cardId = null;
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
-
-  // Link first available mock bank card
-  const mockCardsRes = http.get(`${baseUrl}/cards/mock`, { headers: authHeaders });
-  if (mockCardsRes.status === 200) {
-    try {
-      const body = JSON.parse(mockCardsRes.body);
-      const mockCards = body.data || body;
-      if (Array.isArray(mockCards) && mockCards.length > 0) {
-        const linkRes = http.post(
-          `${baseUrl}/cards/link`,
-          JSON.stringify({ mock_card_id: mockCards[0].id }),
-          { headers: authHeaders },
-        );
-        if (linkRes.status === 201 || linkRes.status === 200) {
-          const cardData = JSON.parse(linkRes.body);
-          const cardObj = cardData.data || cardData;
-          cardId = cardObj.id || cardObj.card?.id;
-        }
-      }
-    } catch (e) {
-      console.warn(`[k6 Warning] Mock card setup note: ${e.message}`);
-    }
-  }
-
-  // Fallback: check already active cards
-  if (!cardId) {
-    const activeCardsRes = http.get(`${baseUrl}/cards`, { headers: authHeaders });
-    if (activeCardsRes.status === 200) {
-      try {
-        const cardsBody = JSON.parse(activeCardsRes.body);
-        const cards = cardsBody.data || cardsBody;
-        if (Array.isArray(cards) && cards.length > 0) {
-          cardId = cards[0].id;
-        }
-      } catch (_) {}
-    }
-  }
-
-  console.log(`[k6 Setup Complete] Target=${baseUrl}, User=${userId}, Card=${cardId || 'None'}\n`);
+  console.log(`[k6 Setup Complete] Ready with ${userPool.length} users in pool.\n`);
 
   return {
     baseUrl: baseUrl,
-    token: token,
-    userId: userId,
-    cardId: cardId,
+    userPool: userPool,
     profile: PROFILE,
   };
 }
@@ -240,8 +245,12 @@ export function setup() {
 // Default Scenario: Realistic Multi-Journey User Execution
 // ============================================================================
 export default function (data) {
-  const { baseUrl, token, cardId, profile } = data;
+  const { baseUrl, userPool, profile } = data;
   const isCeilingMode = profile === 'ceiling' || profile === 'spike';
+
+  // Distribute virtual users across the user pool to avoid cross-user cache thrashing
+  const currentUser = userPool[(__VU - 1) % userPool.length];
+  const { token, cardId } = currentUser;
 
   // Common headers with valid Bearer Token
   const authHeaders = {

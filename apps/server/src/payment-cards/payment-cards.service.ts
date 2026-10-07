@@ -11,6 +11,30 @@ import { LinkMockCardDto } from './dto/link-mock-card.dto';
 import { BillingCycle, NotificationType, UsageStatus } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
 
+export interface PaymentCardItem {
+  id: string;
+  card_nickname: string;
+  card_brand: string;
+  card_type: CardType;
+  last_4_digits: string;
+  bank_name: string;
+  balance: number;
+  currency: string;
+  is_default: boolean;
+  active_subscriptions_count: number;
+  subscriptions: {
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    billing_cycle: BillingCycle;
+    next_renewal_date: Date;
+    usage_status: UsageStatus;
+  }[];
+  created_at: Date;
+  updated_at: Date;
+}
+
 @Injectable()
 export class PaymentCardsService {
   constructor(
@@ -18,7 +42,37 @@ export class PaymentCardsService {
     @Optional() private readonly cacheService?: CacheService,
   ) {}
 
-  async findAll(userId: string) {
+  private async evictUserCardCaches(
+    userId: string,
+    evictSubscriptions = false,
+  ) {
+    if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:cards`);
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+      await this.cacheService.del(`cache:user:${userId}:profile`);
+      if (evictSubscriptions) {
+        if (typeof this.cacheService.delByPattern === 'function') {
+          await this.cacheService.delByPattern(
+            `cache:user:${userId}:subscriptions:*`,
+          );
+          await this.cacheService.delByPattern(
+            `cache:user:${userId}:upcoming:*`,
+          );
+        }
+        await this.cacheService.del(`cache:user:${userId}:savings-optimizer`);
+      }
+    }
+  }
+
+  async findAll(userId: string): Promise<PaymentCardItem[]> {
+    const cacheKey = `cache:user:${userId}:cards`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<PaymentCardItem[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const cards = await this.prisma.paymentCard.findMany({
       where: { user_id: userId, is_active: true },
       orderBy: [{ is_default: 'desc' }, { created_at: 'desc' }],
@@ -42,7 +96,7 @@ export class PaymentCardsService {
       },
     });
 
-    return cards.map((card) => ({
+    const result = cards.map((card) => ({
       id: card.id,
       card_nickname: card.card_nickname,
       card_brand: card.card_brand,
@@ -65,6 +119,12 @@ export class PaymentCardsService {
       created_at: card.created_at,
       updated_at: card.updated_at,
     }));
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
   async findOne(userId: string, cardId: string) {
@@ -159,9 +219,7 @@ export class PaymentCardsService {
       };
     });
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserCardCaches(userId);
 
     return result;
   }
@@ -198,9 +256,7 @@ export class PaymentCardsService {
       };
     });
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserCardCaches(userId);
 
     return result;
   }
@@ -219,9 +275,7 @@ export class PaymentCardsService {
       data: { is_active: false, is_default: false },
     });
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserCardCaches(userId);
 
     return { message: 'Payment card deactivated successfully' };
   }
@@ -276,9 +330,7 @@ export class PaymentCardsService {
           });
         }
 
-        if (this.cacheService) {
-          await this.cacheService.del(`cache:user:${userId}:creep-score`);
-        }
+        await this.evictUserCardCaches(userId, false);
 
         return {
           card: {
@@ -419,9 +471,7 @@ export class PaymentCardsService {
       };
     });
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserCardCaches(userId, true);
 
     return result;
   }
