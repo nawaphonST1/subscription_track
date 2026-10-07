@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BillingCycle } from '@prisma/client';
+import { BillingCycle, Prisma } from '@prisma/client';
 import {
   IsEnum,
   IsNotEmpty,
@@ -71,8 +71,8 @@ export class CreatePackageDto {
     description: 'List of recommended plan tiers (e.g. Pro, Plus, Family)',
   })
   @IsOptional()
-  available_plans?: any[];
+  available_plans?: Prisma.InputJsonValue;
 
   @IsOptional()
-  availablePlans?: any[];
+  availablePlans?: Prisma.InputJsonValue;
 }

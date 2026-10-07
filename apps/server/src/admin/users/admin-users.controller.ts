@@ -22,6 +22,7 @@ import { AdminUsersService } from './admin-users.service';
 import { AdminUserResponseDto } from './dto/admin-user-response.dto';
 import { AdminStatsResponseDto } from './dto/admin-stats-response.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
+import { AdminCreateSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { UpdateSubscriptionDto } from '../../subscriptions/dto/update-subscription.dto';
 
 @ApiTags('admin-users')
@@ -93,7 +94,7 @@ export class AdminUsersController {
   })
   async createSubscription(
     @Param('id') id: string,
-    @Body() dto: any,
+    @Body() dto: AdminCreateSubscriptionDto,
   ) {
     return this.adminUsersService.createSubscription(id, dto);
   }
