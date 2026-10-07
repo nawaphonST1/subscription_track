@@ -1,0 +1,21 @@
+name: subtracker-jenkins
+
+services:
+  jenkins:
+    build:
+      context: ./infra/jenkins
+    container_name: subtracker_jenkins
+    restart: unless-stopped
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./apps/server:/var/jenkins_home/host_apps_server:ro
+
+volumes:
+  jenkins_home:

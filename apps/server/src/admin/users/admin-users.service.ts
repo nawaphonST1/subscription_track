@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminUserResponseDto } from './dto/admin-user-response.dto';
 import { AdminStatsResponseDto } from './dto/admin-stats-response.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
+import { UpdateSubscriptionDto } from '../../subscriptions/dto/update-subscription.dto';
 
 @Injectable()
 export class AdminUsersService {
@@ -140,7 +142,7 @@ export class AdminUsersService {
    */
   async updateUser(
     id: string,
-    dto: { name?: string; role?: any; monthlyIncome?: number },
+    dto: UpdateAdminUserDto,
   ) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) {
@@ -179,7 +181,7 @@ export class AdminUsersService {
   /**
    * แก้ไข Subscription ของผู้ใช้ (Admin action)
    */
-  async updateSubscription(subId: string, dto: any) {
+  async updateSubscription(subId: string, dto: UpdateSubscriptionDto) {
     const existing = await this.prisma.userSubscription.findUnique({
       where: { id: subId },
     });
@@ -187,6 +189,7 @@ export class AdminUsersService {
       throw new NotFoundException(`Subscription with ID '${subId}' not found`);
     }
 
+    const cardId = dto.payment_card_id || dto.card_id;
     const updated = await this.prisma.userSubscription.update({
       where: { id: subId },
       data: {
@@ -205,8 +208,8 @@ export class AdminUsersService {
         }),
         ...(dto.brand_color !== undefined && { brand_color: dto.brand_color }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
-        ...(dto.payment_card_id !== undefined && {
-          payment_card_id: dto.payment_card_id,
+        ...(cardId !== undefined && {
+          payment_card_id: cardId,
         }),
       },
     });
