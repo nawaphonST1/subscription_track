@@ -86,10 +86,10 @@ pipeline {
                             # Separation of concerns: Exclude generic secret rules to eliminate false-positive overlap with Gitleaks
                             SEMGREP_RULES="--config=p/owasp-top-ten --exclude-rule='*secret*' --exclude-rule='*credential*' --exclude-rule='*token*'"
                             if command -v semgrep >/dev/null 2>&1; then
-                                semgrep scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             elif command -v docker >/dev/null 2>&1; then
                                 docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                    semgrep/semgrep:latest semgrep scan --config=p/owasp-top-ten --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
+                                    semgrep/semgrep:latest semgrep scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             elif [ -x "${WORKSPACE}/scripts/bin/semgrep" ]; then
                                 "${WORKSPACE}/scripts/bin/semgrep" scan ${SEMGREP_RULES} --sarif -o "${WORKSPACE}/semgrep.sarif" apps/server/src || true
                             else
@@ -234,22 +234,22 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL CVEs (real scan)..."
+                    echo "==> [${env.APP_NAME}] Scanning container image with Trivy for HIGH and CRITICAL OS CVEs..."
                     sh """
                         # Optimization: Scope Trivy to OS/container packages only (--pkg-types os / --vuln-type os)
                         # JS/node_modules dependencies are already handled by pnpm audit in DP-402 (eliminates redundancy)
-                        TRIVY_OS_FLAGS="--severity HIGH,CRITICAL --pkg-types os --vuln-type os"
+                        TRIVY_OS_FLAGS="--scanners vuln --severity HIGH,CRITICAL --pkg-types os --vuln-type os"
                         if command -v trivy >/dev/null 2>&1; then
-                            trivy image --scanners vuln --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
-                            trivy image --scanners vuln --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image \${TRIVY_OS_FLAGS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image \${TRIVY_OS_FLAGS} --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         elif command -v docker >/dev/null 2>&1; then
                             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
-                                aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --format sarif --output "${WORKSPACE}/trivy-results.sarif" "${env.IMAGE_TAG}" || true
+                                aquasec/trivy:latest image \${TRIVY_OS_FLAGS} --format sarif --output "${WORKSPACE}/trivy-results.sarif" "${env.IMAGE_TAG}" || true
                             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-trivy-cache:/root/.cache/trivy -w "${WORKSPACE}" \
-                                aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --format json --output "${WORKSPACE}/trivy-report.json" "${env.IMAGE_TAG}" || true
+                                aquasec/trivy:latest image \${TRIVY_OS_FLAGS} --format json --output "${WORKSPACE}/trivy-report.json" "${env.IMAGE_TAG}" || true
                         elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
-                            "${WORKSPACE}/scripts/bin/trivy" image --scanners vuln --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
-                            "${WORKSPACE}/scripts/bin/trivy" image --scanners vuln --severity HIGH,CRITICAL --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image \${TRIVY_OS_FLAGS} --format sarif --output trivy-results.sarif ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image \${TRIVY_OS_FLAGS} --format json --output trivy-report.json ${env.IMAGE_TAG} 2>/dev/null || true
                         else
                             echo '{"runs":[]}' > trivy-results.sarif
                             echo '{"Results":[]}' > trivy-report.json
@@ -265,19 +265,20 @@ pipeline {
             steps {
                 script {
                     env.CURRENT_STAGE = env.STAGE_NAME
-                    echo "==> [${env.APP_NAME}] Generating CycloneDX and SPDX Software Bill of Materials via Syft (real SBOM)..."
+                    echo "==> [${env.APP_NAME}] Generating CycloneDX and SPDX Software Bill of Materials using Trivy..."
                     sh """
-                        if command -v syft >/dev/null 2>&1; then
-                            syft dir:apps/server -o cyclonedx-json=subtracker-api.cdx.json 2>/dev/null || true
-                            syft dir:apps/server -o spdx-json=subtracker-api.spdx.json 2>/dev/null || true
+                        # Optimization: Unified SBOM generation under Trivy natively, eliminating redundant Syft tool dependency
+                        if command -v trivy >/dev/null 2>&1; then
+                            trivy image --format cyclonedx --output subtracker-api.cdx.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            trivy image --format spdx-json --output subtracker-api.spdx.json ${env.IMAGE_TAG} 2>/dev/null || true
                         elif command -v docker >/dev/null 2>&1; then
-                            docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                anchore/syft:latest dir:"${WORKSPACE}/apps/server" -o cyclonedx-json="${WORKSPACE}/subtracker-api.cdx.json" || true
-                            docker run --rm -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
-                                anchore/syft:latest dir:"${WORKSPACE}/apps/server" -o spdx-json="${WORKSPACE}/subtracker-api.spdx.json" || true
-                        elif [ -x "${WORKSPACE}/scripts/bin/syft" ]; then
-                            "${WORKSPACE}/scripts/bin/syft" dir:apps/server -o cyclonedx-json=subtracker-api.cdx.json 2>/dev/null || true
-                            "${WORKSPACE}/scripts/bin/syft" dir:apps/server -o spdx-json=subtracker-api.spdx.json 2>/dev/null || true
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                aquasec/trivy:latest image --format cyclonedx --output "${WORKSPACE}/subtracker-api.cdx.json" "${env.IMAGE_TAG}" || true
+                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -w "${WORKSPACE}" \
+                                aquasec/trivy:latest image --format spdx-json --output "${WORKSPACE}/subtracker-api.spdx.json" "${env.IMAGE_TAG}" || true
+                        elif [ -x "${WORKSPACE}/scripts/bin/trivy" ]; then
+                            "${WORKSPACE}/scripts/bin/trivy" image --format cyclonedx --output subtracker-api.cdx.json ${env.IMAGE_TAG} 2>/dev/null || true
+                            "${WORKSPACE}/scripts/bin/trivy" image --format spdx-json --output subtracker-api.spdx.json ${env.IMAGE_TAG} 2>/dev/null || true
                         else
                             echo '{"bomFormat":"CycloneDX","specVersion":"1.4"}' > subtracker-api.cdx.json
                             echo '{"spdxVersion":"SPDX-2.3"}' > subtracker-api.spdx.json
