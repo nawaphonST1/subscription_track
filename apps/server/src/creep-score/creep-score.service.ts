@@ -7,6 +7,8 @@ export type RiskLevel = 'SAFE' | 'CAUTION' | 'HIGH_RISK';
 
 @Injectable()
 export class CreepScoreService {
+  private readonly inFlightRequests = new Map<string, Promise<unknown>>();
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly cacheService?: CacheService,
@@ -43,6 +45,22 @@ export class CreepScoreService {
       }
     }
 
+    // Single-flight pattern: deduplicate concurrent requests for the same user
+    const inFlight = this.inFlightRequests.get(userId);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const computation = this.calculateCreepScore(userId, cacheKey);
+    this.inFlightRequests.set(userId, computation);
+    try {
+      return await computation;
+    } finally {
+      this.inFlightRequests.delete(userId);
+    }
+  }
+
+  private async calculateCreepScore(userId: string, cacheKey: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { monthly_income: true },

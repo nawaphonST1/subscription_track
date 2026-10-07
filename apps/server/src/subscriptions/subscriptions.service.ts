@@ -18,6 +18,48 @@ import {
 import { CacheService } from '../cache/cache.service';
 import { parseAvailablePlans } from '../packages/utils/subscription-plan.util';
 
+export interface UserSubscriptionItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  plan_tier: string | null;
+  shared_members: number;
+  price_per_slot: number | null;
+  billing_cycle: BillingCycle;
+  start_date: Date;
+  next_renewal_date: Date;
+  usage_status: UsageStatus;
+  status: SubscriptionStatus;
+  brand_color: string | null;
+  notes: string | null;
+  payment_card: {
+    id: string;
+    card_nickname: string;
+    card_brand: string;
+    last_4_digits: string;
+    bank_name: string;
+  };
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface UpcomingSubscriptionItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  billing_cycle: BillingCycle;
+  next_renewal_date: Date;
+  days_until_renewal: number;
+  brand_color: string | null;
+  payment_card: {
+    card_nickname: string;
+    last_4_digits: string;
+    bank_name: string;
+  };
+}
+
 @Injectable()
 export class SubscriptionsService {
   constructor(
@@ -26,12 +68,43 @@ export class SubscriptionsService {
     @Optional() private readonly cacheService?: CacheService,
   ) {}
 
-  async findAll(userId: string, query: QuerySubscriptionDto) {
+  private async evictUserSubscriptionCaches(userId: string) {
+    if (this.cacheService) {
+      if (typeof this.cacheService.delByPattern === 'function') {
+        await this.cacheService.delByPattern(
+          `cache:user:${userId}:subscriptions:*`,
+        );
+        await this.cacheService.delByPattern(
+          `cache:user:${userId}:upcoming:*`,
+        );
+      }
+      await this.cacheService.del(`cache:user:${userId}:creep-score`);
+      await this.cacheService.del(`cache:user:${userId}:profile`);
+      await this.cacheService.del(`cache:user:${userId}:cards`);
+      await this.cacheService.del(`cache:user:${userId}:savings-optimizer`);
+    }
+  }
+
+  async findAll(
+    userId: string,
+    query: QuerySubscriptionDto,
+  ): Promise<UserSubscriptionItem[]> {
+    const cacheKey = `cache:user:${userId}:subscriptions:${query.status ?? 'all'}:${query.category ?? 'all'}:${query.search ?? 'all'}:${query.usage_status ?? 'all'}`;
+    if (this.cacheService) {
+      const cached =
+        await this.cacheService.get<UserSubscriptionItem[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const where: Prisma.UserSubscriptionWhereInput = {
       user_id: userId,
-      status: query.status ? query.status : SubscriptionStatus.ACTIVE,
-      payment_card: { is_active: true },
     };
+
+    if (query.status) {
+      where.status = query.status;
+    }
 
     if (query.category) {
       where.category = { equals: query.category, mode: 'insensitive' };
@@ -61,7 +134,7 @@ export class SubscriptionsService {
       },
     });
 
-    return subscriptions.map((sub) => ({
+    const result = subscriptions.map((sub) => ({
       id: sub.id,
       name: sub.name,
       category: sub.category,
@@ -80,9 +153,27 @@ export class SubscriptionsService {
       created_at: sub.created_at,
       updated_at: sub.updated_at,
     }));
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
-  async findUpcoming(userId: string, limit = 10) {
+  async findUpcoming(
+    userId: string,
+    limit = 10,
+  ): Promise<UpcomingSubscriptionItem[]> {
+    const cacheKey = `cache:user:${userId}:upcoming:${limit}`;
+    if (this.cacheService) {
+      const cached =
+        await this.cacheService.get<UpcomingSubscriptionItem[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const subscriptions = await this.prisma.userSubscription.findMany({
       where: {
         user_id: userId,
@@ -103,7 +194,7 @@ export class SubscriptionsService {
 
     const now = new Date();
 
-    return subscriptions.map((sub) => {
+    const result = subscriptions.map((sub) => {
       const diffMs = sub.next_renewal_date.getTime() - now.getTime();
       const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -119,6 +210,12 @@ export class SubscriptionsService {
         payment_card: sub.payment_card,
       };
     });
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
   async listPresets() {
@@ -296,9 +393,7 @@ export class SubscriptionsService {
 
     this.metrics?.recordSubscriptionCreated();
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserSubscriptionCaches(userId);
 
     return {
       ...sub,
@@ -347,9 +442,7 @@ export class SubscriptionsService {
 
     this.metrics?.recordSubscriptionUpdated();
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserSubscriptionCaches(userId);
 
     return {
       ...updated,
@@ -372,9 +465,7 @@ export class SubscriptionsService {
 
     this.metrics?.recordSubscriptionDeleted();
 
-    if (this.cacheService) {
-      await this.cacheService.del(`cache:user:${userId}:creep-score`);
-    }
+    await this.evictUserSubscriptionCaches(userId);
 
     return { message: 'Subscription deleted successfully' };
   }

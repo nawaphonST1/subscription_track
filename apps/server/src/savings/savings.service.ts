@@ -42,12 +42,24 @@ export class SavingsService {
   }
 
   async getPotentialSavings(userId: string) {
-    let unusedSubscriptions = await this.prisma.userSubscription.findMany({
+    const cacheKey = `cache:user:${userId}:savings-optimizer`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<{
+        unused_subscriptions_count: number;
+        total_monthly_savings: number;
+        total_yearly_savings_projection: number;
+        recommended_cancellations: any[];
+      }>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const unusedSubscriptions = await this.prisma.userSubscription.findMany({
       where: {
         user_id: userId,
         status: SubscriptionStatus.ACTIVE,
         usage_status: UsageStatus.UNUSED,
-        payment_card: { is_active: true },
       },
       include: {
         payment_card: {
@@ -60,26 +72,6 @@ export class SavingsService {
       },
       orderBy: { price: 'desc' },
     });
-
-    if (unusedSubscriptions.length === 0) {
-      unusedSubscriptions = await this.prisma.userSubscription.findMany({
-        where: {
-          user_id: userId,
-          status: SubscriptionStatus.ACTIVE,
-          payment_card: { is_active: true },
-        },
-        include: {
-          payment_card: {
-            select: {
-              card_nickname: true,
-              last_4_digits: true,
-              bank_name: true,
-            },
-          },
-        },
-        orderBy: { price: 'desc' },
-      });
-    }
 
     let totalMonthlySavings = 0;
     let totalYearlySavings = 0;
@@ -107,12 +99,18 @@ export class SavingsService {
       };
     });
 
-    return {
+    const result = {
       unused_subscriptions_count: items.length,
       total_monthly_savings: Number(totalMonthlySavings.toFixed(2)),
       total_yearly_savings_projection: Number(totalYearlySavings.toFixed(2)),
       recommended_cancellations: items,
     };
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 600);
+    }
+
+    return result;
   }
 
   async batchCancel(userId: string, dto: BatchCancelDto) {
@@ -218,7 +216,17 @@ export class SavingsService {
     });
 
     if (this.cacheService) {
+      await this.cacheService.del(`cache:user:${userId}:savings-optimizer`);
       await this.cacheService.del(`cache:user:${userId}:creep-score`);
+      await this.cacheService.del(`cache:user:${userId}:profile`);
+      if (typeof this.cacheService.delByPattern === 'function') {
+        await this.cacheService.delByPattern(
+          `cache:user:${userId}:subscriptions:*`,
+        );
+        await this.cacheService.delByPattern(
+          `cache:user:${userId}:upcoming:*`,
+        );
+      }
     }
 
     return result;

@@ -3,6 +3,7 @@ import { SavingsService } from './savings.service';
 import { BillingCycle, SubscriptionStatus, UsageStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { ForbiddenException, HttpException } from '@nestjs/common';
+import { CacheService } from '../cache/cache.service';
 
 describe('SavingsService', () => {
   let service: SavingsService;
@@ -73,6 +74,23 @@ describe('SavingsService', () => {
       expect(result.total_monthly_savings).toBe(1100);
       expect(result.total_yearly_savings_projection).toBe(13200);
       expect(result.recommended_cancellations).toHaveLength(2);
+    });
+
+    it('returns cached savings on subsequent requests without querying database', async () => {
+      const mockCache = new CacheService();
+      const serviceWithCache = new SavingsService(prismaMock, mockCache);
+
+      prismaMock.userSubscription.findMany.mockResolvedValue([]);
+
+      // Call 1: Miss
+      const r1 = await serviceWithCache.getPotentialSavings('user-cached');
+      expect(r1.unused_subscriptions_count).toBe(0);
+      expect(prismaMock.userSubscription.findMany).toHaveBeenCalledTimes(1);
+
+      // Call 2: Hit
+      const r2 = await serviceWithCache.getPotentialSavings('user-cached');
+      expect(r2.unused_subscriptions_count).toBe(0);
+      expect(prismaMock.userSubscription.findMany).toHaveBeenCalledTimes(1);
     });
   });
 

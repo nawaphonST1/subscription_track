@@ -749,4 +749,57 @@ describe('SubscriptionsService', () => {
       );
     });
   });
+
+  describe('caching', () => {
+    it('returns cached subscriptions on subsequent findAll requests without querying database', async () => {
+      const mockCacheService = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithCache = new SubscriptionsService(
+        prismaMock,
+        undefined,
+        mockCacheService as any,
+      );
+
+      prismaMock.userSubscription.findMany.mockResolvedValue([]);
+
+      // 1st call: cache miss
+      await serviceWithCache.findAll('user-c', {});
+      expect(prismaMock.userSubscription.findMany).toHaveBeenCalledTimes(1);
+      expect(mockCacheService.set).toHaveBeenCalledTimes(1);
+
+      // 2nd call: cache hit
+      mockCacheService.get.mockResolvedValueOnce([{ id: 'sub-cached' }]);
+      const cached = await serviceWithCache.findAll('user-c', {});
+      expect(cached).toEqual([{ id: 'sub-cached' }]);
+      expect(prismaMock.userSubscription.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns cached upcoming subscriptions on subsequent findUpcoming requests', async () => {
+      const mockCacheService = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithCache = new SubscriptionsService(
+        prismaMock,
+        undefined,
+        mockCacheService as any,
+      );
+
+      prismaMock.userSubscription.findMany.mockResolvedValue([]);
+
+      // 1st call: cache miss
+      await serviceWithCache.findUpcoming('user-c', 5);
+      expect(prismaMock.userSubscription.findMany).toHaveBeenCalledTimes(1);
+      expect(mockCacheService.set).toHaveBeenCalledTimes(1);
+
+      // 2nd call: cache hit
+      mockCacheService.get.mockResolvedValueOnce([{ id: 'upcoming-cached' }]);
+      const cached = await serviceWithCache.findUpcoming('user-c', 5);
+      expect(cached).toEqual([{ id: 'upcoming-cached' }]);
+      expect(prismaMock.userSubscription.findMany).toHaveBeenCalledTimes(1);
+    });
+  });
 });
+

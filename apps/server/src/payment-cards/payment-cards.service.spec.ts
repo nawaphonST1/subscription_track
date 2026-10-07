@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PaymentCardsService } from './payment-cards.service';
 import { BillingCycle, CardType } from '@prisma/client';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { CacheService } from '../cache/cache.service';
 
 describe('PaymentCardsService', () => {
   let service: PaymentCardsService;
@@ -106,6 +107,23 @@ describe('PaymentCardsService', () => {
       expect(result[0].subscriptions).toHaveLength(1);
       expect(result[0].subscriptions[0].name).toBe('Netflix Test');
       expect(result[0].subscriptions[0].price).toBe(399);
+    });
+
+    it('returns cached cards on subsequent requests without querying database', async () => {
+      const mockCache = new CacheService();
+      const serviceWithCache = new PaymentCardsService(prismaMock, mockCache);
+
+      prismaMock.paymentCard.findMany.mockResolvedValue([]);
+
+      // Call 1: Miss
+      const r1 = await serviceWithCache.findAll('user-cached-card');
+      expect(r1).toEqual([]);
+      expect(prismaMock.paymentCard.findMany).toHaveBeenCalledTimes(1);
+
+      // Call 2: Hit
+      const r2 = await serviceWithCache.findAll('user-cached-card');
+      expect(r2).toEqual([]);
+      expect(prismaMock.paymentCard.findMany).toHaveBeenCalledTimes(1);
     });
   });
 
