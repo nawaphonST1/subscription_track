@@ -444,14 +444,18 @@ pipeline {
                             echo "==> Testing SSH connection to Production VM (${PROD_TARGET_USER}@${PROD_TARGET_HOST})..."
                             if ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=8 "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "echo ok" >/dev/null 2>&1; then
                                 echo "==> 🚀 Dedicated CI/CD VM detected: Deploying to Remote Production VM (${PROD_TARGET_HOST}) via SSH..."
+                                TARGET_BRANCH=$(echo "${GIT_BRANCH:-main}" | sed 's|^origin/||')
+                                if [ -z "${TARGET_BRANCH}" ] || [ "${TARGET_BRANCH}" = "HEAD" ]; then
+                                    TARGET_BRANCH="main"
+                                fi
+                                echo "==> Target remote branch to sync: ${TARGET_BRANCH}"
                                 ssh ${SSH_KEY_FLAG} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${PROD_TARGET_USER}@${PROD_TARGET_HOST}" "
                                     set -e
                                     cd ${PROD_TARGET_PATH}
                                     echo '==> [Remote Production VM] Updating codebase from Git...'
-                                    TARGET_BRANCH=\$(echo '${GIT_BRANCH:-main}' | sed 's|^origin/||')
-                                    git fetch origin \${TARGET_BRANCH}
-                                    git checkout -B \${TARGET_BRANCH} origin/\${TARGET_BRANCH}
-                                    git reset --hard origin/\${TARGET_BRANCH}
+                                    git fetch origin ${TARGET_BRANCH}
+                                    git checkout -B ${TARGET_BRANCH} origin/${TARGET_BRANCH}
+                                    git reset --hard origin/${TARGET_BRANCH}
                                     rm -f appsmobile.env 2>/dev/null || true
                                     echo '==> [Remote Production VM] Triggering production stack update via docker compose...'
                                     docker compose -f docker-compose-prosuction.yml up -d --remove-orphans || docker compose -f docker-compose-prosuction.yml up -d
