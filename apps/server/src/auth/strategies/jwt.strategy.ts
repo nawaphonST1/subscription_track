@@ -10,6 +10,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role?: string;
+  provider?: string;
 }
 
 @Injectable()
@@ -38,7 +39,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }>(cacheKey);
       if (cached) {
         this.activeUsers?.record(cached.id);
-        return cached;
+        return {
+          ...cached,
+          provider: payload.provider,
+        };
       }
     }
 
@@ -65,6 +69,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // as a label or written to a log.
     this.activeUsers?.record(user.id);
 
-    return user;
+    return {
+      ...user,
+      provider: payload.provider,
+    };
   }
 }

@@ -4,6 +4,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   name?: string | null;
+  provider?: string;
 }
 
 export const CurrentUser = createParamDecorator(

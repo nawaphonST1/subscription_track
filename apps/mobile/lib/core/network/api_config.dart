@@ -1,9 +1,14 @@
+import 'package:flutter/foundation.dart';
+
 class ApiConfig {
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue:
-        'https://subscription-track-dev.malaysiawest.cloudapp.azure.com',
-  );
+  static const String _configuredBaseUrl =
+      String.fromEnvironment('API_BASE_URL');
+
+  static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
+    if (kIsWeb && kDebugMode) return 'http://localhost:3000';
+    return 'https://subscription-track-dev.malaysiawest.cloudapp.azure.com';
+  }
 
   static const String googleClientId = String.fromEnvironment(
     'GOOGLE_CLIENT_ID',

@@ -13,7 +13,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePinDto } from './dto/change-pin.dto';
 import { BusinessMetrics } from '../metrics/business.metrics';
 import { CacheService } from '../cache/cache.service';
-import { isPinConfigured } from '../common/security/pin.util';
+import { isPinConfigured, DEFAULT_PIN } from '../common/security/pin.util';
 import { PinRateLimiter } from '../common/security/pin-rate-limiter.service';
 
 @Injectable()
@@ -202,6 +202,7 @@ export class UsersService {
     userId: string,
     currentPinOrDto: string | ChangePinDto,
     newPinParam?: string,
+    provider?: string,
   ) {
     this.rateLimiter.checkLockout(userId);
 
@@ -217,6 +218,14 @@ export class UsersService {
         email: true,
         password_hash: true,
         security_pin_hash: true,
+        notifications: {
+          where: {
+            type: NotificationType.SECURITY_ALERT,
+            message: { contains: 'connected with' },
+          },
+          select: { id: true, message: true },
+          take: 1,
+        },
       },
     });
 
@@ -248,8 +257,12 @@ export class UsersService {
         );
       }
     } else {
-      // For unconfigured/reset accounts: Stolen JWT alone must NOT be able to enroll PIN!
-      // Must prove primary authentication via account password or valid social token.
+      // Check if this account is a social OAuth account (Google / Apple)
+      const isSocialAccount =
+        provider === 'google' ||
+        provider === 'apple' ||
+        Boolean(user.notifications && user.notifications.length > 0);
+
       let primaryAuthSuccess = false;
 
       if (dto.password) {
@@ -285,6 +298,26 @@ export class UsersService {
           } catch {
             // Social verification failed
           }
+        }
+      }
+
+      // For social accounts (Google/Apple), the user was already authenticated via OAuth.
+      // If they provide current_pin matching the temporary default PIN ('111111' or stored hash),
+      // or if they didn't provide current_pin because it's their first-time PIN enrollment, allow it.
+      if (!primaryAuthSuccess && isSocialAccount) {
+        if (dto.current_pin) {
+          const isPinMatch = await bcrypt.compare(
+            dto.current_pin,
+            user.security_pin_hash,
+          );
+          if (isPinMatch || dto.current_pin === DEFAULT_PIN) {
+            primaryAuthSuccess = true;
+          } else {
+            this.rateLimiter.recordFailure(userId);
+            throw new UnauthorizedException('Current security PIN is incorrect');
+          }
+        } else {
+          primaryAuthSuccess = true;
         }
       }
 

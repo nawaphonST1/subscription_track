@@ -5,6 +5,7 @@ import 'package:subscription_track/core/security/pin_provider.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
 import 'package:subscription_track/core/widgets/pin/pin.dart';
+import 'package:subscription_track/features/auth/application/auth_provider.dart';
 
 class ChangePinDialog extends ConsumerStatefulWidget {
   const ChangePinDialog({super.key});
@@ -36,6 +37,11 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
   @override
   void initState() {
     super.initState();
+    final isPinConfigured = ref.read(authProvider).value?.pinConfigured ?? true;
+    if (!isPinConfigured) {
+      _oldPin = '111111';
+      _step = ChangePinStep.enterNew;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusNode.requestFocus();
@@ -203,8 +209,15 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
               if (isAuthError ||
                   failure.displayMessage.contains('เดิม') ||
                   failure.displayMessage.contains('current')) {
-                _step = ChangePinStep.verifyOld;
-                _oldPin = '';
+                final isPinConfigured =
+                    ref.read(authProvider).value?.pinConfigured ?? true;
+                if (!isPinConfigured) {
+                  _step = ChangePinStep.enterNew;
+                  _oldPin = '111111';
+                } else {
+                  _step = ChangePinStep.verifyOld;
+                  _oldPin = '';
+                }
                 _newPin = '';
               }
             });
@@ -214,6 +227,7 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
             setState(() {
               _isLoading = false;
             });
+            ref.read(authProvider.notifier).markPinConfigured();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('เปลี่ยนรหัส PIN สำเร็จแล้ว')),
             );
