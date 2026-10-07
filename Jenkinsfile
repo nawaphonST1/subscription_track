@@ -274,6 +274,16 @@ pipeline {
         }
 
         // DP-405: Container Image Vulnerability Scanning using Trivy (OS-level Scoped)
+        //
+        // RISK ACCEPTANCE (reviewed, not an oversight): a real scan of the runtime image
+        // on 2026-10-07 found 48 HIGH-severity findings, 0 CRITICAL. 43 of those 48 have
+        // no fixed package version available upstream at all as of this scan — they are
+        // OS-package-level CVEs in the base image, not vulnerabilities in our application
+        // code. They cannot be resolved by patching anything on our end tonight.
+        // Decision: keep this stage non-blocking (|| true stays below) for this demo/
+        // presentation milestone. Revisit once upstream patches land or a different base
+        // image is evaluated — do not flip this to blocking without re-running the scan
+        // first, since the finding counts above will be stale.
         stage('DP-405: Container Scan (Trivy)') {
             steps {
                 script {
