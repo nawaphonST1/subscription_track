@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Functional test for the nginx stage of ../../config.alloy.
+# Functional test for the nginx and api/worker stages of ../../config.alloy.
 #
 # `alloy validate` proves the config parses. It does NOT run the regex, the
 # Go templates or the label/structured-metadata split — and those are where
 # the cardinality guarantee in §5.3 actually lives. This test feeds sample
-# access logs through the REAL pipeline block (extracted from config.alloy at
-# run time, so it cannot drift) and asserts on what comes out of loki.echo.
+# logs through the REAL pipeline block (extracted from config.alloy at run
+# time, so it cannot drift) and asserts on what comes out of loki.echo.
 #
-# Two fixtures, two different jobs:
+# Three fixtures, three different jobs:
 #   nginx-access.log  — the original adversarial fixture (scanner paths,
 #                        query strings, mid-path ids, structured metadata).
 #   real-routes.log    — every route in every real NestJS controller under
@@ -17,6 +17,13 @@
 #                        to "other", and can't silently resurrect a dead
 #                        whitelist entry (F3 cleanup: /users/me/pin was
 #                        removed because no controller ever served it).
+#   api-worker.log     — Nest's console logger output for the api/worker
+#                        `level` extraction stage, both plain and with the
+#                        ANSI color codes Nest emits by default. Regression
+#                        fixture for the stage.decolorize fix: before it, the
+#                        colored lines silently produced no `level` label at
+#                        all, which is exactly what made Grafana's
+#                        `level=~"$level"` query return nothing in prod.
 #
 # Re-runnable: writes only to a temp dir, starts no long-lived container.
 #
@@ -74,23 +81,27 @@ refute() {  # refute <outfile> <description> <grep -E pattern>
 
 # Runs the real pipeline over one fixture log and leaves the decoded
 # labels/structured-metadata in $2. Each fixture gets its own subdirectory so
-# the two docker runs (and their position files) never interfere.
+# the docker runs (and their position files) never interfere. $3 is the
+# `service` label the fixture's lines are tagged with on the way in — nginx
+# fixtures use "nginx" (the nginx stage's selector), api/worker fixtures use
+# "api" (the api|worker stage's selector matches either).
 run_pipeline() {
-  local fixture="$1" out="$2"
+  local fixture="$1" out="$2" service="${3:-nginx}"
   local rundir="$WORK/$(basename "$fixture" .log)"
+  local logfile="$(basename "$fixture")"
   mkdir -p "$rundir"
 
   cat > "$rundir/config.alloy" <<EOF
-local.file_match "nginx" {
+local.file_match "fixture" {
   path_targets = [{
-    __path__ = "/data/nginx-access.log",
-    service  = "nginx",
+    __path__ = "/data/$logfile",
+    service  = "$service",
     site     = "prod",
   }]
 }
 
-loki.source.file "nginx" {
-  targets       = local.file_match.nginx.targets
+loki.source.file "fixture" {
+  targets       = local.file_match.fixture.targets
   forward_to    = [loki.process.pipeline.receiver]
   tail_from_end = false
 }
@@ -99,9 +110,9 @@ loki.echo "out" {}
 
 EOF
   cat "$WORK/pipeline.alloy" >> "$rundir/config.alloy"
-  cp "$fixture" "$rundir/nginx-access.log"
+  cp "$fixture" "$rundir/$logfile"
 
-  echo "== running the pipeline over $(wc -l < "$fixture") lines of $(basename "$fixture")"
+  echo "== running the pipeline over $(wc -l < "$fixture") lines of $(basename "$fixture") (service=$service)"
   timeout 40s docker run --rm \
     -v "$rundir/config.alloy:/etc/alloy/config.alloy:ro" \
     -v "$rundir:/data" \
@@ -194,6 +205,41 @@ refute "$OUT2" "case-mismatched path never kept verbatim"                       
 refute "$OUT2" "path traversal never kept verbatim"                            'route="/subscriptions/\.\.'
 refute "$OUT2" "path traversal out of /users/pin never kept verbatim"          'route="/users/pin/\.\.'
 refute "$OUT2" "an unregistered trailing segment never kept verbatim"          'route="/subscriptions/:id/extra'
+
+# --- fixture 3: api/worker console logger, plain and ANSI-colored ----------
+# Regression coverage for the stage.decolorize fix: Nest's logger wraps the
+# level token in ANSI color escapes, which used to break the level regex's
+# trailing `\s` and leave the log line with no `level` label at all — the
+# exact condition that made Grafana's `level=~"$level"` panel show nothing in
+# production despite real log volume flowing.
+OUT3="$WORK/out-api-worker.txt"
+run_pipeline "$HERE/api-worker.log" "$OUT3" "api"
+
+expect "$OUT3" "plain LOG line gets level=LOG"     'level="LOG"'
+expect "$OUT3" "plain WARN line gets level=WARN"   'level="WARN"'
+expect "$OUT3" "plain ERROR line gets level=ERROR" 'level="ERROR"'
+
+# The fixture has 3 plain + 3 ANSI-colored lines, one of each level in each
+# half. expect() above only proves a level="X" line exists somewhere; it
+# can't tell whether that came from the plain half or the colored half. Count
+# instead, so a regression that silently drops the colored lines (3 instead
+# of 6 total) fails loudly rather than passing on the plain half alone — this
+# is the actual regression guard for the stage.decolorize fix.
+n="$(grep -oE 'level="[A-Z]+"' "$OUT3" | wc -l)"
+if [ "$n" -eq 6 ]; then
+  echo "PASS  all 6 fixture lines (3 plain + 3 ANSI-colored) produced a level label"
+else
+  echo "FAIL  expected 6 lines with a level label (3 plain + 3 ANSI-colored), got $n"
+  fail=1
+fi
+
+# No raw ESC byte (0x1b) should remain in the decolorized entry text.
+if LC_ALL=C grep -qP '\x1b' "$OUT3"; then
+  echo "FAIL  a raw ANSI escape byte leaked into the decolorized entry text"
+  fail=1
+else
+  echo "PASS  no raw ANSI escape byte leaks into the decolorized entry text"
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo "RESULT: FAIL"; exit 1
