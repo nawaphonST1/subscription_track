@@ -1,3 +1,10 @@
+# Overridable via COMPOSE_PROJECT_NAME — see docker-compose-prosuction.yml for
+# why a hardcoded name here still wouldn't protect two checkouts of this repo
+# sharing a host (this file had no explicit name: at all before, so it was
+# already defaulting to the directory basename, which is the same collision
+# risk in a different form).
+name: ${COMPOSE_PROJECT_NAME:-subscription-track-test}
+
 services:
   postgres_test:
     image: postgres:16-alpine

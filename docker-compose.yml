@@ -1,4 +1,7 @@
-name: subscription-track-dev
+# Overridable via the COMPOSE_PROJECT_NAME env var so two checkouts of this
+# repo on the same host (e.g. two developers sharing a VM) don't collide on
+# the same project name and silently share container/network/image names.
+name: ${COMPOSE_PROJECT_NAME:-subscription-track-dev}
 
 # The two named volumes below are pinned to their pre-existing literal names
 # (subscription_track_postgres_data, subscription_track_redis_data) so this
