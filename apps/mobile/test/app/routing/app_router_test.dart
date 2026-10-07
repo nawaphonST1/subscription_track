@@ -51,6 +51,7 @@ ProviderScope _buildTestApp(AppFlowState initialState) {
     overrides: [
       // Test เลือก startup destination ได้โดยไม่แก้ mock state ใน production
       appFlowProvider.overrideWithValue(initialState),
+      authRepositoryProvider.overrideWithValue(InMemoryAuthRepository()),
       ..._offlineDataOverrides(),
     ],
     child: const App(),

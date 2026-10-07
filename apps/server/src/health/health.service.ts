@@ -1,3 +1,5 @@
+import * as fs from 'node:fs';
+import { resolve } from 'node:path';
 import {
   Injectable,
   Logger,
@@ -36,9 +38,23 @@ export class HealthService {
       throw new ServiceUnavailableException('Database not ready');
     }
 
-    const isMaintenance =
+    let isMaintenance =
       this.configService?.get<boolean>('app.maintenanceMode') ??
-      process.env.MAINTENANCE_MODE === 'true';
+      (process.env.NODE_ENV !== 'test' &&
+        process.env.MAINTENANCE_MODE === 'true');
+
+    if (!isMaintenance && process.env.NODE_ENV !== 'test') {
+      try {
+        const envPath = resolve(process.cwd(), '.env');
+        if (fs.existsSync(envPath)) {
+          const content = fs.readFileSync(envPath, 'utf8');
+          const match = content.match(/^MAINTENANCE_MODE\s*=\s*(true|1)/m);
+          if (match) {
+            isMaintenance = true;
+          }
+        }
+      } catch {}
+    }
 
     if (isMaintenance) {
       return {
