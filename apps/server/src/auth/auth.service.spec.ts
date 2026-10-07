@@ -236,7 +236,9 @@ describe('AuthService pin_configured responses', () => {
     });
 
     it('rejects access token when audience does not match GOOGLE_CLIENT_ID', async () => {
-      mockVerifyIdToken.mockRejectedValue(new Error('Wrong number of segments in token'));
+      mockVerifyIdToken.mockRejectedValue(
+        new Error('Wrong number of segments in token'),
+      );
       mockGetTokenInfo.mockResolvedValue({
         aud: 'wrong-audience-client-id',
         email: 'victim@example.com',
@@ -252,7 +254,9 @@ describe('AuthService pin_configured responses', () => {
     });
 
     it('succeeds via access token fallback when audience matches and email exists', async () => {
-      mockVerifyIdToken.mockRejectedValue(new Error('Wrong number of segments in token'));
+      mockVerifyIdToken.mockRejectedValue(
+        new Error('Wrong number of segments in token'),
+      );
       mockGetTokenInfo.mockResolvedValue({
         aud: 'test-google-client-id',
         email: 'access-user@example.com',

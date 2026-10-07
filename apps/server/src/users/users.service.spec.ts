@@ -141,7 +141,11 @@ describe('UsersService', () => {
 
     it('returns cached profile on subsequent requests without querying database', async () => {
       const mockCache = new CacheService();
-      const serviceWithCache = new UsersService(prismaMock, undefined, mockCache);
+      const serviceWithCache = new UsersService(
+        prismaMock,
+        undefined,
+        mockCache,
+      );
 
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user-cached',
