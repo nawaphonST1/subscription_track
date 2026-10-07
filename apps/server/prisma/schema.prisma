@@ -96,18 +96,21 @@ model PaymentCard {
 }
 
 model SubscriptionPreset {
-  id            String             @id @default(uuid())
-  name          String             @unique
-  category      String
-  default_price Decimal            @db.Decimal(10, 2)
-  billing_cycle BillingCycle       @default(MONTHLY)
-  brand_color   String
-  icon_url      String?
-  description   String?
-  created_at    DateTime           @default(now())
-  updated_at    DateTime           @updatedAt
+  id              String             @id @default(uuid())
+  name            String             @unique
+  category        String
+  default_price   Decimal            @db.Decimal(10, 2)
+  billing_cycle   BillingCycle       @default(MONTHLY)
+  brand_color     String
+  icon_url        String?
+  description     String?
+  available_plans Json?
+  features        String[]          @default([])
+  max_slots       Int                @default(1)
+  created_at      DateTime           @default(now())
+  updated_at      DateTime           @updatedAt
 
-  subscriptions UserSubscription[]
+  subscriptions   UserSubscription[]
 
   @@map("subscription_presets")
 }
@@ -149,9 +152,12 @@ model UserSubscription {
   user_id           String
   payment_card_id   String
   preset_id         String?
+  plan_tier         String?
   name              String
   category          String
   price             Decimal             @db.Decimal(10, 2)
+  shared_members    Int                 @default(1)
+  price_per_slot    Decimal?            @db.Decimal(10, 2)
   billing_cycle     BillingCycle        @default(MONTHLY)
   start_date        DateTime
   next_renewal_date DateTime

@@ -22,6 +22,7 @@ import { WorkerMetricsModule } from './metrics/worker-metrics.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', 'apps/server/.env'],
       load: [workerConfig],
       validate: validateWorkerEnvironment,
     }),

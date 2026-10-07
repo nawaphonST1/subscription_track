@@ -138,6 +138,61 @@ void main() {
       final nullCycle = PresetPackage.fromJson({'name': 'Test', 'billing_cycle': null});
       expect(nullCycle.billingPeriod, 'Monthly');
     });
+
+    test('parses available_plans into typed PresetPlan list with features and max_slots', () {
+      final package = PresetPackage.fromJson({
+        'id': 'pkg-netflix',
+        'name': 'Netflix Premium',
+        'category': 'Streaming',
+        'default_price': 419,
+        'billing_cycle': 'MONTHLY',
+        'max_slots': 4,
+        'features': ['4K UHD + HDR', '4 Screens'],
+        'available_plans': [
+          {
+            'tier': 'Mobile',
+            'monthly_price': 99,
+            'yearly_price': 990,
+            'max_slots': 1,
+            'features': ['480p SD'],
+          },
+          {
+            'tier': 'Premium',
+            'monthly_price': 419,
+            'yearly_price': 4190,
+            'max_slots': 4,
+            'features': ['4K UHD + HDR', '4 Screens'],
+          },
+        ],
+      });
+
+      expect(package.maxSlots, 4);
+      expect(package.features, ['4K UHD + HDR', '4 Screens']);
+      expect(package.plans, hasLength(2));
+      expect(package.plans[0].tier, 'Mobile');
+      expect(package.plans[0].monthlyPrice, 99.0);
+      expect(package.plans[0].yearlyPrice, 990.0);
+      expect(package.plans[0].maxSlots, 1);
+      expect(package.hasMultiplePlans, isTrue);
+      expect(package.lowestMonthlyPrice, 99.0);
+      expect(package.defaultPlan.tier, 'Premium');
+    });
+
+    test('synthesizes a single defaultPlan from legacy fields when available_plans is absent', () {
+      final package = PresetPackage.fromJson({
+        'id': 'pkg-legacy',
+        'name': 'Legacy Service',
+        'category': 'Other',
+        'default_price': 199,
+        'billing_cycle': 'MONTHLY',
+      });
+
+      expect(package.hasMultiplePlans, isFalse);
+      expect(package.lowestMonthlyPrice, 199.0);
+      expect(package.defaultPlan.tier, 'Legacy Service');
+      expect(package.defaultPlan.monthlyPrice, 199.0);
+      expect(package.defaultPlan.maxSlots, 1);
+    });
   });
 }
 

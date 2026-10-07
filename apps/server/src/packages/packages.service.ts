@@ -10,6 +10,8 @@ import { CacheService } from '../cache/cache.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 import { QueryPackageDto } from './dto/query-package.dto';
+import { SubscriptionPlanDto } from './dto/subscription-plan.dto';
+import { parseAvailablePlans } from './utils/subscription-plan.util';
 
 export interface PackageItem {
   id: string;
@@ -20,6 +22,9 @@ export interface PackageItem {
   brand_color: string;
   icon_url: string | null;
   description: string | null;
+  features: string[];
+  max_slots: number;
+  available_plans: SubscriptionPlanDto[];
   created_at: Date;
   updated_at: Date;
 }
@@ -225,6 +230,9 @@ export class PackagesService {
     brand_color: string;
     icon_url: string | null;
     description: string | null;
+    features: string[];
+    max_slots: number;
+    available_plans: Prisma.JsonValue | null;
     created_at: Date;
     updated_at: Date;
   }): PackageItem {
@@ -237,6 +245,9 @@ export class PackagesService {
       brand_color: p.brand_color,
       icon_url: p.icon_url,
       description: p.description,
+      features: p.features,
+      max_slots: p.max_slots,
+      available_plans: parseAvailablePlans(p.available_plans),
       created_at: p.created_at,
       updated_at: p.updated_at,
     };
