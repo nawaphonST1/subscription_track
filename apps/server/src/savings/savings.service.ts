@@ -55,12 +55,11 @@ export class SavingsService {
       }
     }
 
-    let unusedSubscriptions = await this.prisma.userSubscription.findMany({
+    const unusedSubscriptions = await this.prisma.userSubscription.findMany({
       where: {
         user_id: userId,
         status: SubscriptionStatus.ACTIVE,
         usage_status: UsageStatus.UNUSED,
-        payment_card: { is_active: true },
       },
       include: {
         payment_card: {
@@ -73,26 +72,6 @@ export class SavingsService {
       },
       orderBy: { price: 'desc' },
     });
-
-    if (unusedSubscriptions.length === 0) {
-      unusedSubscriptions = await this.prisma.userSubscription.findMany({
-        where: {
-          user_id: userId,
-          status: SubscriptionStatus.ACTIVE,
-          payment_card: { is_active: true },
-        },
-        include: {
-          payment_card: {
-            select: {
-              card_nickname: true,
-              last_4_digits: true,
-              bank_name: true,
-            },
-          },
-        },
-        orderBy: { price: 'desc' },
-      });
-    }
 
     let totalMonthlySavings = 0;
     let totalYearlySavings = 0;

@@ -31,7 +31,7 @@ export interface UserSubscriptionItem {
   next_renewal_date: Date;
   usage_status: UsageStatus;
   status: SubscriptionStatus;
-  brand_color: string;
+  brand_color: string | null;
   notes: string | null;
   payment_card: {
     id: string;
@@ -52,7 +52,7 @@ export interface UpcomingSubscriptionItem {
   billing_cycle: BillingCycle;
   next_renewal_date: Date;
   days_until_renewal: number;
-  brand_color: string;
+  brand_color: string | null;
   payment_card: {
     card_nickname: string;
     last_4_digits: string;
@@ -100,9 +100,11 @@ export class SubscriptionsService {
 
     const where: Prisma.UserSubscriptionWhereInput = {
       user_id: userId,
-      status: query.status ? query.status : SubscriptionStatus.ACTIVE,
-      payment_card: { is_active: true },
     };
+
+    if (query.status) {
+      where.status = query.status;
+    }
 
     if (query.category) {
       where.category = { equals: query.category, mode: 'insensitive' };
