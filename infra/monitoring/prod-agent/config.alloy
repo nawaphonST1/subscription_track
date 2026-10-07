@@ -97,6 +97,20 @@ discovery.docker "containers" {
 discovery.relabel "containers" {
   targets = discovery.docker.containers.targets
 
+  // Drop monitoring agent containers to prevent infinite logging feedback loop
+  // where Alloy reads its own logs, pushes them, generates more logs, and crashes.
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "subscription-prod-agent"
+    action        = "drop"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/.*(alloy|cadvisor|node-exporter).*"
+    action        = "drop"
+  }
+
   // /subscription-track-api-1 -> subscription-track-api-1
   rule {
     source_labels = ["__meta_docker_container_name"]
@@ -134,6 +148,13 @@ loki.process "pipeline" {
   // deferred pending team sign-off), so this is a token match, not a parser.
   stage.match {
     selector = "{service=~\"api|worker\"}"
+
+    // Nest's console logger wraps the level token in ANSI color escapes
+    // (e.g. "\x1b[31m  ERROR\x1b[39m"), which puts a non-whitespace escape
+    // byte right after the token and breaks the regex's trailing `\s`. Strip
+    // colors first so the regex sees the same plain text whether or not the
+    // process is writing to a TTY.
+    stage.decolorize {}
 
     stage.regex {
       expression = "\\s(?P<level>LOG|ERROR|WARN|DEBUG|VERBOSE|FATAL)\\s"
