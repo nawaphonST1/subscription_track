@@ -1,17 +1,12 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:22-bookworm-slim'
-            args '-u 0:0 --entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock -v jenkins_home:/var/jenkins_home -v subtracker-pnpm-store:/root/.local/share/pnpm/store -v subtracker-npm-cache:/root/.npm -v subtracker-corepack:/root/.cache/node/corepack'
-        }
-    }
+    agent any
 
     environment {
         APP_NAME = 'subtracker-api'
         REPO_OWNER = "${env.REPO_OWNER ?: 'nawaphonst1'}"
         GHCR_REGISTRY = 'ghcr.io'
         NODE_ENV = 'test'
-        PATH = "${WORKSPACE}/scripts/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        PATH = "${WORKSPACE}/scripts/bin:/usr/local/bin:/usr/bin:/bin:${env.PATH}"
     }
 
     triggers {
@@ -32,23 +27,24 @@ pipeline {
                 sh '''
                     chmod +x scripts/bin/* 2>/dev/null || true
                     chmod +x scripts/cicd/* 2>/dev/null || true
-                    if ! command -v docker >/dev/null 2>&1; then
-                        if command -v apt-get >/dev/null 2>&1; then
-                            apt-get update >/dev/null 2>&1 && apt-get install -y --no-install-recommends docker.io openssh-client curl >/dev/null 2>&1 || true
-                        elif command -v apk >/dev/null 2>&1; then
-                            apk add --no-cache docker-cli docker-cli-compose openssh-client >/dev/null 2>&1 || true
-                        fi
+
+                    # Ensure Node.js 22 LTS runtime is available
+                    if ! command -v node >/dev/null 2>&1; then
+                        echo "==> Downloading and configuring Node.js 22 LTS runtime..."
+                        curl -fsSL https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
                     fi
-                    if ! command -v ssh >/dev/null 2>&1; then
-                        if command -v apt-get >/dev/null 2>&1; then
-                            apt-get update >/dev/null 2>&1 && apt-get install -y --no-install-recommends openssh-client >/dev/null 2>&1 || true
-                        elif command -v apk >/dev/null 2>&1; then
-                            apk add --no-cache openssh-client >/dev/null 2>&1 || true
-                        fi
-                    fi
+
+                    # Ensure pnpm package manager is available
                     if ! command -v pnpm >/dev/null 2>&1; then
-                        corepack enable 2>/dev/null || npm install -g pnpm@10.2.1 2>/dev/null || true
+                        echo "==> Configuring pnpm package manager..."
+                        npm install -g pnpm@10.2.1 2>/dev/null || corepack enable 2>/dev/null || true
                     fi
+
+                    # Ensure SSH client is available for remote deployment
+                    if ! command -v ssh >/dev/null 2>&1; then
+                        apt-get update >/dev/null 2>&1 && apt-get install -y --no-install-recommends openssh-client >/dev/null 2>&1 || true
+                    fi
+
                     if [ ! -f "apps/server/.env.production" ]; then
                         if [ -f "/var/jenkins_home/host_apps_server/.env.production" ]; then
                             cp /var/jenkins_home/host_apps_server/.env.production apps/server/.env.production
