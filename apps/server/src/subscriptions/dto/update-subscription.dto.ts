@@ -113,4 +113,36 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   @IsString()
   presetId?: string;
+
+  @ApiPropertyOptional({
+    enum: BillingCycle,
+    description: 'Updated billing cycle alias',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }): unknown =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
+  @IsEnum(BillingCycle)
+  billingCycle?: BillingCycle;
+
+  @ApiPropertyOptional({
+    example: '2026-10-15T00:00:00.000Z',
+    description: 'Updated next renewal date alias',
+  })
+  @IsOptional()
+  @IsDateString()
+  nextRenewalDate?: string;
+
+  @ApiPropertyOptional({ example: '#FF0000', description: 'Brand color alias' })
+  @IsOptional()
+  @IsString()
+  brandColor?: string;
+
+  @ApiPropertyOptional({
+    example: 'payment-card-id',
+    description: 'Updated payment card ID alias',
+  })
+  @IsOptional()
+  @IsString()
+  paymentCardId?: string;
 }

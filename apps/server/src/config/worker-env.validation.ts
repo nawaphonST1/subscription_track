@@ -24,7 +24,11 @@ const workerEnvironmentSchema = z
     PUSH_PROVIDER: z.enum(pushProviders, {
       message: `PUSH_PROVIDER is required and must be one of: ${pushProviders.join(', ')}`,
     }),
-    FCM_SERVICE_ACCOUNT_JSON: z.string().min(1).optional(),
+    FCM_SERVICE_ACCOUNT_JSON: z
+      .preprocess(
+        (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+        z.string().min(1).optional(),
+      ),
   })
   .superRefine((environment, context) => {
     rejectEphemeralMetricsPortInProduction(

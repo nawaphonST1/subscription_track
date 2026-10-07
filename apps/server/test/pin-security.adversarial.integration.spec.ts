@@ -328,7 +328,7 @@ describe('PIN Security Adversarial & Regression Integration Suite', () => {
 
   afterAll(async () => {
     try {
-      await app.close();
+      await app?.close();
     } finally {
       vi.unstubAllEnvs();
     }

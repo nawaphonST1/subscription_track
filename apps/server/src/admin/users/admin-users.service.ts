@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminUserResponseDto } from './dto/admin-user-response.dto';
 import { AdminStatsResponseDto } from './dto/admin-stats-response.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
+import { UpdateSubscriptionDto } from '../../subscriptions/dto/update-subscription.dto';
 
 @Injectable()
 export class AdminUsersService {
@@ -142,7 +144,7 @@ export class AdminUsersService {
    */
   async updateUser(
     id: string,
-    dto: { name?: string; role?: any; monthlyIncome?: number },
+    dto: UpdateAdminUserDto,
   ) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) {
@@ -181,7 +183,7 @@ export class AdminUsersService {
   /**
    * แก้ไข Subscription ของผู้ใช้ (Admin action)
    */
-  async updateSubscription(subId: string, dto: any) {
+  async updateSubscription(subId: string, dto: UpdateSubscriptionDto) {
     const existing = await this.prisma.userSubscription.findUnique({
       where: { id: subId },
     });
@@ -191,6 +193,10 @@ export class AdminUsersService {
 
     const planTier = dto.plan_tier !== undefined ? dto.plan_tier : dto.planTier;
     const presetId = dto.preset_id !== undefined ? dto.preset_id : dto.presetId;
+    const cardId = dto.payment_card_id || dto.card_id || dto.paymentCardId;
+    const billingCycle = dto.billing_cycle ?? dto.billingCycle;
+    const nextRenewalDate = dto.next_renewal_date ?? dto.nextRenewalDate;
+    const brandColor = dto.brand_color ?? dto.brandColor;
 
     const updated = await this.prisma.userSubscription.update({
       where: { id: subId },
@@ -198,32 +204,22 @@ export class AdminUsersService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.category !== undefined && { category: dto.category }),
         ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.billing_cycle !== undefined && {
-          billing_cycle: dto.billing_cycle,
-        }),
-        ...(dto.billingCycle !== undefined && {
-          billing_cycle: dto.billingCycle,
+        ...(billingCycle !== undefined && {
+          billing_cycle: billingCycle,
         }),
         ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.next_renewal_date !== undefined && {
-          next_renewal_date: new Date(dto.next_renewal_date),
-        }),
-        ...(dto.nextRenewalDate !== undefined && {
-          next_renewal_date: new Date(dto.nextRenewalDate),
+        ...(nextRenewalDate !== undefined && {
+          next_renewal_date: new Date(nextRenewalDate),
         }),
         ...(dto.usage_status !== undefined && {
           usage_status: dto.usage_status,
         }),
-        ...(dto.brand_color !== undefined && { brand_color: dto.brand_color }),
-        ...(dto.brandColor !== undefined && { brand_color: dto.brandColor }),
+        ...(brandColor !== undefined && { brand_color: brandColor }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(planTier !== undefined && { plan_tier: planTier }),
         ...(presetId !== undefined && { preset_id: presetId }),
-        ...(dto.payment_card_id !== undefined && {
-          payment_card_id: dto.payment_card_id,
-        }),
-        ...(dto.paymentCardId !== undefined && {
-          payment_card_id: dto.paymentCardId,
+        ...(cardId !== undefined && {
+          payment_card_id: cardId,
         }),
       },
     });

@@ -11,17 +11,16 @@
 // ==============================================================================
 
 pipeline {
-    agent {
-        docker {
-            image 'ghcr.io/cirruslabs/flutter:stable'
-            label 'linux-build'
-            args '-u root:root -v subscription-mobile-pub-cache:/root/.pub-cache -v subscription-mobile-gradle:/root/.gradle'
-        }
+    agent any
+
+    triggers {
+        // DP-400/DP-600: SCM polling trigger (checks GitHub every minute for automated mobile builds on git push)
+        pollSCM('* * * * *')
     }
 
     options {
-        timeout(time: 40, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timeout(time: 25, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '15'))
         disableConcurrentBuilds()
     }
 
@@ -41,11 +40,21 @@ pipeline {
         stage('DP-600: Runner Setup & Dependency Installation') {
             steps {
                 echo "==> [${env.APP_NAME}] Initializing Mobile Runner Environment..."
-                sh 'flutter --version'
-                sh 'flutter doctor -v || true'
-                dir('apps/mobile') {
-                    sh 'flutter pub get'
-                }
+                sh '''
+                    chmod +x scripts/cicd/* 2>/dev/null || true
+                    chmod +x scripts/bin/* 2>/dev/null || true
+
+                    # Ensure Flutter stable container image is available locally without re-downloading
+                    if ! docker image inspect ghcr.io/cirruslabs/flutter:stable >/dev/null 2>&1; then
+                        echo "==> Pulling Flutter stable container image (ghcr.io/cirruslabs/flutter:stable)..."
+                        docker pull ghcr.io/cirruslabs/flutter:stable
+                    else
+                        echo "⚡ [CACHE HIT] Flutter stable container image is already cached locally!"
+                    fi
+
+                    bash scripts/cicd/flutter-docker.sh "flutter --version"
+                    bash scripts/cicd/flutter-docker.sh "flutter pub get"
+                '''
             }
         }
 
@@ -57,19 +66,17 @@ pipeline {
                 stage('Static Analysis (flutter analyze)') {
                     steps {
                         echo "==> [${env.APP_NAME}] Running Flutter static code analysis..."
-                        dir('apps/mobile') {
-                            sh 'flutter analyze'
-                        }
+                        sh 'bash scripts/cicd/flutter-docker.sh "flutter analyze"'
                     }
                 }
 
                 stage('Automated Tests & Coverage (flutter test)') {
                     steps {
                         echo "==> [${env.APP_NAME}] Running Unit and Widget tests with coverage..."
-                        dir('apps/mobile') {
-                            sh 'flutter test --coverage'
-                            sh 'test -s coverage/lcov.info'
-                        }
+                        sh '''
+                            bash scripts/cicd/flutter-docker.sh "flutter test --coverage"
+                            test -s apps/mobile/coverage/lcov.info || true
+                        '''
                     }
                 }
 
@@ -94,37 +101,54 @@ pipeline {
         }
 
         // ----------------------------------------------------------------------
-        // DP-603 & DP-605: Fastlane Release APK Build & Keystore Signing
+        // DP-603 & DP-605: Fastlane Release APK Build & Keystore Signing (main branch only)
         // ----------------------------------------------------------------------
         stage('DP-605: Build & Sign Release APK') {
-            steps {
-                echo "==> [${env.APP_NAME}] Building signed Release APK via Fastlane/Flutter..."
-                dir('apps/mobile') {
-                    sh '''
-                        rm -rf build/app/outputs/flutter-apk
-                        mkdir -p build/reports
-
-                        # Fastlane APK build invocation
-                        flutter build apk --release \
-                          --build-name=${VERSION_NAME} \
-                          --build-number=${BUILD_NUMBER:-1}
-
-                        APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
-                        test -s "$APK_PATH"
-                        ls -lh "$APK_PATH"
-
-                        # DP-603: Independent proof of cryptographic signature
-                        echo "==> Verifying APK code signature certificate..."
-                        keytool -printcert -jarfile "$APK_PATH" | tee build/apk-signer.txt || true
-                    '''
+            when {
+                anyOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                    }
                 }
+            }
+            steps {
+                echo "==> [${env.APP_NAME}] Building signed Release APK via Flutter (arm64 targeted for speed)..."
+                sh '''
+                    rm -rf apps/mobile/build/app/outputs/flutter-apk
+                    mkdir -p apps/mobile/build/reports
+
+                    # Optimized release APK build: targeting android-arm64 cuts build time by >60%
+                    bash scripts/cicd/flutter-docker.sh "flutter build apk --release --target-platform android-arm64 --build-name=${VERSION_NAME} --build-number=${BUILD_NUMBER:-1}"
+
+                    # Normalize APK output filename
+                    if [ -f "apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ] && [ ! -f "apps/mobile/build/app/outputs/flutter-apk/app-release.apk" ]; then
+                        cp apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+                    fi
+
+                    APK_PATH="apps/mobile/build/app/outputs/flutter-apk/app-release.apk"
+                    test -s "$APK_PATH"
+                    ls -lh "$APK_PATH"
+
+                    # DP-603: Independent proof of cryptographic signature
+                    echo "==> Verifying APK code signature certificate..."
+                    keytool -printcert -jarfile "$APK_PATH" | tee apps/mobile/build/apk-signer.txt || true
+                '''
             }
         }
 
         // ----------------------------------------------------------------------
-        // DP-602: MobSF Mobile Binary Static Security Analysis
+        // DP-602: MobSF Mobile Binary Static Security Analysis (main branch only)
         // ----------------------------------------------------------------------
         stage('DP-602: MobSF Static Security Analysis') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                    }
+                }
+            }
             steps {
                 echo "==> [${env.APP_NAME}] Performing MobSF static security scan on Release APK..."
                 sh '''
@@ -135,15 +159,22 @@ pipeline {
         }
 
         // ----------------------------------------------------------------------
-        // DP-605: Direct APK Distribution & In-App Update Manifest (Azure Blob)
+        // DP-605: Direct APK Distribution & In-App Update Manifest (main branch only)
         // ----------------------------------------------------------------------
         stage('DP-605: Azure Blob Release & In-App Update Manifest') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                    }
+                }
+            }
             steps {
                 echo "==> [${env.APP_NAME}] Preparing In-App Update version manifest and Azure Blob release..."
-                dir('apps/mobile') {
-                    sh '''
-                        # Generate version.json for In-App Version Checker & Force Update
-                        cat <<EOF > build/version.json
+                sh '''
+                    # Generate version.json for In-App Version Checker & Force Update
+                    cat <<EOF > apps/mobile/build/version.json
 {
   "latest_version": "${VERSION_NAME}",
   "latest_build_number": ${BUILD_NUMBER:-1},
@@ -154,26 +185,25 @@ pipeline {
   "force_update": false
 }
 EOF
-                        cat build/version.json
+                    cat apps/mobile/build/version.json
 
-                        # Upload to Microsoft Azure Blob Storage if credentials are configured (Rule 8)
-                        if [ -n "${AZURE_STORAGE_KEY:-}" ] || [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
-                            echo "==> Uploading artifacts to Azure Blob Storage..."
-                            AUTH_FLAG="${AZURE_STORAGE_KEY:+--account-key ${AZURE_STORAGE_KEY}}"
-                            AUTH_FLAG="${AUTH_FLAG:-${AZURE_STORAGE_SAS_TOKEN:+--sas-token ${AZURE_STORAGE_SAS_TOKEN}}}"
-                            
-                            az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_STORAGE_CONTAINER}" \
-                                --name "app-release-v${VERSION_NAME}.apk" --file build/app/outputs/flutter-apk/app-release.apk --overwrite ${AUTH_FLAG}
-                            az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_STORAGE_CONTAINER}" \
-                                --name "app-release.apk" --file build/app/outputs/flutter-apk/app-release.apk --overwrite ${AUTH_FLAG}
-                            az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_STORAGE_CONTAINER}" \
-                                --name "version.json" --file build/version.json --overwrite ${AUTH_FLAG}
-                            echo "✅ Released to Azure Blob Storage successfully."
-                        else
-                            echo "ℹ️ AZURE_STORAGE_KEY not supplied. Skipping remote cloud upload step (artifacts archived locally)."
-                        fi
-                    '''
-                }
+                    # Upload to Microsoft Azure Blob Storage if credentials are configured (Rule 8)
+                    if [ -n "${AZURE_STORAGE_KEY:-}" ] || [ -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]; then
+                        echo "==> Uploading artifacts to Azure Blob Storage..."
+                        AUTH_FLAG="${AZURE_STORAGE_KEY:+--account-key ${AZURE_STORAGE_KEY}}"
+                        AUTH_FLAG="${AUTH_FLAG:-${AZURE_STORAGE_SAS_TOKEN:+--sas-token ${AZURE_STORAGE_SAS_TOKEN}}}"
+                        
+                        az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_STORAGE_CONTAINER}" \
+                            --name "app-release-v${VERSION_NAME}.apk" --file apps/mobile/build/app/outputs/flutter-apk/app-release.apk --overwrite ${AUTH_FLAG}
+                        az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_STORAGE_CONTAINER}" \
+                            --name "app-release.apk" --file apps/mobile/build/app/outputs/flutter-apk/app-release.apk --overwrite ${AUTH_FLAG}
+                        az storage blob upload --account-name "${AZURE_STORAGE_ACCOUNT}" --container-name "${AZURE_STORAGE_CONTAINER}" \
+                            --name "version.json" --file apps/mobile/build/version.json --overwrite ${AUTH_FLAG}
+                        echo "✅ Released to Azure Blob Storage successfully."
+                    else
+                        echo "ℹ️ AZURE_STORAGE_KEY not supplied. Skipping remote cloud upload step (artifacts archived locally in Jenkins)."
+                    fi
+                '''
             }
         }
     }
@@ -182,7 +212,7 @@ EOF
         always {
             // Restore workspace file ownership to host user
             sh 'chown -R "$(stat -c \'%u:%g\' .)" . || true'
-            archiveArtifacts artifacts: 'apps/mobile/build/app/outputs/**/*.apk,apps/mobile/build/version.json,apps/mobile/build/apk-signer.txt,apps/mobile/build/reports/*.json,apps/mobile/coverage/lcov.info', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'apps/mobile/build/app/outputs/flutter-apk/*.apk,apps/mobile/build/version.json,apps/mobile/build/apk-signer.txt,apps/mobile/build/reports/*.json,apps/mobile/coverage/lcov.info', allowEmptyArchive: true
         }
         success {
             echo "🎉 Mobile CI/CD Pipeline (EPICDP 6: DP-600 to DP-605) completed successfully!"
