@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/security/pin_provider.dart';
+import 'package:subscription_track/core/widgets/pin/pin.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 
 class SetupPinScreen extends ConsumerStatefulWidget {
@@ -26,6 +26,10 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
   final TextEditingController _newPinController = TextEditingController();
   final TextEditingController _confirmPinController = TextEditingController();
 
+  final FocusNode _currentPinFocusNode = FocusNode();
+  final FocusNode _newPinFocusNode = FocusNode();
+  final FocusNode _confirmPinFocusNode = FocusNode();
+
   bool _obscureCurrentPin = true;
   bool _obscureNewPin = true;
   bool _obscureConfirmPin = true;
@@ -35,7 +39,8 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
   @override
   void initState() {
     super.initState();
-    _currentPinController = TextEditingController(text: widget.initialCurrentPin ?? '');
+    _currentPinController =
+        TextEditingController(text: widget.initialCurrentPin ?? '');
   }
 
   @override
@@ -43,6 +48,9 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
     _currentPinController.dispose();
     _newPinController.dispose();
     _confirmPinController.dispose();
+    _currentPinFocusNode.dispose();
+    _newPinFocusNode.dispose();
+    _confirmPinFocusNode.dispose();
     super.dispose();
   }
 
@@ -90,6 +98,79 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
     );
   }
 
+  Widget _buildPinField({
+    required Key key,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required IconData icon,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
+    required String? Function(String?) validator,
+  }) {
+    return FormField<String>(
+      validator: (_) => validator(controller.text),
+      builder: (fieldState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFF94A3B8), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFFE2E8F0),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    obscureText
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: const Color(0xFF94A3B8),
+                    size: 20,
+                  ),
+                  onPressed: onToggleObscure,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: PinCodeInput(
+                textFieldKey: key,
+                controller: controller,
+                focusNode: focusNode,
+                obscureText: obscureText,
+                hasError: fieldState.hasError,
+                autoFocus: false,
+                onChanged: (_) {
+                  if (fieldState.hasError) {
+                    fieldState.validate();
+                  }
+                },
+              ),
+            ),
+            if (fieldState.hasError) ...[
+              const SizedBox(height: 6),
+              Text(
+                fieldState.errorText!,
+                style: const TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,7 +201,8 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                            color:
+                                const Color(0xFF3B82F6).withValues(alpha: 0.15),
                             blurRadius: 20,
                             spreadRadius: 2,
                           ),
@@ -149,7 +231,11 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                   const Text(
                     'เพื่อความปลอดภัยของบัญชี กรุณาตั้งรหัส PIN 6 หลัก\nสำหรับยืนยันการทำธุรกรรมและจัดการบริการสำคัญ',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8), height: 1.4),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF94A3B8),
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Builder(
@@ -162,7 +248,8 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                           color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                            color:
+                                const Color(0xFF3B82F6).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -192,22 +279,15 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                   ),
 
                   // --- Current / Temporary PIN Field ---
-                  _buildInputField(
+                  _buildPinField(
                     key: const Key('setup_current_pin_field'),
                     controller: _currentPinController,
+                    focusNode: _currentPinFocusNode,
                     label: 'รหัส PIN เดิม / รหัสเริ่มต้น (6 หลัก)',
-                    hint: 'กรอกรหัส PIN 6 หลัก',
                     icon: Icons.vpn_key_outlined,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
                     obscureText: _obscureCurrentPin,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureCurrentPin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      onPressed: () => setState(() => _obscureCurrentPin = !_obscureCurrentPin),
+                    onToggleObscure: () => setState(
+                      () => _obscureCurrentPin = !_obscureCurrentPin,
                     ),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
@@ -222,22 +302,15 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                   const SizedBox(height: 16),
 
                   // --- New PIN Field ---
-                  _buildInputField(
+                  _buildPinField(
                     key: const Key('setup_new_pin_field'),
                     controller: _newPinController,
+                    focusNode: _newPinFocusNode,
                     label: 'รหัส PIN ใหม่ (6 หลัก)',
-                    hint: 'กรอกตัวเลข 6 หลัก',
                     icon: Icons.lock_outline_rounded,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
                     obscureText: _obscureNewPin,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureNewPin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      onPressed: () => setState(() => _obscureNewPin = !_obscureNewPin),
+                    onToggleObscure: () => setState(
+                      () => _obscureNewPin = !_obscureNewPin,
                     ),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
@@ -255,22 +328,15 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                   const SizedBox(height: 16),
 
                   // --- Confirm New PIN Field ---
-                  _buildInputField(
+                  _buildPinField(
                     key: const Key('setup_confirm_pin_field'),
                     controller: _confirmPinController,
+                    focusNode: _confirmPinFocusNode,
                     label: 'ยืนยันรหัส PIN ใหม่',
-                    hint: 'กรอกรหัส PIN ใหม่อีกครั้ง',
                     icon: Icons.lock_reset_rounded,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
                     obscureText: _obscureConfirmPin,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      onPressed: () => setState(() => _obscureConfirmPin = !_obscureConfirmPin),
+                    onToggleObscure: () => setState(
+                      () => _obscureConfirmPin = !_obscureConfirmPin,
                     ),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
@@ -297,8 +363,11 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded,
-                              color: Color(0xFFEF4444), size: 20),
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: Color(0xFFEF4444),
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -345,7 +414,8 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                   Center(
                     child: TextButton(
                       key: const Key('setup_pin_logout_button'),
-                      onPressed: () async => ref.read(authProvider.notifier).logout(),
+                      onPressed: () async =>
+                          ref.read(authProvider.notifier).logout(),
                       child: const Text(
                         'ออกจากระบบ',
                         style: TextStyle(
@@ -361,71 +431,6 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildInputField({
-    Key? key,
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    int? maxLength,
-    List<TextInputFormatter>? inputFormatters,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFE2E8F0),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          key: key,
-          controller: controller,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          maxLength: maxLength,
-          inputFormatters: inputFormatters,
-          style: const TextStyle(color: Colors.white, fontSize: 15),
-          decoration: InputDecoration(
-            hintText: hint,
-            counterText: '',
-            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
-            prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: const Color(0xFF131C2E),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF243049)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
-            ),
-          ),
-          validator: validator,
-        ),
-      ],
     );
   }
 }

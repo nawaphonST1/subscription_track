@@ -6,6 +6,7 @@ extension AppNotificationUi on AppNotification {
     'upcoming_bill' => Icons.calendar_month_rounded,
     'unused_warning' => Icons.warning_amber_rounded,
     'price_change' => Icons.trending_up_rounded,
+    'security_alert' => Icons.shield_outlined,
     _ => Icons.notifications_none_rounded,
   };
 
@@ -13,6 +14,7 @@ extension AppNotificationUi on AppNotification {
     'upcoming_bill' => const Color(0xFFF59E0B),
     'unused_warning' => const Color(0xFFEF4444),
     'price_change' => const Color(0xFF8B5CF6),
+    'security_alert' => const Color(0xFFEF4444),
     _ => const Color(0xFF3B82F6),
   };
 }

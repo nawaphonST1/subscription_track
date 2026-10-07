@@ -80,20 +80,29 @@ describe('AdminUsersController', () => {
 
     const result = await controller.updateUser('u-1', { name: 'New Name' });
     expect(result).toEqual(updated);
-    expect(mockService.updateUser).toHaveBeenCalledWith('u-1', { name: 'New Name' });
+    expect(mockService.updateUser).toHaveBeenCalledWith('u-1', {
+      name: 'New Name',
+    });
   });
 
   it('updateSubscription delegates to service.updateSubscription', async () => {
     const updatedSub = { id: 'sub-1', name: 'Netflix Premium 4K' };
     mockService.updateSubscription.mockResolvedValue(updatedSub);
 
-    const result = await controller.updateSubscription('sub-1', { name: 'Netflix Premium 4K' });
+    const result = await controller.updateSubscription('sub-1', {
+      name: 'Netflix Premium 4K',
+    });
     expect(result).toEqual(updatedSub);
-    expect(mockService.updateSubscription).toHaveBeenCalledWith('sub-1', { name: 'Netflix Premium 4K' });
+    expect(mockService.updateSubscription).toHaveBeenCalledWith('sub-1', {
+      name: 'Netflix Premium 4K',
+    });
   });
 
   it('deleteSubscription delegates to service.deleteSubscription', async () => {
-    mockService.deleteSubscription.mockResolvedValue({ message: 'Deleted', id: 'sub-1' });
+    mockService.deleteSubscription.mockResolvedValue({
+      message: 'Deleted',
+      id: 'sub-1',
+    });
 
     const result = await controller.deleteSubscription('sub-1');
     expect(result).toEqual({ message: 'Deleted', id: 'sub-1' });

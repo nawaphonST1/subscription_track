@@ -248,6 +248,114 @@ async function main() {
   });
   console.log(`Configured default admin account: ${adminEmail} (password: AdminPassword123!)`);
 
+  // 4. Test User Accounts: 'ne' and 'student01'
+  const defaultPasswordHash = await bcrypt.hash('Password123!', 10);
+
+  // User 'ne'
+  const neEmail = 'ne@example.com';
+  const nePinHash = await bcrypt.hash('123456', 10);
+  const userNe = await prisma.user.upsert({
+    where: { email: neEmail },
+    update: {
+      name: 'ne',
+      monthly_income: 45000,
+      password_hash: defaultPasswordHash,
+      security_pin_hash: nePinHash,
+    },
+    create: {
+      email: neEmail,
+      name: 'ne',
+      monthly_income: 45000,
+      password_hash: defaultPasswordHash,
+      security_pin_hash: nePinHash,
+    },
+  });
+  console.log(`Configured test user: ${neEmail} (name: ne, monthly_income: 45000)`);
+
+  // User 'student01'
+  const studentEmail = 'student01@example.com';
+  const studentPinHash = await bcrypt.hash('111111', 10);
+  const userStudent = await prisma.user.upsert({
+    where: { email: studentEmail },
+    update: {
+      name: 'student01',
+      monthly_income: 15000,
+      password_hash: defaultPasswordHash,
+      security_pin_hash: studentPinHash,
+    },
+    create: {
+      email: studentEmail,
+      name: 'student01',
+      monthly_income: 15000,
+      password_hash: defaultPasswordHash,
+      security_pin_hash: studentPinHash,
+    },
+  });
+  console.log(`Configured test user: ${studentEmail} (name: student01, monthly_income: 15000)`);
+
+  // 5. Test Payment Cards
+  const neCardId = 'c0000000-0000-4000-a000-000000000001';
+  await prisma.paymentCard.upsert({
+    where: { id: neCardId },
+    update: {
+      user_id: userNe.id,
+      card_nickname: 'Ne SCB Platinum',
+      card_brand: 'Visa',
+      card_type: CardType.CREDIT,
+      last_4_digits: '4321',
+      bank_name: 'Siam Commercial Bank',
+      balance: 25000.0,
+      currency: 'THB',
+      is_default: true,
+      is_active: true,
+    },
+    create: {
+      id: neCardId,
+      user_id: userNe.id,
+      card_nickname: 'Ne SCB Platinum',
+      card_brand: 'Visa',
+      card_type: CardType.CREDIT,
+      last_4_digits: '4321',
+      bank_name: 'Siam Commercial Bank',
+      balance: 25000.0,
+      currency: 'THB',
+      is_default: true,
+      is_active: true,
+    },
+  });
+
+  const studentCardId = 'c0000000-0000-4000-a000-000000000002';
+  await prisma.paymentCard.upsert({
+    where: { id: studentCardId },
+    update: {
+      user_id: userStudent.id,
+      card_nickname: 'Student KBank Debit',
+      card_brand: 'Mastercard',
+      card_type: CardType.DEBIT,
+      last_4_digits: '1234',
+      bank_name: 'Kasikornbank',
+      balance: 5000.0,
+      currency: 'THB',
+      is_default: true,
+      is_active: true,
+    },
+    create: {
+      id: studentCardId,
+      user_id: userStudent.id,
+      card_nickname: 'Student KBank Debit',
+      card_brand: 'Mastercard',
+      card_type: CardType.DEBIT,
+      last_4_digits: '1234',
+      bank_name: 'Kasikornbank',
+      balance: 5000.0,
+      currency: 'THB',
+      is_default: true,
+      is_active: true,
+    },
+  });
+
+  console.log(`Configured test payment cards: ${neCardId} (ne) and ${studentCardId} (student01)`);
+
   console.log('Seeding completed successfully.');
 }
 

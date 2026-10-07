@@ -250,6 +250,121 @@ void main() {
     });
   });
 
+  group('unwrapEnvelopeList', () {
+    test('data เป็น array ของ object → คืน List<T> ตามลำดับเดิม', () {
+      final response = _json({
+        'success': true,
+        'statusCode': 200,
+        'data': [
+          {'id': 'sub-1'},
+          {'id': 'sub-2'},
+        ],
+        'timestamp': '2026-10-06T07:00:00.000Z',
+      }, 200);
+
+      final result = unwrapEnvelopeList(response, _identity);
+
+      expect(result.isRight(), isTrue);
+      result.fold(
+        (failure) => fail('คาดว่า Right แต่ได้ Left: $failure'),
+        (items) {
+          expect(items.length, 2);
+          expect(items[0]['id'], 'sub-1');
+          expect(items[1]['id'], 'sub-2');
+        },
+      );
+    });
+
+    test('data เป็น array ว่าง → คืน list ว่าง ไม่ใช่ Failure', () {
+      final response = _json({
+        'success': true,
+        'statusCode': 200,
+        'data': <Map<String, dynamic>>[],
+        'timestamp': '2026-10-06T07:00:00.000Z',
+      }, 200);
+
+      final result = unwrapEnvelopeList(response, _identity);
+
+      expect(result.isRight(), isTrue);
+      result.fold(
+        (failure) => fail('คาดว่า Right แต่ได้ Left: $failure'),
+        (items) => expect(items, isEmpty),
+      );
+    });
+
+    test('data เป็น Map เดี่ยว (ไม่ใช่ array) → Failure ไม่ throw', () {
+      final response = _json({
+        'success': true,
+        'statusCode': 200,
+        'data': {'id': 'sub-1'},
+        'timestamp': '2026-10-06T07:00:00.000Z',
+      }, 200);
+
+      expect(unwrapEnvelopeList(response, _identity).isLeft(), isTrue);
+    });
+
+    test('element ใน array ไม่ใช่ Map (เช่น array ของตัวเลข) → Failure ไม่ throw', () {
+      final response = _json({
+        'success': true,
+        'statusCode': 200,
+        'data': [1, 2, 3],
+        'timestamp': '2026-10-06T07:00:00.000Z',
+      }, 200);
+
+      expect(unwrapEnvelopeList(response, _identity).isLeft(), isTrue);
+    });
+
+    test('parseItem throw กลางทาง → ทั้งก้อนเป็น Failure เดียว ไม่คืน list บางส่วน', () {
+      final response = _json({
+        'success': true,
+        'statusCode': 200,
+        'data': [
+          {'id': 'sub-1'},
+          {'id': 'sub-2'},
+        ],
+        'timestamp': '2026-10-06T07:00:00.000Z',
+      }, 200);
+
+      final result = unwrapEnvelopeList<String>(response, (item) {
+        if (item['id'] == 'sub-2') throw const FormatException('bad item');
+        return item['id'] as String;
+      });
+
+      expect(result.isLeft(), isTrue);
+    });
+
+    test('error envelope (success:false) ใช้ path เดียวกับ unwrapEnvelope', () {
+      final response = _json({
+        'success': false,
+        'statusCode': 404,
+        'message': 'Not found',
+      }, 404);
+
+      unwrapEnvelopeList(response, _identity).fold(
+        (failure) => expect(failure, const Failure.notFound()),
+        (items) => fail('คาดว่า Left แต่ได้ Right: $items'),
+      );
+    });
+
+    test('statusOverrides ทำงานเหมือน unwrapEnvelope', () {
+      const thai = Failure.serverError('ข้อผิดพลาดที่กำหนดเอง');
+      final response = _json({
+        'success': false,
+        'statusCode': 409,
+        'message': 'conflict',
+      }, 409);
+
+      unwrapEnvelopeList(
+        response,
+        _identity,
+        statusOverrides: {409: thai},
+      ).fold(
+        (failure) => expect(failure, thai),
+        (items) => fail('คาดว่า Left แต่ได้ Right: $items'),
+      );
+    });
+  });
+
   group('statusOverrides', () {
     test('override ชนะ และไม่แตะ body เลย', () {
       const thai = Failure.serverError('อีเมลนี้ถูกลงทะเบียนไว้แล้วในระบบ');

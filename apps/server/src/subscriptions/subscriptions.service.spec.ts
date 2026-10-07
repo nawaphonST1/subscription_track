@@ -229,6 +229,45 @@ describe('SubscriptionsService', () => {
       expect(result.next_renewal_date).toBeDefined();
     });
 
+    it('should create subscription using card_id alias and first_bill_date alias', async () => {
+      prismaMock.paymentCard.findFirst.mockResolvedValue({ id: 'card-1' });
+      prismaMock.userSubscription.create.mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'sub-new-2',
+          ...data,
+        }),
+      );
+
+      const result = await service.create('user-1', {
+        card_id: 'card-1',
+        first_bill_date: '2026-10-01T00:00:00.000Z',
+        name: 'Netflix Test',
+        category: 'Entertainment',
+        price: 399,
+        billing_cycle: BillingCycle.MONTHLY,
+      });
+
+      expect(result.id).toBe('sub-new-2');
+      expect(prismaMock.userSubscription.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          payment_card_id: 'card-1',
+          name: 'Netflix Test',
+          start_date: new Date('2026-10-01T00:00:00.000Z'),
+        }),
+      });
+    });
+
+    it('should throw BadRequestException if neither payment_card_id nor card_id is provided', async () => {
+      await expect(
+        service.create('user-1', {
+          name: 'Disney+',
+          category: 'Streaming',
+          price: 289,
+          billing_cycle: BillingCycle.MONTHLY,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should evict user creep score cache when creating a subscription', async () => {
       const mockCacheService = {
         del: vi.fn().mockResolvedValue(true),
@@ -322,7 +361,7 @@ describe('SubscriptionsService', () => {
         },
       ]);
 
-      const result = await service.listPresets();
+      const result: any = await service.listPresets();
 
       expect(prismaMock.subscriptionPreset.findMany).toHaveBeenCalledWith({
         orderBy: [{ category: 'asc' }, { name: 'asc' }],

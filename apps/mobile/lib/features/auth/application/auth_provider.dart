@@ -16,11 +16,15 @@ part 'auth_provider.g.dart';
 final innerHttpClientProvider = Provider<http.Client?>((ref) => null);
 
 final authenticatedHttpClientProvider = Provider<AuthenticatedHttpClient>(
-  (ref) => AuthenticatedHttpClient(
-    readToken: RemoteAuthRepository.readStoredAuthToken,
-    inner: ref.watch(innerHttpClientProvider),
-    onUnauthorized: () => ref.read(authProvider.notifier).handleSessionExpired(),
-  ),
+  (ref) {
+    final client = AuthenticatedHttpClient(
+      readToken: RemoteAuthRepository.readStoredAuthToken,
+      inner: ref.watch(innerHttpClientProvider),
+      onUnauthorized: () => ref.read(authProvider.notifier).handleSessionExpired(),
+    );
+    ref.onDispose(client.close);
+    return client;
+  },
 );
 
 final authRepositoryProvider = Provider<AuthRepository>(

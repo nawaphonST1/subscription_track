@@ -93,7 +93,7 @@ export class UsersController {
   }
 
   @AllowWithoutPin()
-  @Patch('pin')
+  @Patch(['pin', 'me/pin'])
   @ApiOperation({ summary: 'Change or configure 6-digit security PIN' })
   @ApiResponse({
     status: 200,

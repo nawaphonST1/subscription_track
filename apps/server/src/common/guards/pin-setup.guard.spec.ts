@@ -29,7 +29,7 @@ describe('PinSetupGuard', () => {
     allowWithoutPin = false,
   ): ExecutionContext {
     vi.spyOn(reflector, 'getAllAndOverride').mockImplementation(
-      (key: string) => {
+      (key: unknown) => {
         if (key === 'isPublic') return isPublic;
         if (key === 'allowWithoutPin') return allowWithoutPin;
         return undefined;

@@ -34,6 +34,15 @@ class PresetPackageGrid extends StatelessWidget {
   }
 }
 
+Color? _parseBrandColor(String? hexString) {
+  if (hexString == null || hexString.isEmpty) return null;
+  var hex = hexString.replaceFirst('#', '').trim();
+  if (hex.length == 6) hex = 'FF$hex';
+  if (hex.length != 8) return null;
+  final val = int.tryParse(hex, radix: 16);
+  return val != null ? Color(val) : null;
+}
+
 class _PresetPackageCard extends StatelessWidget {
   const _PresetPackageCard({required this.package, required this.onTap});
 
@@ -43,10 +52,11 @@ class _PresetPackageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = serviceIconColor(
-      serviceName: package.name,
-      category: package.category,
-    );
+    final accent = _parseBrandColor(package.brandColor) ??
+        serviceIconColor(
+          serviceName: package.name,
+          category: package.category,
+        );
 
     return InkWell(
       onTap: onTap,

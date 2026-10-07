@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { BillingCycle, SubscriptionStatus, UsageStatus } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -17,6 +18,14 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   @IsString()
   payment_card_id?: string;
+
+  @ApiPropertyOptional({
+    example: 'payment-card-id',
+    description: 'Updated payment card ID (alias for payment_card_id)',
+  })
+  @IsOptional()
+  @IsString()
+  card_id?: string;
 
   @ApiPropertyOptional({
     example: 'Netflix Premium 4K',
@@ -45,6 +54,9 @@ export class UpdateSubscriptionDto {
     description: 'Updated billing cycle',
   })
   @IsOptional()
+  @Transform(({ value }: { value: unknown }): unknown =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
   @IsEnum(BillingCycle)
   billing_cycle?: BillingCycle;
 

@@ -12,12 +12,46 @@ import 'package:subscription_track/features/auth/data/in_memory_auth_repository.
 import 'package:subscription_track/features/auth/domain/auth_repository.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 import 'package:subscription_track/features/onboarding/application/onboarding_controller.dart';
+import 'package:subscription_track/features/profile/application/payment_card_linking_controller.dart';
+import 'package:subscription_track/features/profile/data/in_memory_payment_card_repository.dart';
+import 'package:subscription_track/features/subscriptions/application/subscription_list_controller.dart';
+import 'package:subscription_track/features/subscriptions/data/in_memory_subscription_repository.dart';
+
+import 'package:subscription_track/features/dashboard/data/in_memory_creep_score_repository.dart';
+import 'package:subscription_track/features/dashboard/data/remote_creep_score_repository.dart';
+import 'package:subscription_track/features/savings/data/in_memory_savings_repository.dart';
+import 'package:subscription_track/features/savings/data/remote_savings_repository.dart';
+import 'package:subscription_track/features/notifications/application/notification_center_controller.dart';
+import 'package:subscription_track/features/notifications/data/in_memory_notification_repository.dart';
+
+/// Dashboard และ Savings ที่ build ในเทสต์เหล่านี้ต้องไม่ยิง network จริง: ถ้าปล่อยให้
+/// subscriptionRepositoryProvider/paymentCardRepositoryProvider/creepScoreRepositoryProvider/savingsRepositoryProvider/notificationRepositoryProvider
+/// ใช้ default (Remote*Repository) เทสต์จะค้างที่ pumpAndSettle timeout เพราะไม่มี
+/// backend จริงให้ต่อในแซนด์บ็อกซ์เทสต์
+_offlineDataOverrides() => [
+      subscriptionRepositoryProvider.overrideWithValue(
+        InMemorySubscriptionRepository(ioDelay: Duration.zero),
+      ),
+      paymentCardRepositoryProvider.overrideWithValue(
+        InMemoryPaymentCardRepository(ioDelay: Duration.zero),
+      ),
+      creepScoreRepositoryProvider.overrideWithValue(
+        InMemoryCreepScoreRepository(ioDelay: Duration.zero),
+      ),
+      savingsRepositoryProvider.overrideWithValue(
+        InMemorySavingsRepository(ioDelay: Duration.zero),
+      ),
+      notificationRepositoryProvider.overrideWithValue(
+        InMemoryNotificationRepository(ioDelay: Duration.zero),
+      ),
+    ];
 
 ProviderScope _buildTestApp(AppFlowState initialState) {
   return ProviderScope(
     overrides: [
       // Test เลือก startup destination ได้โดยไม่แก้ mock state ใน production
       appFlowProvider.overrideWithValue(initialState),
+      ..._offlineDataOverrides(),
     ],
     child: const App(),
   );
@@ -39,6 +73,7 @@ ProviderScope _buildStateDrivenTestApp({
       authRepositoryProvider.overrideWithValue(
         authRepository ?? InMemoryAuthRepository(),
       ),
+      ..._offlineDataOverrides(),
     ],
     child: const App(),
   );
@@ -109,6 +144,7 @@ ProviderScope _buildRestoreApp({
       onboardingProvider.overrideWithBuild(
         (ref, controller) => isOnboardingCompleted,
       ),
+      ..._offlineDataOverrides(),
     ],
     child: const App(),
   );
@@ -261,6 +297,7 @@ void main() {
           mockAuthBypassProvider.overrideWithBuild((ref, _) => true),
           onboardingProvider.overrideWithBuild((ref, _) => false),
           authRepositoryProvider.overrideWithValue(InMemoryAuthRepository()),
+          ..._offlineDataOverrides(),
         ],
       );
       addTearDown(container.dispose);
@@ -391,6 +428,7 @@ void main() {
                 isPinSetupCompleted: false,
               ),
             ),
+            ..._offlineDataOverrides(),
           ],
         );
         addTearDown(container.dispose);
@@ -434,6 +472,7 @@ void main() {
           overrides: [
             authRepositoryProvider.overrideWithValue(repository),
             onboardingProvider.overrideWithBuild((ref, _) => true),
+            ..._offlineDataOverrides(),
           ],
         );
         addTearDown(container.dispose);
@@ -475,6 +514,7 @@ void main() {
                 // isPinSetupCompleted omitted -> defaults to false
               ),
             ),
+            ..._offlineDataOverrides(),
           ],
         );
         addTearDown(container.dispose);
@@ -501,6 +541,7 @@ void main() {
             mockAuthBypassProvider.overrideWithBuild((ref, _) => true),
             onboardingProvider.overrideWithBuild((ref, _) => true),
             authRepositoryProvider.overrideWithValue(InMemoryAuthRepository()),
+            ..._offlineDataOverrides(),
           ],
         );
         addTearDown(container.dispose);

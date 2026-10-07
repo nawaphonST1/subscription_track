@@ -12,9 +12,10 @@ class NotificationCenterScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(notificationCenterProvider);
+    final asyncState = ref.watch(notificationCenterProvider);
     final controller = ref.read(notificationCenterProvider.notifier);
     final theme = Theme.of(context);
+    final state = asyncState.value;
 
     return Scaffold(
       appBar: AppBar(
@@ -29,7 +30,7 @@ class NotificationCenterScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         actions: [
-          if (state.items.isNotEmpty)
+          if (state != null && state.items.isNotEmpty)
             PopupMenuButton<_NotificationMenuAction>(
               icon: const Icon(Icons.more_vert),
               color: theme.cardColor,
@@ -60,28 +61,51 @@ class NotificationCenterScreen extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            NotificationFilterBar(
-              selected: state.filter,
-              onSelected: controller.selectFilter,
+        child: asyncState.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: AppColors.danger,
+                ),
+                const SizedBox(height: 12),
+                const Text('โหลดการแจ้งเตือนไม่สำเร็จ'),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: controller.refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('ลองใหม่อีกครั้ง'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: NotificationList(
-                items: state.visibleItems,
-                filter: state.filter,
-                onToggleRead: controller.toggleRead,
-                onDismiss: (id) {
-                  controller.dismiss(id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('ลบการแจ้งเตือนแล้ว')),
-                  );
-                },
+          ),
+          data: (data) => Column(
+            children: [
+              const SizedBox(height: 8),
+              NotificationFilterBar(
+                selected: data.filter,
+                onSelected: controller.selectFilter,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: NotificationList(
+                  items: data.visibleItems,
+                  filter: data.filter,
+                  onToggleRead: controller.markAsRead,
+                  onDismiss: (id) {
+                    controller.dismiss(id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('ลบการแจ้งเตือนแล้ว')),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -71,6 +71,41 @@ void main() {
     expect(find.byType(ChangePinDialog), findsNothing);
   });
 
+  testWidgets('completes PIN change by tapping on-screen keypad buttons', (tester) async {
+    final repo = InMemoryPinRepository(currentPin: testOldPin);
+
+    await tester.pumpWidget(buildTestWidget(repo: repo));
+
+    await tester.tap(find.text('Change PIN'));
+    await tester.pumpAndSettle();
+
+    Future<void> tapDigits(String pin) async {
+      for (final digit in pin.split('')) {
+        await tester.tap(find.byKey(Key('pin_key_$digit')));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+    }
+
+    // Step 1: old PIN via keypad
+    expect(find.text('ยืนยัน PIN เดิม'), findsOneWidget);
+    await tapDigits(testOldPin);
+    expect(repo.verifyCallCount, 1);
+
+    // Step 2: new PIN via keypad
+    expect(find.text('ตั้งค่า PIN ใหม่'), findsOneWidget);
+    await tapDigits(testNewPin);
+
+    // Step 3: confirm PIN via keypad
+    expect(find.text('ยืนยัน PIN ใหม่'), findsOneWidget);
+    await tapDigits(testNewPin);
+
+    expect(repo.changeCallCount, 1);
+    expect(repo.currentPin, testNewPin);
+    expect(find.text('เปลี่ยนรหัส PIN สำเร็จแล้ว'), findsOneWidget);
+    expect(find.byType(ChangePinDialog), findsNothing);
+  });
+
   testWidgets('shows error on wrong old PIN and allows retry', (tester) async {
     final repo = InMemoryPinRepository(currentPin: testOldPin);
 
@@ -120,9 +155,44 @@ void main() {
     await tester.enterText(textField, testWrongPin);
     await tester.pumpAndSettle();
 
-    expect(find.text('รหัส PIN ยืนยันไม่ตรงกัน กรุณาตั้งค่าใหม่'), findsOneWidget);
+    expect(find.text('PINs do not match. Please try again.'), findsOneWidget);
     expect(find.text('ตั้งค่า PIN ใหม่'), findsOneWidget);
     expect(repo.changeCallCount, 0);
+  });
+
+  testWidgets('rejects weak PIN pattern (repeated digits or 123456) in step 2', (tester) async {
+    final repo = InMemoryPinRepository(currentPin: testOldPin);
+
+    await tester.pumpWidget(buildTestWidget(repo: repo));
+
+    await tester.tap(find.text('Change PIN'));
+    await tester.pumpAndSettle();
+
+    final textField = find.byType(TextField);
+
+    // Step 1: old PIN
+    await tester.enterText(textField, testOldPin);
+    await tester.pumpAndSettle();
+
+    // Step 2: enter weak PIN 111111
+    await tester.enterText(textField, '111111');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('PIN is too weak. Please avoid sequential (123456) or repeated numbers (111111).'),
+      findsOneWidget,
+    );
+    expect(find.text('ตั้งค่า PIN ใหม่'), findsOneWidget);
+
+    // Step 2 retry: enter weak sequential PIN 123456
+    await tester.enterText(textField, '123456');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('PIN is too weak. Please avoid sequential (123456) or repeated numbers (111111).'),
+      findsOneWidget,
+    );
+    expect(find.text('ตั้งค่า PIN ใหม่'), findsOneWidget);
   });
 
   testWidgets('displays error on network failure during changePin', (tester) async {

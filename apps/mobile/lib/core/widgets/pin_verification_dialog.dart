@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/security/pin_provider.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
+import 'package:subscription_track/core/widgets/pin/pin.dart';
 
 class PinVerificationDialog extends ConsumerStatefulWidget {
   const PinVerificationDialog({
@@ -19,7 +19,8 @@ class PinVerificationDialog extends ConsumerStatefulWidget {
   final bool returnPinOnSuccess;
 
   @override
-  ConsumerState<PinVerificationDialog> createState() => _PinVerificationDialogState();
+  ConsumerState<PinVerificationDialog> createState() =>
+      _PinVerificationDialogState();
 
   static Future<bool> show({
     required BuildContext context,
@@ -58,7 +59,8 @@ class PinVerificationDialog extends ConsumerStatefulWidget {
   }
 }
 
-class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
+class _PinVerificationDialogState
+    extends ConsumerState<PinVerificationDialog> {
   final TextEditingController _pinController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   String? _errorMessage;
@@ -67,7 +69,6 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
   @override
   void initState() {
     super.initState();
-    // Auto focus on open
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusNode.requestFocus();
@@ -80,6 +81,47 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
     _pinController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onKeypadTap(String digit) {
+    if (_isLoading) return;
+    PinKeypadHelper.handleDigitTap(
+      controller: _pinController,
+      focusNode: _focusNode,
+      digit: digit,
+      onChanged: (_) {
+        if (_errorMessage != null) {
+          setState(() => _errorMessage = null);
+        }
+      },
+      onCompleted: _verifyPin,
+    );
+  }
+
+  void _onKeypadClear() {
+    if (_isLoading) return;
+    PinKeypadHelper.handleClear(
+      controller: _pinController,
+      focusNode: _focusNode,
+      onCleared: () {
+        if (_errorMessage != null) {
+          setState(() => _errorMessage = null);
+        }
+      },
+    );
+  }
+
+  void _onKeypadBackspace() {
+    if (_isLoading) return;
+    PinKeypadHelper.handleBackspace(
+      controller: _pinController,
+      focusNode: _focusNode,
+      onChanged: (_) {
+        if (_errorMessage != null) {
+          setState(() => _errorMessage = null);
+        }
+      },
+    );
   }
 
   Future<void> _verifyPin(String enteredPin) async {
@@ -110,7 +152,9 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
             _isLoading = false;
             _errorMessage = null;
           });
-          Navigator.of(context).pop(widget.returnPinOnSuccess ? enteredPin : true);
+          Navigator.of(context).pop(
+            widget.returnPinOnSuccess ? enteredPin : true,
+          );
         } else {
           setState(() {
             _isLoading = false;
@@ -126,134 +170,84 @@ class _PinVerificationDialogState extends ConsumerState<PinVerificationDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final text = _pinController.text;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       contentPadding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.lock_outline_rounded,
-            color: theme.colorScheme.primary,
-            size: 40,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            widget.title,
-            textAlign: TextAlign.center,
-            style: AppTypography.headingSmall.copyWith(
-              color: theme.textTheme.titleMedium?.color,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline_rounded,
+              color: theme.colorScheme.primary,
+              size: 40,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.message,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(
-              color: theme.textTheme.bodySmall?.color,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Hidden TextField to receive numeric input
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Opacity(
-                opacity: 0,
-                child: SizedBox(
-                  width: 0,
-                  height: 0,
-                  child: TextField(
-                    controller: _pinController,
-                    focusNode: _focusNode,
-                    enabled: !_isLoading,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    onChanged: (val) {
-                      setState(() {
-                        if (_errorMessage != null) {
-                          _errorMessage = null;
-                        }
-                      });
-                      if (val.length == 6) {
-                        _verifyPin(val);
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      counterText: '',
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 16),
+            Text(
+              widget.title,
+              textAlign: TextAlign.center,
+              style: AppTypography.headingSmall.copyWith(
+                color: theme.textTheme.titleMedium?.color,
               ),
-              // PIN Boxes
-              GestureDetector(
-                onTap: _isLoading ? null : () => _focusNode.requestFocus(),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (index) {
-                    final hasValue = index < text.length;
-                    final isFocused = _focusNode.hasFocus && index == text.length;
-
-                    return Container(
-                      width: 40,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _errorMessage != null
-                              ? AppColors.danger
-                              : isFocused
-                                  ? theme.colorScheme.primary
-                                  : theme.dividerColor,
-                          width: isFocused || _errorMessage != null ? 2 : 1,
-                        ),
-                      ),
-                      child: Text(
-                        hasValue ? '•' : '',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  }),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.message,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: theme.textTheme.bodySmall?.color,
+              ),
+            ),
+            const SizedBox(height: 20),
+            PinCodeInput(
+              textFieldKey: const Key('verify_pin_text_field'),
+              controller: _pinController,
+              focusNode: _focusNode,
+              isLoading: _isLoading,
+              hasError: _errorMessage != null,
+              onCompleted: _verifyPin,
+              onChanged: (val) {
+                if (_errorMessage != null) {
+                  setState(() => _errorMessage = null);
+                }
+              },
+            ),
+            if (_isLoading) ...[
+              const SizedBox(height: 16),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+            ],
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
-          ),
-          if (_isLoading) ...[
             const SizedBox(height: 16),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
+            PinNumericKeypad(
+              disabled: _isLoading,
+              onDigitTap: _onKeypadTap,
+              onClearTap: _onKeypadClear,
+              onBackspaceTap: _onKeypadBackspace,
             ),
           ],
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.danger,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
       actions: [
         TextButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
+          onPressed:
+              _isLoading ? null : () => Navigator.of(context).pop(false),
           child: const Text('ยกเลิก'),
         ),
       ],

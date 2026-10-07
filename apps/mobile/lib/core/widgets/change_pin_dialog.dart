@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/security/pin_provider.dart';
 import 'package:subscription_track/core/theme/app_colors.dart';
 import 'package:subscription_track/core/theme/app_typography.dart';
+import 'package:subscription_track/core/widgets/pin/pin.dart';
 
 class ChangePinDialog extends ConsumerStatefulWidget {
   const ChangePinDialog({super.key});
@@ -48,6 +48,47 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
     _pinController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onKeypadTap(String key) {
+    if (_isLoading) return;
+    PinKeypadHelper.handleDigitTap(
+      controller: _pinController,
+      focusNode: _focusNode,
+      digit: key,
+      onChanged: (_) {
+        if (_errorMessage != null) {
+          setState(() => _errorMessage = null);
+        }
+      },
+      onCompleted: _handlePinSubmit,
+    );
+  }
+
+  void _onKeypadClear() {
+    if (_isLoading) return;
+    PinKeypadHelper.handleClear(
+      controller: _pinController,
+      focusNode: _focusNode,
+      onCleared: () {
+        if (_errorMessage != null) {
+          setState(() => _errorMessage = null);
+        }
+      },
+    );
+  }
+
+  void _onKeypadBackspace() {
+    if (_isLoading) return;
+    PinKeypadHelper.handleBackspace(
+      controller: _pinController,
+      focusNode: _focusNode,
+      onChanged: (_) {
+        if (_errorMessage != null) {
+          setState(() => _errorMessage = null);
+        }
+      },
+    );
   }
 
   Future<void> _handlePinSubmit(String value) async {
@@ -106,6 +147,19 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
           _focusNode.requestFocus();
           return;
         }
+
+        // Prevent weak patterns (repeated digits or simple sequences)
+        final isRepeated = RegExp(r'^(\d)\1{5}$').hasMatch(value);
+        if (isRepeated || value == '123456' || value == '654321') {
+          setState(() {
+            _errorMessage =
+                'PIN is too weak. Please avoid sequential (123456) or repeated numbers (111111).';
+            _pinController.clear();
+          });
+          _focusNode.requestFocus();
+          return;
+        }
+
         setState(() {
           _newPin = value;
           _step = ChangePinStep.confirmNew;
@@ -116,7 +170,7 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
       case ChangePinStep.confirmNew:
         if (value != _newPin) {
           setState(() {
-            _errorMessage = 'รหัส PIN ยืนยันไม่ตรงกัน กรุณาตั้งค่าใหม่';
+            _errorMessage = 'PINs do not match. Please try again.';
             _step = ChangePinStep.enterNew;
             _newPin = '';
             _pinController.clear();
@@ -142,6 +196,17 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
               _isLoading = false;
               _errorMessage = failure.displayMessage;
               _pinController.clear();
+              final isAuthError = failure.maybeWhen(
+                unauthorized: () => true,
+                orElse: () => false,
+              );
+              if (isAuthError ||
+                  failure.displayMessage.contains('เดิม') ||
+                  failure.displayMessage.contains('current')) {
+                _step = ChangePinStep.verifyOld;
+                _oldPin = '';
+                _newPin = '';
+              }
             });
             _focusNode.requestFocus();
           },
@@ -161,7 +226,6 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final text = _pinController.text;
 
     final title = switch (_step) {
       ChangePinStep.verifyOld => 'ยืนยัน PIN เดิม',
@@ -177,128 +241,84 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      contentPadding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            _step == ChangePinStep.verifyOld ? Icons.security_rounded : Icons.lock_reset_rounded,
-            color: theme.colorScheme.primary,
-            size: 40,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: AppTypography.headingSmall.copyWith(
-              color: theme.textTheme.titleMedium?.color,
+      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              _step == ChangePinStep.verifyOld
+                  ? Icons.security_rounded
+                  : Icons.lock_reset_rounded,
+              color: theme.colorScheme.primary,
+              size: 36,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(
-              color: theme.textTheme.bodySmall?.color,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Opacity(
-                opacity: 0,
-                child: SizedBox(
-                  width: 0,
-                  height: 0,
-                  child: TextField(
-                    controller: _pinController,
-                    focusNode: _focusNode,
-                    enabled: !_isLoading,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    onChanged: (val) {
-                      setState(() {
-                        if (_errorMessage != null) {
-                          _errorMessage = null;
-                        }
-                      });
-                      if (val.length == 6) {
-                        _handlePinSubmit(val);
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      counterText: '',
-                    ),
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: _isLoading ? null : () => _focusNode.requestFocus(),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (index) {
-                    final hasValue = index < text.length;
-                    final isFocused = _focusNode.hasFocus && index == text.length;
-
-                    return Container(
-                      width: 40,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _errorMessage != null
-                              ? AppColors.danger
-                              : isFocused
-                                  ? theme.colorScheme.primary
-                                  : theme.dividerColor,
-                          width: isFocused || _errorMessage != null ? 2 : 1,
-                        ),
-                      ),
-                      child: Text(
-                        hasValue ? '•' : '',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
-          ),
-          if (_isLoading) ...[
-            const SizedBox(height: 16),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-          ],
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
-              _errorMessage!,
+              title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.danger,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+              style: AppTypography.headingSmall.copyWith(
+                color: theme.textTheme.titleMedium?.color,
               ),
             ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: theme.textTheme.bodySmall?.color,
+              ),
+            ),
+            const SizedBox(height: 18),
+            PinCodeInput(
+              textFieldKey: const Key('change_pin_text_field'),
+              controller: _pinController,
+              focusNode: _focusNode,
+              isLoading: _isLoading,
+              hasError: _errorMessage != null,
+              onCompleted: _handlePinSubmit,
+              onChanged: (val) {
+                if (_errorMessage != null) {
+                  setState(() => _errorMessage = null);
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            if (_isLoading) ...[
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (_errorMessage != null) ...[
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 6),
+            PinNumericKeypad(
+              disabled: _isLoading,
+              onDigitTap: _onKeypadTap,
+              onClearTap: _onKeypadClear,
+              onBackspaceTap: _onKeypadBackspace,
+            ),
           ],
-        ],
+        ),
       ),
       actions: [
         TextButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          onPressed:
+              _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('ยกเลิก'),
         ),
       ],

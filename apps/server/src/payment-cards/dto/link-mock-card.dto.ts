@@ -11,6 +11,14 @@ export class LinkMockCardDto {
   mock_card_id?: string;
 
   @ApiPropertyOptional({
+    example: 'c0000000-0000-4000-a000-000000000001',
+    description: 'Specific PaymentCard ID to link',
+  })
+  @IsOptional()
+  @IsString()
+  card_id?: string;
+
+  @ApiPropertyOptional({
     example: 'Kasikornbank',
     description: 'Issuing bank name to match mock card',
   })

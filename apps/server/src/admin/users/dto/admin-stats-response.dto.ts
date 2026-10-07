@@ -4,7 +4,10 @@ export class AdminStatsResponseDto {
   @ApiProperty({ example: 42, description: 'จำนวนผู้ใช้ทั้งหมดในระบบ' })
   totalUsers!: number;
 
-  @ApiProperty({ example: 120, description: 'จำนวน Subscription ที่กำลังใช้งานอยู่' })
+  @ApiProperty({
+    example: 120,
+    description: 'จำนวน Subscription ที่กำลังใช้งานอยู่',
+  })
   totalSubscriptions!: number;
 
   @ApiProperty({ example: 55, description: 'จำนวนบัตรชำระเงินที่เปิดใช้งาน' })

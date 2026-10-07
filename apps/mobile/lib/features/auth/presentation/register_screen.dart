@@ -6,6 +6,7 @@ import 'package:subscription_track/app/routing/route_constants.dart';
 import 'package:subscription_track/core/errors/failures.dart';
 import 'package:subscription_track/core/network/network_status.dart';
 import 'package:subscription_track/core/widgets/connectivity_status_banner.dart';
+import 'package:subscription_track/core/widgets/pin/pin.dart';
 import 'package:subscription_track/features/auth/application/auth_provider.dart';
 import 'package:subscription_track/features/auth/domain/user.dart';
 
@@ -30,6 +31,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
 
+  final _pinFocusNode = FocusNode();
+  final _confirmPinFocusNode = FocusNode();
+
   RegisterStep _step = RegisterStep.credentials;
 
   bool _obscurePassword = true;
@@ -45,6 +49,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _confirmPasswordController.dispose();
     _pinController.dispose();
     _confirmPinController.dispose();
+    _pinFocusNode.dispose();
+    _confirmPinFocusNode.dispose();
     super.dispose();
   }
 
@@ -422,23 +428,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(height: 32),
 
           // --- Security PIN Field ---
-          _buildInputField(
+          _buildPinField(
             key: const Key('register_pin_field'),
             controller: _pinController,
+            focusNode: _pinFocusNode,
             label: 'รหัส PIN ความปลอดภัย (6 หลัก)',
-            hint: 'กรอกตัวเลข 6 หลัก',
             icon: Icons.pin_outlined,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
             obscureText: _obscurePin,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: const Color(0xFF94A3B8),
-              ),
-              onPressed: () => setState(() => _obscurePin = !_obscurePin),
-            ),
+            onToggleObscure: () => setState(() => _obscurePin = !_obscurePin),
             validator: (val) {
               if (val == null || val.isEmpty) {
                 return 'กรุณากรอกรหัส PIN';
@@ -452,23 +449,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(height: 16),
 
           // --- Confirm PIN Field ---
-          _buildInputField(
+          _buildPinField(
             key: const Key('register_confirm_pin_field'),
             controller: _confirmPinController,
+            focusNode: _confirmPinFocusNode,
             label: 'ยืนยันรหัส PIN ความปลอดภัย',
-            hint: 'กรอกรหัส PIN 6 หลักอีกครั้ง',
             icon: Icons.lock_reset_rounded,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
             obscureText: _obscureConfirmPin,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscureConfirmPin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: const Color(0xFF94A3B8),
-              ),
-              onPressed: () => setState(() => _obscureConfirmPin = !_obscureConfirmPin),
-            ),
+            onToggleObscure: () =>
+                setState(() => _obscureConfirmPin = !_obscureConfirmPin),
             validator: (val) {
               if (val == null || val.isEmpty) {
                 return 'กรุณายืนยันรหัส PIN';
@@ -598,6 +587,79 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           validator: validator,
         ),
       ],
+    );
+  }
+
+  Widget _buildPinField({
+    required Key key,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required IconData icon,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
+    required String? Function(String?) validator,
+  }) {
+    return FormField<String>(
+      validator: (_) => validator(controller.text),
+      builder: (fieldState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFF94A3B8), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFFE2E8F0),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    obscureText
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: const Color(0xFF94A3B8),
+                    size: 20,
+                  ),
+                  onPressed: onToggleObscure,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: PinCodeInput(
+                textFieldKey: key,
+                controller: controller,
+                focusNode: focusNode,
+                obscureText: obscureText,
+                hasError: fieldState.hasError,
+                autoFocus: false,
+                onChanged: (_) {
+                  if (fieldState.hasError) {
+                    fieldState.validate();
+                  }
+                },
+              ),
+            ),
+            if (fieldState.hasError) ...[
+              const SizedBox(height: 6),
+              Text(
+                fieldState.errorText!,
+                style: const TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { LinkMockCardDto } from './dto/link-mock-card.dto';
 import { BillingCycle, NotificationType, UsageStatus } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
-import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class PaymentCardsService {
@@ -19,6 +23,19 @@ export class PaymentCardsService {
       where: { user_id: userId, is_active: true },
       orderBy: [{ is_default: 'desc' }, { created_at: 'desc' }],
       include: {
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { next_renewal_date: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            price: true,
+            billing_cycle: true,
+            next_renewal_date: true,
+            usage_status: true,
+          },
+        },
         _count: {
           select: { subscriptions: { where: { status: 'ACTIVE' } } },
         },
@@ -36,6 +53,15 @@ export class PaymentCardsService {
       currency: card.currency,
       is_default: card.is_default,
       active_subscriptions_count: card._count.subscriptions,
+      subscriptions: card.subscriptions.map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        price: Number(s.price),
+        billing_cycle: s.billing_cycle,
+        next_renewal_date: s.next_renewal_date,
+        usage_status: s.usage_status,
+      })),
       created_at: card.created_at,
       updated_at: card.updated_at,
     }));
@@ -229,6 +255,50 @@ export class PaymentCardsService {
   }
 
   async linkMockCard(userId: string, dto: LinkMockCardDto) {
+    const targetId = dto.card_id || dto.mock_card_id;
+
+    if (targetId) {
+      const existingPaymentCard = await this.prisma.paymentCard.findUnique({
+        where: { id: targetId },
+      });
+
+      if (existingPaymentCard) {
+        if (existingPaymentCard.user_id !== userId) {
+          throw new ForbiddenException(
+            'This card does not belong to your account.',
+          );
+        }
+
+        if (!existingPaymentCard.is_active) {
+          await this.prisma.paymentCard.update({
+            where: { id: existingPaymentCard.id },
+            data: { is_active: true },
+          });
+        }
+
+        if (this.cacheService) {
+          await this.cacheService.del(`cache:user:${userId}:creep-score`);
+        }
+
+        return {
+          card: {
+            id: existingPaymentCard.id,
+            card_nickname: existingPaymentCard.card_nickname,
+            card_brand: existingPaymentCard.card_brand,
+            card_type: existingPaymentCard.card_type,
+            last_4_digits: existingPaymentCard.last_4_digits,
+            bank_name: existingPaymentCard.bank_name,
+            balance: Number(existingPaymentCard.balance),
+            currency: existingPaymentCard.currency,
+            is_default: existingPaymentCard.is_default,
+            subscriptions: [],
+          },
+          imported_subscriptions_count: 0,
+          imported_subscriptions: [],
+        };
+      }
+    }
+
     let mockCard = null;
 
     if (dto.mock_card_id) {
@@ -342,6 +412,7 @@ export class PaymentCardsService {
           balance: Number(userCard.balance),
           currency: userCard.currency,
           is_default: userCard.is_default,
+          subscriptions: importedSubscriptions,
         },
         imported_subscriptions_count: importedSubscriptions.length,
         imported_subscriptions: importedSubscriptions,

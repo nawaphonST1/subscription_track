@@ -89,6 +89,31 @@ export class NotificationsService {
     };
   }
 
+  async removeOne(userId: string, id: string) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, user_id: userId },
+    });
+
+    if (!notification) {
+      throw new NotFoundException(`Notification with ID ${id} not found`);
+    }
+
+    await this.prisma.notification.delete({ where: { id } });
+
+    return { message: 'Notification deleted successfully' };
+  }
+
+  async removeAll(userId: string) {
+    const result = await this.prisma.notification.deleteMany({
+      where: { user_id: userId },
+    });
+
+    return {
+      message: 'All notifications deleted',
+      deleted_count: result.count,
+    };
+  }
+
   /**
    * Ensures exactly one durable Notification exists for a given subscription
    * renewal occurrence (idempotent via the `dedupe_key` unique constraint).
