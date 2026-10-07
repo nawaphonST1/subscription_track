@@ -17,13 +17,14 @@ pipeline {
     }
 
     triggers {
-        // DP-400: SCM polling trigger (checks GitHub every minute for automated builds immediately on git push)
-        pollSCM('* * * * *')
+        // DP-400: Standard SCM polling trigger (checks GitHub periodically without build loops)
+        pollSCM('H/5 * * * *')
     }
 
     options {
         timeout(time: 25, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '15'))
+        disableConcurrentBuilds()
     }
 
     stages {
@@ -356,13 +357,15 @@ pipeline {
             }
         }
 
-        // DP-408: GitOps Continuous Delivery using ArgoCD (Dev / Staging)
+        // DP-408: GitOps Continuous Delivery using ArgoCD
         stage('DP-408: GitOps Sync (ArgoCD - Dev)') {
             when {
                 anyOf {
+                    branch 'main'
                     branch 'develop'
                     expression {
-                        return env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'origin/develop' || env.BRANCH_NAME == 'develop'
+                        return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main' ||
+                               env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'origin/develop' || env.BRANCH_NAME == 'develop'
                     }
                 }
             }
