@@ -10,6 +10,8 @@ import 'package:subscription_track/features/subscriptions/presentation/widgets/s
 import 'package:subscription_track/features/subscriptions/presentation/widgets/subscription_filter_bar.dart';
 import 'package:subscription_track/core/widgets/confirmation_dialog.dart';
 import 'package:subscription_track/core/widgets/pin_verification_dialog.dart';
+import 'package:subscription_track/features/dashboard/application/dashboard_summary_provider.dart';
+import 'package:subscription_track/features/savings/application/savings_provider.dart';
 
 class SubscriptionsTab extends ConsumerWidget {
   const SubscriptionsTab({super.key});
@@ -18,6 +20,7 @@ class SubscriptionsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(subscriptionFilterProvider);
     final subscriptions = ref.watch(visibleSubscriptionsProvider);
+    final categories = ref.watch(availableCategoriesProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -25,12 +28,13 @@ class SubscriptionsTab extends ConsumerWidget {
         children: [
           SubscriptionFilterBar(
             filter: filter,
+            categories: categories,
             onQueryChanged: ref
                 .read(subscriptionFilterProvider.notifier)
                 .updateQuery,
-            onCategorySelected: ref
+            onCategoryKeySelected: ref
                 .read(subscriptionFilterProvider.notifier)
-                .selectCategory,
+                .selectCategoryKey,
           ),
           Expanded(
             child: subscriptions.when(
@@ -84,6 +88,8 @@ class SubscriptionsTab extends ConsumerWidget {
         await ref
             .read(subscriptionListProvider.notifier)
             .addSubscription(subscription);
+        ref.invalidate(creepScoreFutureProvider);
+        ref.invalidate(savingsNotifierProvider);
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('เพิ่มบริการ ${subscription.name} สำเร็จ')),
@@ -112,7 +118,11 @@ class SubscriptionsTab extends ConsumerWidget {
       ),
       builder: (_) => SubscriptionDetailSheet(
         subscription: subscription,
-        onSaved: ref.read(subscriptionListProvider.notifier).updateSubscription,
+        onSaved: (updated) {
+          ref.read(subscriptionListProvider.notifier).updateSubscription(updated);
+          ref.invalidate(creepScoreFutureProvider);
+          ref.invalidate(savingsNotifierProvider);
+        },
       ),
     );
   }
@@ -148,6 +158,8 @@ class SubscriptionsTab extends ConsumerWidget {
       await ref
           .read(subscriptionListProvider.notifier)
           .deleteSubscription(subscription.id, pin: pin);
+      ref.invalidate(creepScoreFutureProvider);
+      ref.invalidate(savingsNotifierProvider);
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

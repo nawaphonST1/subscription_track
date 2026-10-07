@@ -49,8 +49,19 @@ variable "admin_username" {
 variable "admin_password" {
   type        = string
   description = "Administrator password for the VM (ใช้กรณีไม่ได้ระบุ SSH Key)"
-  default     = "SubTrackerProd2026!#"
+  default     = "CHANGE_ME_STRONG_PASSWORD"
   sensitive   = true
+}
+
+# ==============================================================================
+# ตัวเลือกเสริม: Standalone Production VM + เครือข่าย (VNet/Subnet/NSG/Public IP/NIC)
+# ปิดไว้เป็นค่าเริ่มต้น (false) เพื่อป้องกันการสร้างทรัพยากรซ้ำซ้อนโดยไม่ตั้งใจเมื่อเปิดใช้ AKS
+# เปิดเฉพาะกรณีต้องการ VM แยกต่างหากสำหรับรัน Docker Compose / K3s จริงเท่านั้น
+# ==============================================================================
+variable "enable_standalone_vm" {
+  type        = bool
+  description = "เปิด/ปิด การสร้าง Standalone Production VM และเครือข่ายที่เกี่ยวข้อง (Default: false)"
+  default     = false
 }
 
 variable "ssh_public_key" {
@@ -80,5 +91,11 @@ variable "aks_vm_size" {
   type        = string
   description = "ขนาด VM สำหรับ Worker Node ของ AKS Cluster"
   default     = "Standard_B2s"
+}
+
+variable "kubernetes_version" {
+  type        = string
+  description = "เวอร์ชัน Kubernetes สำหรับ AKS (null หรือปล่อยว่างไว้เพื่อให้ Azure เลือกเวอร์ชัน LTS ล่าสุดที่เสถียรใน Region)"
+  default     = null
 }
 

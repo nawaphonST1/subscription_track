@@ -117,6 +117,57 @@ class AppUpdateController extends Notifier<AppUpdateState> {
     }
   }
 
+  Future<void> downloadAndInstallApk({String? customDownloadUrl}) async {
+    final downloadUrl = customDownloadUrl ?? state.updateInfo?.downloadUrl;
+    if (downloadUrl == null || downloadUrl.isEmpty) {
+      await simulateDownloadAndInstall();
+      return;
+    }
+
+    state = state.copyWith(
+      isDownloading: true,
+      downloadProgress: 0.0,
+      isDownloadCompleted: false,
+      errorMessage: null,
+    );
+
+    try {
+      final repository = ref.read(appUpdateRepositoryProvider);
+      final downloadedFile = await repository.downloadApk(
+        downloadUrl: downloadUrl,
+        onProgress: (received, total) {
+          if (total > 0) {
+            state = state.copyWith(downloadProgress: received / total);
+          }
+        },
+      );
+
+      if (downloadedFile != null && await downloadedFile.exists()) {
+        state = state.copyWith(
+          isDownloading: false,
+          isDownloadCompleted: true,
+          downloadProgress: 1.0,
+        );
+        final success = await repository.installApk(downloadedFile.path);
+        if (!success) {
+          await repository.openDownloadUrl(downloadUrl);
+        }
+      } else {
+        state = state.copyWith(isDownloading: false);
+        await repository.openDownloadUrl(downloadUrl);
+      }
+    } catch (e) {
+      state = state.copyWith(
+        isDownloading: false,
+        errorMessage: e.toString(),
+      );
+      try {
+        final repository = ref.read(appUpdateRepositoryProvider);
+        await repository.openDownloadUrl(downloadUrl);
+      } catch (_) {}
+    }
+  }
+
   Future<void> simulateDownloadAndInstall() async {
     state = state.copyWith(isDownloading: true, downloadProgress: 0.0);
 

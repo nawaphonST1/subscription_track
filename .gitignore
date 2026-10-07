@@ -110,12 +110,18 @@ kubeconfig.txt
 # cluster, value and all. Use scripts/bootstrap-secrets.sh.
 # See doc/security/secrets-management.md
 k8s/postgres-secret.yaml
+k8s/secrets.yaml
 
 # Terraform Local Cache & State
 **/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
+tfplan
+
+# Terraform variable files may contain sensitive values; only the .example is tracked
+*.tfvars
+!*.tfvars.example
 
 # Test Artifacts & Coverage Reports
 **/playwright-report/

@@ -18,7 +18,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   dns_prefix          = "subtracker-k8s"
-  kubernetes_version  = "1.29" # หรือเวอร์ชัน LTS ล่าสุดที่รองรับ
+  kubernetes_version  = var.kubernetes_version
 
   # Node Pool สำหรับรัน Pods และ Workloads
   default_node_pool {

@@ -111,4 +111,42 @@ describe('AdminUsersService', () => {
       });
     });
   });
+
+  describe('createSubscription', () => {
+    it('creates a new subscription with planTier for a user', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u-1',
+        payment_cards: [{ id: 'card-1', is_active: true }],
+      });
+      (mockPrisma.userSubscription as any).create = vi.fn().mockResolvedValue({
+        id: 'sub-new',
+        name: 'YouTube Premium',
+        category: 'Streaming',
+        price: 179,
+        plan_tier: 'Individual',
+        preset_id: 'preset-yt',
+        billing_cycle: 'MONTHLY',
+        start_date: new Date(),
+        next_renewal_date: new Date(),
+        status: 'ACTIVE',
+        usage_status: 'FREQUENT',
+        brand_color: '#FF0000',
+        notes: null,
+        payment_card: null,
+      });
+
+      const res = await service.createSubscription('u-1', {
+        name: 'YouTube Premium',
+        category: 'Streaming',
+        price: 179,
+        planTier: 'Individual',
+        presetId: 'preset-yt',
+      });
+
+      expect(res.name).toBe('YouTube Premium');
+      expect(res.planTier).toBe('Individual');
+      expect(res.presetId).toBe('preset-yt');
+      expect((mockPrisma.userSubscription as any).create).toHaveBeenCalled();
+    });
+  });
 });

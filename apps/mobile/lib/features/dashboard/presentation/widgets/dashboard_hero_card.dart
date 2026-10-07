@@ -5,11 +5,13 @@ class DashboardHeroCard extends StatelessWidget {
   const DashboardHeroCard({
     required this.monthlyTotal,
     required this.creepScore,
+    this.totalCardFunds = 0,
     super.key,
   });
 
   final double monthlyTotal;
   final double creepScore;
+  final double totalCardFunds;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +100,38 @@ class DashboardHeroCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+          if (totalCardFunds > 0) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ยอดเงินในบัตรที่ผูก: ฿${totalCardFunds.toStringAsFixed(0)}',
+                    key: const Key('total-card-funds-label'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

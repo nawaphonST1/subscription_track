@@ -29,7 +29,16 @@ export PGPASSWORD="${DB_PASSWORD}"
 
 # 1. Execute pg_dump and compress on-the-fly
 echo "==> Creating compressed dump file: ${BACKUP_FILE}..."
-pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -Fc | gzip -c > "${BACKUP_FILE}"
+if command -v pg_dump >/dev/null 2>&1; then
+    pg_dump -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -Fc | gzip -c > "${BACKUP_FILE}"
+elif docker ps --format '{{.Names}}' | grep -q "postgres"; then
+    CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep "postgres" | head -n 1)
+    echo "==> Using Docker container (${CONTAINER_NAME}) to run pg_dump..."
+    docker exec -e PGPASSWORD="${DB_PASSWORD}" -i "${CONTAINER_NAME}" pg_dump -U "${DB_USER}" -d "${DB_NAME}" -Fc | gzip -c > "${BACKUP_FILE}"
+else
+    echo "❌ Error: Neither pg_dump nor running postgres docker container found!"
+    exit 1
+fi
 
 FILE_SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)
 echo "✅ Database dump completed successfully. File size: ${FILE_SIZE}"

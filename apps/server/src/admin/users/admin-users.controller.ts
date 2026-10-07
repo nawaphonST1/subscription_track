@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -81,6 +82,20 @@ export class AdminUsersController {
   })
   async updateUser(@Param('id') id: string, @Body() dto: UpdateAdminUserDto) {
     return this.adminUsersService.updateUser(id, dto);
+  }
+
+  @Post('users/:id/subscriptions')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create subscription for user (Admin action)',
+    description:
+      'Allows administrator to add a subscription for a specific user with package tier support.',
+  })
+  async createSubscription(
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    return this.adminUsersService.createSubscription(id, dto);
   }
 
   @Patch('subscriptions/:id')

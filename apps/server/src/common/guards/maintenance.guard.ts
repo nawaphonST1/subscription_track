@@ -32,7 +32,9 @@ export class MaintenanceGuard implements CanActivate {
             isMaintenance = true;
           }
         }
-      } catch {}
+      } catch {
+        // Ignore .env read errors and fall back to environment variables or config service
+      }
     }
 
     if (!isMaintenance) {

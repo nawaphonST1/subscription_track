@@ -8,7 +8,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { LinkMockCardDto } from './dto/link-mock-card.dto';
-import { BillingCycle, NotificationType, UsageStatus } from '@prisma/client';
+import {
+  BillingCycle,
+  NotificationType,
+  SubscriptionStatus,
+  UsageStatus,
+} from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
 
 @Injectable()
@@ -214,9 +219,16 @@ export class PaymentCardsService {
       throw new NotFoundException(`Payment card with ID ${cardId} not found`);
     }
 
-    await this.prisma.paymentCard.update({
-      where: { id: cardId },
-      data: { is_active: false, is_default: false },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.paymentCard.update({
+        where: { id: cardId },
+        data: { is_active: false, is_default: false },
+      });
+
+      await tx.userSubscription.updateMany({
+        where: { payment_card_id: cardId },
+        data: { status: SubscriptionStatus.CANCELLED },
+      });
     });
 
     if (this.cacheService) {
@@ -255,50 +267,6 @@ export class PaymentCardsService {
   }
 
   async linkMockCard(userId: string, dto: LinkMockCardDto) {
-    const targetId = dto.card_id || dto.mock_card_id;
-
-    if (targetId) {
-      const existingPaymentCard = await this.prisma.paymentCard.findUnique({
-        where: { id: targetId },
-      });
-
-      if (existingPaymentCard) {
-        if (existingPaymentCard.user_id !== userId) {
-          throw new ForbiddenException(
-            'This card does not belong to your account.',
-          );
-        }
-
-        if (!existingPaymentCard.is_active) {
-          await this.prisma.paymentCard.update({
-            where: { id: existingPaymentCard.id },
-            data: { is_active: true },
-          });
-        }
-
-        if (this.cacheService) {
-          await this.cacheService.del(`cache:user:${userId}:creep-score`);
-        }
-
-        return {
-          card: {
-            id: existingPaymentCard.id,
-            card_nickname: existingPaymentCard.card_nickname,
-            card_brand: existingPaymentCard.card_brand,
-            card_type: existingPaymentCard.card_type,
-            last_4_digits: existingPaymentCard.last_4_digits,
-            bank_name: existingPaymentCard.bank_name,
-            balance: Number(existingPaymentCard.balance),
-            currency: existingPaymentCard.currency,
-            is_default: existingPaymentCard.is_default,
-            subscriptions: [],
-          },
-          imported_subscriptions_count: 0,
-          imported_subscriptions: [],
-        };
-      }
-    }
-
     let mockCard = null;
 
     if (dto.mock_card_id) {
@@ -306,7 +274,16 @@ export class PaymentCardsService {
         where: { id: dto.mock_card_id },
         include: { subscriptions: true },
       });
-    } else if (dto.bank_name && dto.last_4_digits) {
+    }
+
+    if (!mockCard && dto.card_id) {
+      mockCard = await this.prisma.mockBankCard.findUnique({
+        where: { id: dto.card_id },
+        include: { subscriptions: true },
+      });
+    }
+
+    if (!mockCard && dto.bank_name && dto.last_4_digits) {
       mockCard = await this.prisma.mockBankCard.findFirst({
         where: {
           bank_name: { contains: dto.bank_name, mode: 'insensitive' },
@@ -314,7 +291,80 @@ export class PaymentCardsService {
         },
         include: { subscriptions: true },
       });
-    } else {
+    }
+
+    if (!mockCard) {
+      // Check if target is existing paymentCard ID directly
+      const targetId = dto.card_id || dto.mock_card_id;
+      if (targetId) {
+        const existingPaymentCard = await this.prisma.paymentCard.findUnique({
+          where: { id: targetId },
+          include: { subscriptions: true },
+        });
+
+        if (existingPaymentCard) {
+          if (existingPaymentCard.user_id !== userId) {
+            throw new ForbiddenException(
+              'This card does not belong to your account.',
+            );
+          }
+
+          const activeSubs = await this.prisma.$transaction(async (tx) => {
+            if (!existingPaymentCard.is_active) {
+              await tx.paymentCard.update({
+                where: { id: existingPaymentCard.id },
+                data: { is_active: true },
+              });
+              await tx.userSubscription.updateMany({
+                where: { payment_card_id: existingPaymentCard.id },
+                data: { status: SubscriptionStatus.ACTIVE },
+              });
+            }
+            return tx.userSubscription.findMany({
+              where: {
+                payment_card_id: existingPaymentCard.id,
+                status: SubscriptionStatus.ACTIVE,
+              },
+            });
+          });
+
+          if (this.cacheService) {
+            await this.cacheService.del(`cache:user:${userId}:creep-score`);
+          }
+
+          return {
+            card: {
+              id: existingPaymentCard.id,
+              card_nickname: existingPaymentCard.card_nickname,
+              card_brand: existingPaymentCard.card_brand,
+              card_type: existingPaymentCard.card_type,
+              last_4_digits: existingPaymentCard.last_4_digits,
+              bank_name: existingPaymentCard.bank_name,
+              balance: Number(existingPaymentCard.balance),
+              currency: existingPaymentCard.currency,
+              is_default: existingPaymentCard.is_default,
+              subscriptions: activeSubs.map((s) => ({
+                id: s.id,
+                name: s.name,
+                category: s.category,
+                price: Number(s.price),
+                billing_cycle: s.billing_cycle,
+                next_renewal_date: s.next_renewal_date,
+              })),
+            },
+            imported_subscriptions_count: activeSubs.length,
+            imported_subscriptions: activeSubs.map((s) => ({
+              id: s.id,
+              name: s.name,
+              category: s.category,
+              price: Number(s.price),
+              billing_cycle: s.billing_cycle,
+              next_renewal_date: s.next_renewal_date,
+            })),
+          };
+        }
+      }
+
       mockCard = await this.prisma.mockBankCard.findFirst({
         include: { subscriptions: true },
       });
@@ -324,6 +374,121 @@ export class PaymentCardsService {
       throw new NotFoundException(
         'No simulated mock bank card found matching criteria',
       );
+    }
+
+    // Check if user already has an existing card matching this mock card
+    const existingUserCard = await this.prisma.paymentCard.findFirst({
+      where: {
+        user_id: userId,
+        bank_name: mockCard.bank_name,
+        last_4_digits: mockCard.last_4_digits,
+      },
+      include: { subscriptions: true },
+    });
+
+    if (existingUserCard) {
+      const activeSubs = await this.prisma.$transaction(async (tx) => {
+        await tx.paymentCard.update({
+          where: { id: existingUserCard.id },
+          data: { is_active: true, balance: mockCard.balance },
+        });
+
+        await tx.userSubscription.updateMany({
+          where: { payment_card_id: existingUserCard.id },
+          data: { status: SubscriptionStatus.ACTIVE },
+        });
+
+        let currentSubs = await tx.userSubscription.findMany({
+          where: {
+            payment_card_id: existingUserCard.id,
+            status: SubscriptionStatus.ACTIVE,
+          },
+        });
+
+        if (currentSubs.length === 0) {
+          const now = new Date();
+          let subIndex = 0;
+          for (const mockSub of mockCard.subscriptions) {
+            const nextRenewal = new Date(now);
+            if (mockSub.billing_cycle === BillingCycle.WEEKLY) {
+              nextRenewal.setDate(nextRenewal.getDate() + 7);
+            } else if (mockSub.billing_cycle === BillingCycle.YEARLY) {
+              nextRenewal.setFullYear(nextRenewal.getFullYear() + 1);
+            } else {
+              nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+            }
+
+            const preset = await tx.subscriptionPreset.findFirst({
+              where: { name: { contains: mockSub.name, mode: 'insensitive' } },
+            });
+
+            const usageStatus =
+              subIndex === 1 ? UsageStatus.UNUSED : UsageStatus.FREQUENT;
+            subIndex++;
+
+            await tx.userSubscription.create({
+              data: {
+                user_id: userId,
+                payment_card_id: existingUserCard.id,
+                preset_id: preset?.id,
+                name: mockSub.name,
+                category: mockSub.category,
+                price: mockSub.price,
+                billing_cycle: mockSub.billing_cycle,
+                start_date: now,
+                next_renewal_date: nextRenewal,
+                usage_status: usageStatus,
+                brand_color: mockSub.brand_color || preset?.brand_color,
+                status: SubscriptionStatus.ACTIVE,
+              },
+            });
+          }
+
+          currentSubs = await tx.userSubscription.findMany({
+            where: {
+              payment_card_id: existingUserCard.id,
+              status: SubscriptionStatus.ACTIVE,
+            },
+          });
+        }
+
+        return currentSubs;
+      });
+
+      if (this.cacheService) {
+        await this.cacheService.del(`cache:user:${userId}:creep-score`);
+      }
+
+      return {
+        card: {
+          id: existingUserCard.id,
+          card_nickname: existingUserCard.card_nickname,
+          card_brand: existingUserCard.card_brand,
+          card_type: existingUserCard.card_type,
+          last_4_digits: existingUserCard.last_4_digits,
+          bank_name: existingUserCard.bank_name,
+          balance: Number(mockCard.balance),
+          currency: existingUserCard.currency,
+          is_default: existingUserCard.is_default,
+          subscriptions: activeSubs.map((s) => ({
+            id: s.id,
+            name: s.name,
+            category: s.category,
+            price: Number(s.price),
+            billing_cycle: s.billing_cycle,
+            next_renewal_date: s.next_renewal_date,
+          })),
+        },
+        imported_subscriptions_count: activeSubs.length,
+        imported_subscriptions: activeSubs.map((s) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          price: Number(s.price),
+          billing_cycle: s.billing_cycle,
+          next_renewal_date: s.next_renewal_date,
+        })),
+      };
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -348,8 +513,16 @@ export class PaymentCardsService {
 
       // 2. Clone/Import subscriptions
       const now = new Date();
-      const importedSubscriptions = [];
+      const importedSubscriptions: Array<{
+        id: string;
+        name: string;
+        category: string;
+        price: number;
+        billing_cycle: BillingCycle;
+        next_renewal_date: Date | null;
+      }> = [];
 
+      let subIndex = 0;
       for (const mockSub of mockCard.subscriptions) {
         const nextRenewal = new Date(now);
         if (mockSub.billing_cycle === BillingCycle.WEEKLY) {
@@ -365,6 +538,10 @@ export class PaymentCardsService {
           where: { name: { contains: mockSub.name, mode: 'insensitive' } },
         });
 
+        const usageStatus =
+          subIndex % 2 === 1 ? UsageStatus.UNUSED : UsageStatus.FREQUENT;
+        subIndex++;
+
         const createdSub = await tx.userSubscription.create({
           data: {
             user_id: userId,
@@ -376,7 +553,7 @@ export class PaymentCardsService {
             billing_cycle: mockSub.billing_cycle,
             start_date: now,
             next_renewal_date: nextRenewal,
-            usage_status: UsageStatus.FREQUENT,
+            usage_status: usageStatus,
             brand_color: mockSub.brand_color || preset?.brand_color,
           },
         });

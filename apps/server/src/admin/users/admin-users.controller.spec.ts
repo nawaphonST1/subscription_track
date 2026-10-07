@@ -13,6 +13,7 @@ describe('AdminUsersController', () => {
     getUserDetail: vi.fn(),
     updateUser: vi.fn(),
     updateSubscription: vi.fn(),
+    createSubscription: vi.fn(),
     deleteSubscription: vi.fn(),
   };
 
@@ -107,6 +108,28 @@ describe('AdminUsersController', () => {
     const result = await controller.deleteSubscription('sub-1');
     expect(result).toEqual({ message: 'Deleted', id: 'sub-1' });
     expect(mockService.deleteSubscription).toHaveBeenCalledWith('sub-1');
+  });
+
+  it('createSubscription delegates to service.createSubscription', async () => {
+    const createdSub = {
+      id: 'sub-new',
+      name: 'YouTube Premium',
+      price: 179,
+      planTier: 'Individual',
+    };
+    mockService.createSubscription.mockResolvedValue(createdSub);
+
+    const result = await controller.createSubscription('u-1', {
+      name: 'YouTube Premium',
+      price: 179,
+      planTier: 'Individual',
+    });
+    expect(result).toEqual(createdSub);
+    expect(mockService.createSubscription).toHaveBeenCalledWith('u-1', {
+      name: 'YouTube Premium',
+      price: 179,
+      planTier: 'Individual',
+    });
   });
 
   it('deleteUser delegates to service.deleteUser', async () => {

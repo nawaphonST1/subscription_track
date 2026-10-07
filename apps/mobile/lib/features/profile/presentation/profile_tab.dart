@@ -20,7 +20,7 @@ class ProfileTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final income = ref.watch(userIncomeProvider);
+    final income = ref.watch(effectiveIncomeProvider);
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(

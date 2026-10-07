@@ -1,3 +1,5 @@
+import 'package:subscription_track/features/subscriptions/domain/preset_plan.dart';
+
 class AdminPackage {
   final String id;
   final String name;
@@ -8,6 +10,7 @@ class AdminPackage {
   final String? iconUrl;
   final String? description;
   final bool isActive;
+  final List<PresetPlan> plans;
   final DateTime? createdAt;
 
   const AdminPackage({
@@ -20,10 +23,12 @@ class AdminPackage {
     this.iconUrl,
     this.description,
     this.isActive = true,
+    this.plans = const [],
     this.createdAt,
   });
 
   factory AdminPackage.fromJson(Map<String, dynamic> json) {
+    final plansRaw = json['availablePlans'] ?? json['available_plans'] ?? json['plans'];
     return AdminPackage(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -34,6 +39,12 @@ class AdminPackage {
       iconUrl: json['iconUrl'] as String?,
       description: json['description'] as String?,
       isActive: json['isActive'] as bool? ?? true,
+      plans: plansRaw is List
+          ? plansRaw
+              .whereType<Map>()
+              .map((e) => PresetPlan.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : const [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -50,6 +61,7 @@ class AdminPackage {
     String? iconUrl,
     String? description,
     bool? isActive,
+    List<PresetPlan>? plans,
     DateTime? createdAt,
   }) {
     return AdminPackage(
@@ -62,6 +74,7 @@ class AdminPackage {
       iconUrl: iconUrl ?? this.iconUrl,
       description: description ?? this.description,
       isActive: isActive ?? this.isActive,
+      plans: plans ?? this.plans,
       createdAt: createdAt ?? this.createdAt,
     );
   }
