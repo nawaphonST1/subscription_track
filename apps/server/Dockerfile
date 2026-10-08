@@ -16,7 +16,7 @@ FROM base AS deps
 
 USER node
 
-COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY --chown=node:node prisma ./prisma
 RUN pnpm install --frozen-lockfile \
     && pnpm prisma:generate

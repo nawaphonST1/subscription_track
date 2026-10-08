@@ -159,7 +159,7 @@ services:
       target: deps
     env_file:
       - apps/server/.env.production # must define DATABASE_URL
-    command: ["pnpm", "prisma:migrate:deploy"]
+    command: ["sh", "-c", "pnpm prisma:migrate:deploy && node prisma/seed.js"]
     depends_on:
       postgres:
         condition: service_healthy
