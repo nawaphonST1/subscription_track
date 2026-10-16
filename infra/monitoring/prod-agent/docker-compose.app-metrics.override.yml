@@ -1,4 +1,4 @@
-# Compose override for the APP stack (repository-root docker-compose-prosuction.yml),
+# Compose override for the APP stack (repository-root docker-compose-production.yml),
 # not for the agent stack in this directory.
 #
 # Why it exists: Grafana Alloy runs with `network_mode: host` (see
@@ -8,12 +8,12 @@
 # unreachable from outside as before — 127.0.0.1 is not routable off the VM,
 # and infra/nginx/nginx.conf proxies nothing to these ports.
 #
-# This is a separate file rather than an edit to docker-compose-prosuction.yml
+# This is a separate file rather than an edit to docker-compose-production.yml
 # because that file belongs to another team member. Apply it from the
 # repository root, where the first -f sets the context for relative paths:
 #
 #   docker compose \
-#     -f docker-compose-prosuction.yml \
+#     -f docker-compose-production.yml \
 #     -f infra/monitoring/prod-agent/docker-compose.app-metrics.override.yml \
 #     up -d
 #

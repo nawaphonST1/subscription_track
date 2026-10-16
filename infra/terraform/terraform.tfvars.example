@@ -24,6 +24,11 @@ admin_username = "azureuser"
 ssh_public_key = ""
 admin_password = "CHANGE_ME_STRONG_PASSWORD"
 
+# จำกัดแหล่งที่มาของ SSH (Port 22) ให้เฉพาะ IP/CIDR ของผู้ดูแลระบบ (ห้ามใช้ 0.0.0.0/0 หรือ *)
+# ต้องแก้ค่านี้เป็น IP/CIDR จริงของคุณ (เช่น "<YOUR_PUBLIC_IP>/32") ก่อนรัน terraform apply จริงทุกครั้ง
+# ค่า Placeholder ด้านล่างจะถูก Azure ปฏิเสธตอน apply (ตั้งใจเป็น fail-safe)
+ssh_allowed_cidr = "CHANGE_ME_SSH_SOURCE_IP/32"
+
 # --- DP-201: Optional Managed Kubernetes Cluster (AKS) ---
 # ตั้งเป็น true หากต้องการสร้าง Azure Kubernetes Service (AKS) สำหรับตรวจงาน Managed K8s
 # (ตั้งเป็น false เป็นค่าเริ่มต้น เพื่อประหยัดงบและโควตาเครดิต Azure)

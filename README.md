@@ -206,7 +206,7 @@ docker compose --env-file apps/server/.env down
 ## 🤖 ภาพรวมระบบและคู่มือการทำงาน (System & Agent Reference)
 ## 🏭 Production Deployment (VM)
 
-สำหรับทดสอบ deploy ขึ้นเครื่อง VM จริง (ไม่ใช่เครื่อง dev) ใช้ไฟล์ `docker-compose-prosuction.yml` ที่ root ของ repo — เป็น production variant ของ `docker-compose.yml` เดิม (service เดียวกัน: `api`, `postgres`, `redis`, `worker`, `nginx`) แต่ปิดช่องโหว่ที่ไม่ควรมีใน production:
+สำหรับทดสอบ deploy ขึ้นเครื่อง VM จริง (ไม่ใช่เครื่อง dev) ใช้ไฟล์ `docker-compose-production.yml` ที่ root ของ repo — เป็น production variant ของ `docker-compose.yml` เดิม (service เดียวกัน: `api`, `postgres`, `redis`, `worker`, `nginx`) แต่ปิดช่องโหว่ที่ไม่ควรมีใน production:
 
 - `postgres`/`redis` **ไม่เปิด host port** (เข้าถึงได้เฉพาะในวง Compose network ผ่าน `api`/`worker`)
 - **ไม่มี default secret** ฝังในไฟล์ — ทุกค่า secret อ่านจาก `apps/server/.env.production` ผ่าน `env_file:` ถ้าไฟล์นี้ไม่มี `docker compose` จะ error ทันที ไม่ fallback ไปใช้ค่า dev
@@ -231,33 +231,33 @@ cp apps/server/.env.production.example apps/server/.env.production
 
 **3) ตรวจสอบว่า compose ไฟล์ถูกต้องและ secrets ครบ:**
 ```bash
-docker compose -f docker-compose-prosuction.yml config
+docker compose -f docker-compose-production.yml config
 ```
 
 **4) รัน database migration ครั้งแรก (ก่อน `up` เสมอ):**
 ```bash
-docker compose -f docker-compose-prosuction.yml run --rm migrate
+docker compose -f docker-compose-production.yml run --rm migrate
 ```
 
 **5) ขึ้นระบบทั้งหมด:**
 ```bash
-docker compose -f docker-compose-prosuction.yml up -d --build
+docker compose -f docker-compose-production.yml up -d --build
 ```
 
 **6) ตรวจสอบสถานะและทดสอบ end-to-end:**
 ```bash
-docker compose -f docker-compose-prosuction.yml ps
+docker compose -f docker-compose-production.yml ps
 curl -i http://localhost/health
 ```
 ควรได้ `HTTP/1.1 200 OK` พร้อม `"status":"ok","checks":{"database":"ok"}` ที่ผ่านเส้นทาง Nginx (พอร์ต 80) → `api:8080` → PostgreSQL
 
 **7) หยุดระบบ (เก็บข้อมูลไว้ใน volume):**
 ```bash
-docker compose -f docker-compose-prosuction.yml down
+docker compose -f docker-compose-production.yml down
 ```
 ใช้ `down -v` เฉพาะเมื่อต้องการลบข้อมูล PostgreSQL โดยตั้งใจเท่านั้น
 
-> มี production compose อีกไฟล์ที่ `apps/server/docker-compose-prosuction.yml` สำหรับกรณีต้องการ deploy เฉพาะ backend scope แยกจาก root — ใช้ไฟล์ secrets ร่วมกัน (`apps/server/.env.production`) แต่สำหรับการใช้งานทั่วไปแนะนำไฟล์ root ด้านบนเพราะรวม Nginx reverse proxy ไว้ให้แล้ว
+> มี production compose อีกไฟล์ที่ `apps/server/docker-compose-production.yml` สำหรับกรณีต้องการ deploy เฉพาะ backend scope แยกจาก root — ใช้ไฟล์ secrets ร่วมกัน (`apps/server/.env.production`) แต่สำหรับการใช้งานทั่วไปแนะนำไฟล์ root ด้านบนเพราะรวม Nginx reverse proxy ไว้ให้แล้ว
 
 ---
 

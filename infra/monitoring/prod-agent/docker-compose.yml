@@ -1,7 +1,7 @@
 # Production-side monitoring agents — DP-5 phase 3a (DP-500 / DP-501).
 #
 # WHERE THIS RUNS: the Azure production VM, alongside the app stack defined by
-# the repository-root `docker-compose-prosuction.yml`. It is NOT the monitoring
+# the repository-root `docker-compose-production.yml`. It is NOT the monitoring
 # stack; that one lives in ../docker-compose.yml and runs on the lecturer's VM.
 #
 # Usage (from this directory):
@@ -143,7 +143,7 @@ volumes:
   alloy-data:
 
 networks:
-  # The app stack's network, created by docker-compose-prosuction.yml. Declared
+  # The app stack's network, created by docker-compose-production.yml. Declared
   # external so this file never creates it and a wrong name fails loudly
   # instead of silently starting an exporter that can reach nothing.
   # Find it with: docker network ls --filter name=_default

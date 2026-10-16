@@ -86,14 +86,31 @@ pipeline {
                         echo "==> [${env.APP_NAME}] Running osv-scanner SCA audit on pubspec dependencies..."
                         sh '''
                             mkdir -p apps/mobile/build/reports
-                            if command -v osv-scanner >/dev/null 2>&1; then
-                                osv-scanner --lockfile=apps/mobile/pubspec.lock --format=json --output=apps/mobile/build/reports/osv-scanner-report.json || true
-                            elif [ -x "${WORKSPACE}/scripts/bin/osv-scanner" ]; then
-                                "${WORKSPACE}/scripts/bin/osv-scanner" --lockfile=apps/mobile/pubspec.lock --format=json --output=apps/mobile/build/reports/osv-scanner-report.json || true
-                            else
-                                echo '{"results":[]}' > apps/mobile/build/reports/osv-scanner-report.json
-                            fi
+                            # Drop any stale report so the gate below can never pass on a previous build's file
+                            rm -f apps/mobile/build/reports/osv-scanner-report.json
+                            # osv-scanner runs from a pinned Docker image (tag + digest) so the gate never depends on an agent binary.
+                            # Fail loudly if Docker is missing: a gate that silently scans nothing is worse than none.
+                            command -v docker >/dev/null 2>&1 || { echo "BLOCKING: docker not available for osv-scanner"; exit 1; }
+                            OSV_IMAGE="ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0"
+
+                            # Jenkins runs in a container using the HOST docker daemon (docker.sock), so a bind mount of ${WORKSPACE}
+                            # would resolve on the host. Mount the jenkins_home volume instead (same pattern as flutter-docker.sh / Gitleaks).
+                            case "${WORKSPACE}" in
+                                /var/jenkins_home/*)
+                                    JENKINS_VOL=$(docker inspect subtracker_jenkins --format '{{range .Mounts}}{{if eq .Destination "/var/jenkins_home"}}{{.Name}}{{end}}{{end}}' 2>/dev/null || true)
+                                    MOUNT_FLAG="-v ${JENKINS_VOL:-subtracker-jenkins_jenkins_home}:/var/jenkins_home" ;;
+                                *)
+                                    MOUNT_FLAG="-v ${WORKSPACE}:${WORKSPACE}" ;;
+                            esac
+
+                            # osv-scanner exits non-zero on ANY finding; `|| true` keeps the report, the severity gate below decides.
+                            # A genuine scanner failure leaves no report, which the gate rejects ("cannot read report").
+                            docker run --rm --user "$(id -u):$(id -g)" ${MOUNT_FLAG} -w "${WORKSPACE}" "${OSV_IMAGE}" \
+                                scan source --lockfile=apps/mobile/pubspec.lock --format=json --output-file=apps/mobile/build/reports/osv-scanner-report.json || true
                             echo "✅ osv-scanner analysis completed."
+
+                            # Severity gate (parity with backend DP-402): fails on critical/high, or on a missing/unparseable report
+                            node scripts/cicd/osv-gate.js apps/mobile/build/reports/osv-scanner-report.json
                         '''
                     }
                 }

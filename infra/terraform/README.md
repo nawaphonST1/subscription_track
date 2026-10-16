@@ -29,7 +29,7 @@
 - **Network Security Group (NSG):**
   - พอร์ต `80` (HTTP) — Inbound สำหรับ Certbot / Traefik Redirect
   - พอร์ต `443` (HTTPS) — Inbound สำหรับ Production Web & Mobile API
-  - พอร์ต `22` (SSH) — Inbound สำหรับดูแลระบบ และต่อท่อ SSH Tunnel จาก Monitoring Server
+  - พอร์ต `22` (SSH) — Inbound สำหรับดูแลระบบ และต่อท่อ SSH Tunnel จาก Monitoring Server (ต้นทางจำกัดเฉพาะ `var.ssh_allowed_cidr` ต้องตั้งเป็น IP/CIDR จริงก่อน apply)
 - **Compute VM:**
   - Size: `Standard_B2s` (2 vCPU, 4 GiB RAM)
   - OS Disk: `64 GB` Standard_LRS
@@ -78,6 +78,33 @@ terraform apply
   ```bash
   ssh azureuser@<PUBLIC_IP>
   ```
+
+---
+
+## ⚠️ Terraform vs. Actual Deployed State
+
+**ข้อควรระวัง:** repo นี้ **ไม่มีไฟล์ `.tfstate` ที่ถูก commit** (และไม่ควรมี เพราะอาจมีข้อมูลลับ)
+ดังนั้นจาก repo เพียงอย่างเดียว **ไม่สามารถพิสูจน์ได้** ว่า Production VM ที่รันอยู่จริงถูกสร้างขึ้นด้วย
+Terraform module นี้ อาจถูกสร้างด้วยมือ (Azure Portal / CLI) หรือด้วยเครื่องมืออื่นก็ได้
+
+(English summary: with no committed state, this repo cannot prove the live production VM was
+provisioned by this module. Treat the Terraform code as a *blueprint*, not as a record of what exists.)
+
+ด้วยเหตุนี้ ตัวแปร `enable_standalone_vm` และ `enable_aks_cluster` จึงตั้งค่าเริ่มต้นเป็น `false`
+**โดยตั้งใจ (by design)**: การรัน `terraform plan` / `terraform apply` ด้วยค่า default จะ **ไม่สร้างทรัพยากรใดเลย**
+เพื่อป้องกันการสร้าง VM / VNet / NSG / Public IP ซ้ำซ้อนหรือขัดแย้งกับสิ่งที่รันอยู่จริงโดยไม่ตั้งใจ
+
+### ก่อนตั้งค่า `enable_standalone_vm = true` จริง ผู้ดูแลต้อง:
+1. **ยืนยันว่าไม่มีทรัพยากรที่รันอยู่จริงชนกัน** - ตรวจใน Azure (Portal หรือ `az resource list -g <resource_group>`)
+   ว่าไม่มี VM, VNet/Subnet, NSG, Public IP, NIC ชื่อซ้ำหรือใช้ address space ทับซ้อนกับที่ module จะสร้าง
+2. **ตัดสินใจเรื่อง state** - หากทรัพยากรเดิมมีอยู่แล้วและต้องการให้ Terraform จัดการ ให้ใช้ `terraform import`
+   (พร้อม remote state backend) แทนการสร้างใหม่; หากไม่ต้องการ ให้คงค่าเป็น `false`
+3. **ทบทวนการตั้งค่า NSG / เครือข่ายก่อน** - ตรวจ source address ของกฎ SSH และพอร์ตที่เปิด (เช่น 22, 80, 443),
+   address space ของ VNet/Subnet ว่าไม่ขัดกับเครือข่ายเดิม และไม่เปิดพอร์ตสู่ `0.0.0.0/0` เกินความจำเป็น
+4. รัน `terraform plan` และอ่านผลให้ครบ - ต้องเห็นเฉพาะการ **create** ของทรัพยากรใหม่ที่ตั้งใจ
+   และไม่มี destroy/replace ของสิ่งที่มีอยู่ ก่อนจึงค่อย `terraform apply`
+
+ค่าใน `terraform.tfvars.example` ยังคงเป็น `enable_standalone_vm = false` ให้สอดคล้องกัน
 
 ---
 
