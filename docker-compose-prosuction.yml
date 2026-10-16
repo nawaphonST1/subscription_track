@@ -168,7 +168,7 @@ services:
 
   # DP-300 / DP-301: Modern Cloud-Native Reverse Proxy & Ingress Controller
   traefik:
-    image: traefik:latest
+    image: traefik:v3.7.14
     restart: unless-stopped
     command:
       - "--api.insecure=false"
