@@ -57,6 +57,13 @@ variable "admin_password" {
 # ตัวเลือกเสริม: Standalone Production VM + เครือข่าย (VNet/Subnet/NSG/Public IP/NIC)
 # ปิดไว้เป็นค่าเริ่มต้น (false) เพื่อป้องกันการสร้างทรัพยากรซ้ำซ้อนโดยไม่ตั้งใจเมื่อเปิดใช้ AKS
 # เปิดเฉพาะกรณีต้องการ VM แยกต่างหากสำหรับรัน Docker Compose / K3s จริงเท่านั้น
+#
+# NOTE (Terraform vs. live state): repo นี้ไม่มี .tfstate ที่ commit ไว้ จึงไม่มีหลักฐานจาก repo
+# เพียงอย่างเดียวว่า Production VM ที่รันอยู่จริงถูกสร้างจาก Terraform module นี้
+# (There is no committed .tfstate, so nothing in this repo proves the live production VM
+# was provisioned by this module.) ดังนั้น `terraform apply` ด้วยค่า default จะไม่สร้างอะไรเลย
+# โดยตั้งใจ (by design) เพื่อไม่ให้สร้างทรัพยากรซ้ำ/ขัดแย้งกับสิ่งที่รันอยู่จริง
+# ดูรายละเอียดใน README.md หัวข้อ "Terraform vs. Actual Deployed State"
 # ==============================================================================
 variable "enable_standalone_vm" {
   type        = bool
