@@ -3,7 +3,7 @@
 #
 # Secrets live ONLY in apps/server/.env.production (never committed — copy
 # apps/server/.env.production.example and fill in real values; same file
-# used by apps/server/docker-compose-prosuction.yml, so there is one secrets
+# used by apps/server/docker-compose-production.yml, so there is one secrets
 # source of truth regardless of which production compose file you run).
 # Every secret-bearing service loads it via `env_file:`, resolved relative to
 # THIS file's directory — unlike `--env-file`/the auto-loaded `.env`, that
@@ -12,9 +12,9 @@
 # instead of silently falling back to the dev defaults below.
 #
 # Usage (from anywhere, no --env-file needed):
-#   docker compose -f docker-compose-prosuction.yml config         # validate
-#   docker compose -f docker-compose-prosuction.yml run --rm migrate   # once, before first `up`
-#   docker compose -f docker-compose-prosuction.yml up -d
+#   docker compose -f docker-compose-production.yml config         # validate
+#   docker compose -f docker-compose-production.yml run --rm migrate   # once, before first `up`
+#   docker compose -f docker-compose-production.yml up -d
 #
 # Hardening vs. the local dev `docker-compose.yml`:
 #   - PostgreSQL publishes NO host port (dev publishes 5432:5432 for host
@@ -152,7 +152,7 @@ services:
   # One-off migration job. The `runtime` image prunes devDependencies
   # (including the `prisma` CLI), so migrations run from the `deps` stage,
   # which still has it. Not started by `up` — run explicitly:
-  #   docker compose -f docker-compose-prosuction.yml run --rm migrate
+  #   docker compose -f docker-compose-production.yml run --rm migrate
   migrate:
     build:
       context: ./apps/server

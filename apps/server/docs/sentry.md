@@ -44,8 +44,8 @@ SENTRY_TRACES_SAMPLE_RATE=0          # traces cost quota; Prometheus already has
 # SENTRY_RELEASE=$(git rev-parse --short HEAD)
 
 # 3. restart
-docker compose -f docker-compose-prosuction.yml up -d api worker
-docker compose -f docker-compose-prosuction.yml logs api | grep -i sentry
+docker compose -f docker-compose-production.yml up -d api worker
+docker compose -f docker-compose-production.yml logs api | grep -i sentry
 #   expected: "Sentry enabled for the api process"
 ```
 
@@ -116,9 +116,9 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/__sentry-test
 
 # A real 500 has to come from the app. The simplest honest trigger is to stop
 # the database and hit an endpoint that needs it:
-docker compose -f docker-compose-prosuction.yml stop postgres
+docker compose -f docker-compose-production.yml stop postgres
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/subscriptions   # expect 500
-docker compose -f docker-compose-prosuction.yml start postgres
+docker compose -f docker-compose-production.yml start postgres
 
 # Then, in Sentry: Issues -> the event should carry tags service=api,
 # environment=production, and NO user e-mail, NO Authorization header,

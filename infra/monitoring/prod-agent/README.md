@@ -1,6 +1,6 @@
 # prod-agent — ชุด agent ฝั่ง production (DP-5 เฟส 3a)
 
-รันบน **VM Azure (production)** เท่านั้น ข้างๆ app stack (`docker-compose-prosuction.yml` ที่ root)
+รันบน **VM Azure (production)** เท่านั้น ข้างๆ app stack (`docker-compose-production.yml` ที่ root)
 ไม่ใช่ monitoring stack — ตัวนั้นอยู่ที่ [`../docker-compose.yml`](../docker-compose.yml) และรันบน VM อาจารย์
 
 ```
@@ -131,7 +131,7 @@ publish พอร์ต metrics ของแอป (ทำที่ root ขอ�
 ```bash
 cd /path/to/subscription_track
 docker compose \
-  -f docker-compose-prosuction.yml \
+  -f docker-compose-production.yml \
   -f infra/monitoring/prod-agent/docker-compose.app-metrics.override.yml \
   up -d api worker
 ```

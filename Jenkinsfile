@@ -482,8 +482,8 @@ pipeline {
                                     git reset --hard origin/${TARGET_BRANCH}
                                     rm -f appsmobile.env 2>/dev/null || true
                                     echo '==> [Remote Production VM] Triggering production stack update via docker compose...'
-                                    docker compose -f docker-compose-prosuction.yml up -d --remove-orphans || docker compose -f docker-compose-prosuction.yml up -d
-                                    docker compose -f docker-compose-prosuction.yml run --rm migrate || true
+                                    docker compose -f docker-compose-production.yml up -d --remove-orphans || docker compose -f docker-compose-production.yml up -d
+                                    docker compose -f docker-compose-production.yml run --rm migrate || true
                                     echo '✅ [Remote Production VM] Production stack updated and migrations applied.'
                                 "
                                 DEPLOYED_REMOTE=true
@@ -517,12 +517,12 @@ pipeline {
                         fi
 
                         # Fallback to local Docker Compose deployment if not deployed remotely
-                        if [ "${DEPLOYED_REMOTE}" != "true" ] && [ -f "docker-compose-prosuction.yml" ]; then
+                        if [ "${DEPLOYED_REMOTE}" != "true" ] && [ -f "docker-compose-production.yml" ]; then
                             echo "==> Starting production stack containers via local docker compose..."
-                            docker compose -f docker-compose-prosuction.yml up -d --remove-orphans || docker-compose -f docker-compose-prosuction.yml up -d || true
+                            docker compose -f docker-compose-production.yml up -d --remove-orphans || docker-compose -f docker-compose-production.yml up -d || true
 
                             echo "==> Applying Prisma migrations to production database..."
-                            docker compose -f docker-compose-prosuction.yml run --rm migrate || true
+                            docker compose -f docker-compose-production.yml run --rm migrate || true
 
                             echo "==> Waiting for production services to stabilize..."
                             sleep 5

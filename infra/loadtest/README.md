@@ -100,7 +100,7 @@ az vm resize     -g <RESOURCE_GROUP> -n <AZURE_VM_NAME> --size Standard_D2s_v5
 az vm start      -g <RESOURCE_GROUP> -n <AZURE_VM_NAME>
 
 # 3) สตาร์ต stack กลับ (compose ตั้ง restart: unless-stopped ไว้แล้ว แต่ยืนยันอีกที)
-ssh <VM_ADMIN_USER>@<AZURE_VM_PUBLIC_IP> 'cd ~/subscription_track && docker compose -f docker-compose-prosuction.yml ps'
+ssh <VM_ADMIN_USER>@<AZURE_VM_PUBLIC_IP> 'cd ~/subscription_track && docker compose -f docker-compose-production.yml ps'
 
 # 4) ย้ายกลับหลัง demo
 az vm deallocate -g <RESOURCE_GROUP> -n <AZURE_VM_NAME>

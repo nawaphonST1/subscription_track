@@ -9,9 +9,9 @@
 # silently falling back to whatever `.env` happens to be nearby.
 #
 # Usage (from anywhere, no --env-file needed):
-#   docker compose -f apps/server/docker-compose-prosuction.yml config         # validate
-#   docker compose -f apps/server/docker-compose-prosuction.yml run --rm migrate   # once, before first `up`
-#   docker compose -f apps/server/docker-compose-prosuction.yml up -d
+#   docker compose -f apps/server/docker-compose-production.yml config         # validate
+#   docker compose -f apps/server/docker-compose-production.yml run --rm migrate   # once, before first `up`
+#   docker compose -f apps/server/docker-compose-production.yml up -d
 #
 # Hardening vs. the local dev compose (repo-root docker-compose.yml):
 #   - PostgreSQL and Redis publish NO host ports — reachable only on the
@@ -64,7 +64,7 @@ services:
   # One-off migration job. The `runtime` image prunes devDependencies
   # (including the `prisma` CLI), so migrations run from the `deps` stage,
   # which still has it. Not started by `up` — run explicitly:
-  #   docker compose -f docker-compose-prosuction.yml run --rm migrate
+  #   docker compose -f docker-compose-production.yml run --rm migrate
   migrate:
     build:
       context: .
