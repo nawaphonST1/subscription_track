@@ -32,6 +32,7 @@ resource "azurerm_network_security_group" "nsg" {
   }
 
   # กฎที่ 3: อนุญาต SSH (Port 22) สำหรับดูแลระบบและต่อท่อ SSH Tunnel จากเครื่องอาจารย์
+  # (จำกัด source เฉพาะ IP/CIDR ที่ระบุใน var.ssh_allowed_cidr เท่านั้น ไม่เปิดให้ทุก IP)
   security_rule {
     name                       = "Allow-SSH"
     priority                   = 120
@@ -40,7 +41,7 @@ resource "azurerm_network_security_group" "nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = "*"
+    source_address_prefix      = var.ssh_allowed_cidr
     destination_address_prefix = "*"
   }
 

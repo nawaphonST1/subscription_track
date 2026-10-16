@@ -29,7 +29,7 @@
 - **Network Security Group (NSG):**
   - พอร์ต `80` (HTTP) — Inbound สำหรับ Certbot / Traefik Redirect
   - พอร์ต `443` (HTTPS) — Inbound สำหรับ Production Web & Mobile API
-  - พอร์ต `22` (SSH) — Inbound สำหรับดูแลระบบ และต่อท่อ SSH Tunnel จาก Monitoring Server
+  - พอร์ต `22` (SSH) — Inbound สำหรับดูแลระบบ และต่อท่อ SSH Tunnel จาก Monitoring Server (ต้นทางจำกัดเฉพาะ `var.ssh_allowed_cidr` ต้องตั้งเป็น IP/CIDR จริงก่อน apply)
 - **Compute VM:**
   - Size: `Standard_B2s` (2 vCPU, 4 GiB RAM)
   - OS Disk: `64 GB` Standard_LRS

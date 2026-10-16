@@ -77,6 +77,12 @@ variable "ssh_public_key" {
   default     = ""
 }
 
+variable "ssh_allowed_cidr" {
+  type        = string
+  description = "IP/CIDR ต้นทางที่อนุญาตให้ SSH (Port 22) เข้า VM เช่น 203.0.113.10/32 (ค่าเริ่มต้นเป็น Placeholder โดยตั้งใจ Azure จะปฏิเสธตอน apply จนกว่าจะแก้เป็น IP จริง)"
+  default     = "CHANGE_ME_SSH_SOURCE_IP/32"
+}
+
 # ==============================================================================
 # ตัวเลือกเสริมสำหรับ DP-201: Managed Kubernetes Cluster (Azure Kubernetes Service - AKS)
 # ปิดไว้เป็นค่าเริ่มต้น (false) เพื่อประหยัดงบ Azure Credit และเน้นรันบน Single VM ตามสเปกทีม
