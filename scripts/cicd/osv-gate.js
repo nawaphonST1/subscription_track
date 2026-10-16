@@ -12,8 +12,8 @@
 //   - {"results":[]} (stub)         -> zero findings, exit 0
 //
 // Counting: one finding per osv-scanner "group" (deduplicated vulnerability, i.e.
-// GHSA/CVE aliases collapse into one). Packages without "groups" fall back to
-// one finding per entry in "vulnerabilities".
+// GHSA/CVE aliases collapse into one). Vulnerabilities not referenced by any group
+// (or all of them, for packages without "groups") count individually.
 // Severity: numeric groups[].max_severity (CVSS: >=9 critical, >=7 high, >=4 medium,
 // >0 low) first, then database_specific.severity (CRITICAL/HIGH/MODERATE|MEDIUM/LOW).
 // Anything else is "unknown" (printed as a warning, does not block).
@@ -57,6 +57,18 @@ function labelSeverity(vulns) {
     return sev;
 }
 
+// Severity of a single vulnerability object: label first, then any numeric CVSS score in severity[].
+function ungroupedSeverity(v) {
+    const byLabel = fromLabel(v.database_specific && v.database_specific.severity);
+    if (byLabel) return byLabel;
+    let sev = "unknown";
+    for (const entry of Array.isArray(v.severity) ? v.severity : []) {
+        const s = fromScore(entry && entry.score);
+        if (s) sev = worst(sev, s);
+    }
+    return sev;
+}
+
 function classifyReport(data) {
     const counts = { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 };
     const results = Array.isArray(data && data.results) ? data.results : [];
@@ -65,19 +77,21 @@ function classifyReport(data) {
         for (const pkg of packages) {
             const vulns = Array.isArray(pkg && pkg.vulnerabilities) ? pkg.vulnerabilities : [];
             const groups = Array.isArray(pkg && pkg.groups) ? pkg.groups : [];
-            if (groups.length > 0) {
-                for (const g of groups) {
-                    const ids = new Set([].concat((g && g.ids) || [], (g && g.aliases) || []));
-                    const members = vulns.filter(
-                        (v) => v && (ids.has(v.id) || (v.aliases || []).some((a) => ids.has(a)))
-                    );
-                    const sev = fromScore(g && g.max_severity) || labelSeverity(members);
-                    counts[sev]++;
-                }
-            } else {
-                for (const v of vulns) {
-                    counts[fromLabel(v && v.database_specific && v.database_specific.severity) || "unknown"]++;
-                }
+            const covered = new Set();
+            for (const g of groups) {
+                const ids = new Set([].concat((g && g.ids) || [], (g && g.aliases) || []));
+                const members = vulns.filter(
+                    (v) => v && (ids.has(v.id) || (v.aliases || []).some((a) => ids.has(a)))
+                );
+                members.forEach((v) => covered.add(v));
+                const sev = fromScore(g && g.max_severity) || labelSeverity(members);
+                counts[sev]++;
+            }
+            // Vulnerabilities not referenced by any group (or all of them when there are no groups)
+            // are never dropped: each counts individually via CVSS score / database_specific label.
+            for (const v of vulns) {
+                if (!v || covered.has(v)) continue;
+                counts[ungroupedSeverity(v)]++;
             }
         }
     }
